@@ -14,7 +14,6 @@
    - Go 1.23 API server
    - SQLite database
    - Cloudflare R2 for encrypted storage
-   - GeoLite2 for geolocation
 
 3. **Security**
    - TLS 1.3 for transport security

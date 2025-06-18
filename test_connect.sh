@@ -49,14 +49,6 @@ else
     echo "❌ Database file not found"
 fi
 
-# Test GeoLite2
-echo "Testing GeoLite2..."
-if [ -f "data/GeoLite2-City.mmdb" ]; then
-    echo "✅ GeoLite2 database found"
-else
-    echo "❌ GeoLite2 database not found"
-fi
-
 # Test SSL certificates
 echo "Testing SSL certificates..."
 if [ -f "certs/cert.pem" ] && [ -f "certs/key.pem" ]; then

@@ -30,16 +30,6 @@ fi
 echo "Creating required directories..."
 mkdir -p data logs certs
 
-# Download GeoLite2 City database
-echo "Downloading GeoLite2 City database..."
-GEO_KEY=${GEO_KEY:-"YOUR_GEO_LICENSE_KEY"}
-if [ ! -f data/GeoLite2-City.mmdb ]; then
-    wget "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key=$GEO_KEY&suffix=tar.gz" -O geo.tar.gz
-    tar -xzf geo.tar.gz
-    mv GeoLite2-City_*/GeoLite2-City.mmdb data/GeoLite2-City.mmdb
-    rm -rf GeoLite2-City_* geo.tar.gz
-fi
-
 # Configure UFW firewall
 echo "Configuring UFW firewall..."
 sudo ufw default deny incoming
