@@ -42,3 +42,5 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 geolite2/ 
+# Local Netlify folder
+.netlify
