@@ -6,7 +6,7 @@ A web-based secure email system with end-to-end encryption, built with Go and Re
 
 - End-to-end encryption (AES-256-GCM)
 - Secure link-based delivery
-- Password and geolocation-based access verification
+- Password-based access verification
 - Modern, responsive UI with dark/light modes
 - TOTP authentication
 - Folder-based organization
@@ -58,6 +58,30 @@ A web-based secure email system with end-to-end encryption, built with Go and Re
    # Frontend
    cd src
    npm run dev
+   ```
+
+## Deployment
+
+To deploy the application to Netlify:
+
+1. Install the Netlify CLI:
+   ```bash
+   npm install -g netlify-cli
+   ```
+
+2. Log in to your Netlify account:
+   ```bash
+   netlify login
+   ```
+
+3. Initialize the site:
+   ```bash
+   netlify init
+   ```
+
+4. Deploy to production:
+   ```bash
+   netlify deploy --prod
    ```
 
 ## Project Structure

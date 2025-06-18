@@ -37,7 +37,7 @@
 │   └── lib/          # Frontend utilities
 ├── docs/             # Documentation
 ├── tests/            # Test files
-├── data/             # Database and GeoLite2
+├── data/             # Database
 ├── logs/             # Application logs
 └── certs/            # SSL certificates
 ```
