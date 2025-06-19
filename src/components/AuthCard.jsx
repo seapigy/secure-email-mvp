@@ -73,7 +73,7 @@ const AuthCard = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="flex items-center justify-center">
       <div className="w-full max-w-md bg-white p-8">
         {isLogin ? (
           <form onSubmit={handleLogin} className="space-y-4">
