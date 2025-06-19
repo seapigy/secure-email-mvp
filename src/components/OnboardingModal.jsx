@@ -1,23 +1,20 @@
 import React, { useEffect, useState } from 'react';
+import { gsap } from 'gsap';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 const OnboardingModal = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     if (!localStorage.getItem('onboarding_seen')) {
       setIsOpen(true);
-      // Trigger animation after component mounts
-      setTimeout(() => setIsVisible(true), 10);
+      gsap.fromTo('.modal', { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35 });
     }
   }, []);
 
   const handleClose = () => {
     localStorage.setItem('onboarding_seen', 'true');
-    setIsVisible(false);
-    // Wait for animation to complete before hiding
-    setTimeout(() => setIsOpen(false), 200);
+    setIsOpen(false);
   };
 
   const handleKeyDown = (e) => {
@@ -30,17 +27,13 @@ const OnboardingModal = () => {
 
   return (
     <div 
-      className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50 transition-opacity duration-200"
+      className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50"
       onClick={handleClose}
       onKeyDown={handleKeyDown}
       tabIndex={-1}
     >
       <div 
-        className={`modal bg-white/90 dark:bg-gray-800/90 backdrop-blur-md p-8 rounded-xl shadow-neumorphic max-w-sm w-full mx-4 transition-all duration-200 ease-out ${
-          isVisible 
-            ? 'opacity-100 translate-y-0' 
-            : 'opacity-0 translate-y-4'
-        }`}
+        className="modal bg-white/90 dark:bg-gray-800/90 backdrop-blur-md p-8 rounded-xl shadow-neumorphic max-w-sm w-full mx-4" 
         role="dialog"
         aria-labelledby="modal-title"
         aria-describedby="modal-description"
