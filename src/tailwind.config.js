@@ -19,10 +19,13 @@ export default {
       fontFamily: {
         'inter': ['Inter', 'sans-serif'],
       },
+      boxShadow: {
+        'neumorphic': '0 4px 6px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+        'neumorphic-dark': '0 4px 6px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+      },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-in-out',
         'slide-up': 'slideUp 0.35s ease-out',
-        'scale-hover': 'scaleHover 0.15s ease-in-out',
       },
       keyframes: {
         fadeIn: {
@@ -30,20 +33,9 @@ export default {
           '100%': { opacity: '1' },
         },
         slideUp: {
-          '0%': { transform: 'translateY(50px)', opacity: '0' },
+          '0%': { transform: 'translateY(20px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
-        scaleHover: {
-          '0%': { transform: 'scale(1)' },
-          '100%': { transform: 'scale(1.05)' },
-        },
-      },
-      boxShadow: {
-        'neumorphic': '0 4px 6px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-        'glassmorphic': '0 8px 32px rgba(0, 0, 0, 0.1)',
-      },
-      backdropBlur: {
-        'xs': '2px',
       },
     },
   },
