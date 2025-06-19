@@ -9,10 +9,12 @@ import (
 	"sync"
 	"time"
 
+	"secure-email-mvp/pkg/auth"
+
 	"github.com/gorilla/mux"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/joho/godotenv"
-	"github.com/your-username/secure-email-mvp/pkg/auth"
+	_ "github.com/mattn/go-sqlite3"
+	"github.com/rs/cors"
 )
 
 type Server struct {
@@ -57,15 +59,24 @@ func main() {
 	// Set up router
 	r := mux.NewRouter()
 	r.HandleFunc("/api/auth/login", srv.loginHandler).Methods("POST")
+	r.HandleFunc("/api/auth/signup", auth.SignUpHandler(db)).Methods("POST")
+	r.HandleFunc("/api/auth/verify-totp", auth.VerifyTotpHandler(db)).Methods("POST")
 
 	// Apply middleware
 	r.Use(srv.rateLimitMiddleware)
 	r.Use(srv.secureHeadersMiddleware)
 
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{"http://localhost:3000", "https://secure-email-mvp.netlify.app"},
+		AllowedMethods: []string{"POST"},
+		AllowedHeaders: []string{"Content-Type"},
+	})
+	handler := c.Handler(r)
+
 	// Start server
 	addr := ":8080"
 	log.Printf("Starting API on %s", addr)
-	if err := http.ListenAndServe(addr, r); err != nil {
+	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatal("Server error:", err)
 	}
 }
@@ -139,4 +150,4 @@ func (srv *Server) logError(r *http.Request, email, msg string) {
 	defer f.Close()
 	logger := log.New(f, "", log.LstdFlags)
 	logger.Printf("Error: %s, Email: %s, IP: %s", msg, email, r.RemoteAddr)
-} 
+}

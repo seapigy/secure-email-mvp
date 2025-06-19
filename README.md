@@ -10,7 +10,9 @@ A web-based secure email system with end-to-end encryption, built with Go and Re
 - Secure link-based delivery
 - Password-based access verification
 - Modern, responsive UI with dark/light modes
-- TOTP authentication
+- TOTP authentication with QR code setup
+- Unified login/sign-up interface
+- Glassmorphic onboarding modal
 - Folder-based organization
 
 ## Tech Stack
@@ -29,29 +31,39 @@ A web-based secure email system with end-to-end encryption, built with Go and Re
 
 ## Development Setup
 
-1. Clone the repository:
+### Frontend Setup
+1. Navigate to the frontend directory:
    ```bash
-   git clone <repository-url>
-   cd secure-email-mvp
+   cd src
    ```
 
 2. Install dependencies:
    ```bash
-   # Backend
-   go mod tidy
-
-   # Frontend
-   cd src
    npm install
    ```
 
-3. Set up environment variables:
+3. Create environment file:
    ```bash
-   cp env.example .env
-   # Edit .env with your configuration
+   echo "REACT_APP_API_HOST=http://localhost:8080" > .env.local
    ```
 
-4. Set up the database:
+4. Start development server:
+   ```bash
+   npm start
+   ```
+
+5. Run tests:
+   ```bash
+   npm test
+   ```
+
+### Backend Setup
+1. Install Go dependencies:
+   ```bash
+   go mod tidy
+   ```
+
+2. Set up the database:
    ```bash
    # Create database directory
    sudo mkdir -p /var/db
@@ -61,21 +73,21 @@ A web-based secure email system with end-to-end encryption, built with Go and Re
    sqlite3 /var/db/secure-email.db < schema/users.sql
    ```
 
-5. Generate JWT secret:
+3. Generate JWT secret:
    ```bash
    # Generate a secure 32-byte secret
    openssl rand -base64 32
    # Add this to your .env file as JWT_SECRET
    ```
 
-6. Run the development servers:
+4. Run the development server:
    ```bash
-   # Backend API
    go run cmd/api/main.go
+   ```
 
-   # Frontend (in another terminal)
-   cd src
-   npm run dev
+5. Run tests:
+   ```bash
+   go test ./pkg/auth
    ```
 
 ## API Setup
@@ -87,6 +99,18 @@ The backend API provides authentication endpoints:
 - **Authentication**: Password (Argon2) + TOTP (6-digit)
 - **Response**: JWT token for subsequent requests
 - **Security**: Rate limiting, secure headers, TLS 1.3
+
+### Sign-Up API
+- **Endpoint**: `POST /api/auth/signup`
+- **Input**: Email, password, confirm_password
+- **Response**: TOTP QR code and temp_id
+- **Validation**: Email format, password match, user count <100
+
+### Verify TOTP API
+- **Endpoint**: `POST /api/auth/verify-totp`
+- **Input**: temp_id, totp_code
+- **Response**: JWT token
+- **Process**: Creates user after TOTP validation
 
 ### Testing the API
 ```bash
@@ -105,7 +129,7 @@ curl -X POST https://api.securesystem.email/api/auth/login \
 ```
 
 ### API Documentation
-See `docs/api/login.md` for detailed API documentation.
+See `docs/api/` for detailed API documentation.
 
 ## Deployment
 
@@ -151,11 +175,13 @@ See `docs/api/login.md` for detailed API documentation.
 ├── pkg/
 │   └── auth/         # Authentication package
 ├── schema/
-│   └── users.sql     # Database schema
+│   ├── users.sql     # Database schema
+│   └── temp_totp.sql # Temporary TOTP storage
 ├── src/              # Frontend source
 │   ├── components/   # React components
 │   ├── styles/       # CSS and Tailwind
-│   └── lib/          # Frontend utilities
+│   ├── lib/          # Frontend utilities
+│   └── tests/        # Frontend tests
 ├── docs/             # Documentation
 ├── tests/            # Test files
 └── env.example       # Environment variables template
@@ -170,12 +196,25 @@ See `docs/api/login.md` for detailed API documentation.
 - **TOTP Authentication**: 6-digit codes, 30-second window
 - **JWT Tokens**: HS256 signed, 24-hour expiration
 - **Input Validation**: Email format, password length, TOTP format
+- **CORS Protection**: Restricted origins
+
+## Design System
+
+- **Colors**: Primary (#1E40AF), Accent (#F472B6), Success (#34D399), Error (#EF4444)
+- **Typography**: Inter font family
+- **Animations**: GSAP for smooth transitions
+- **Accessibility**: WCAG 2.2 AA compliant
+- **Responsive**: Mobile-first design (320px–1440px)
 
 ## Development Status
 
 - ✅ **Micro-Iteration 1**: Infrastructure Setup (Oracle Cloud, Cloudflare, SQLite)
 - ✅ **Micro-Iteration 2**: Login API (Password + TOTP authentication)
-- 🔄 **Micro-Iteration 3**: Login UI and Design System (Next)
+- ✅ **Micro-Iteration 3.1**: Login and Sign-Up UI Redesign (Next)
+
+## Next Steps
+
+**Micro-Iteration 4**: Email Send API with AES-256-GCM encryption, compression, and R2 storage.
 
 ## License
 
