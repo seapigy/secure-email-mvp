@@ -70,26 +70,26 @@ const AuthCard = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-light dark:bg-neutral-dark p-6">
-      <div className="w-full max-w-md bg-white dark:bg-neutral-dark rounded-2xl shadow-card p-8">
+    <div className="min-h-screen flex items-start justify-center pt-16 bg-[#F8F9FA]">
+      <div className="w-full max-w-sm">
         {isLogin ? (
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm text-black mb-1">
                 Your email
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-gray-900 shadow-input"
+                className="w-full px-3 py-2 rounded border border-black text-black text-sm"
                 placeholder="user@securesystem.email"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm text-black mb-1">
                 Password
               </label>
               <div className="relative">
@@ -97,26 +97,26 @@ const AuthCard = () => {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-gray-900 shadow-input pr-12"
+                  className="w-full px-3 py-2 rounded border border-black text-black text-sm pr-10"
                   placeholder="••••••••"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-2 top-1/2 -translate-y-1/2"
                 >
                   {showPassword ? (
-                    <EyeSlashIcon className="h-5 w-5" />
+                    <EyeSlashIcon className="h-5 w-5 text-black" />
                   ) : (
-                    <EyeIcon className="h-5 w-5" />
+                    <EyeIcon className="h-5 w-5 text-black" />
                   )}
                 </button>
               </div>
-              <div className="flex justify-end mt-2">
+              <div className="flex justify-start mt-1">
                 <button
                   type="button"
-                  className="text-sm text-gray-500 hover:text-primary"
+                  className="text-sm text-black hover:underline"
                   onClick={() => toast.info('Password reset coming soon!')}
                 >
                   Forgot password?
@@ -127,49 +127,49 @@ const AuthCard = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors duration-200 disabled:opacity-50"
+              className="w-full py-2 bg-black text-white rounded text-sm font-normal disabled:opacity-50"
             >
               {isSubmitting ? 'Signing in...' : 'Login'}
             </button>
 
-            <div className="relative mt-8">
+            <div className="relative mt-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
+                <div className="w-full border-t border-black"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-500">or</span>
+                <span className="px-2 bg-[#F8F9FA] text-black">or</span>
               </div>
             </div>
 
             <div className="text-center mt-6">
-              <span className="text-gray-600">Don't have an account? </span>
+              <span className="text-sm text-black">Don't have an account? </span>
               <button
                 type="button"
                 onClick={() => setIsLogin(false)}
-                className="text-primary hover:text-primary/80 font-medium"
+                className="text-sm text-black bg-black/10 rounded px-2 py-1 hover:bg-black/20"
               >
                 Register new
               </button>
             </div>
           </form>
         ) : (
-          <form onSubmit={handleSignUp} className="space-y-6">
+          <form onSubmit={handleSignUp} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm text-black mb-1">
                 Your email
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-gray-900 shadow-input"
+                className="w-full px-3 py-2 rounded border border-black text-black text-sm"
                 placeholder="user@securesystem.email"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm text-black mb-1">
                 Password
               </label>
               <div className="relative">
@@ -177,26 +177,26 @@ const AuthCard = () => {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-gray-900 shadow-input pr-12"
+                  className="w-full px-3 py-2 rounded border border-black text-black text-sm pr-10"
                   placeholder="••••••••"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-2 top-1/2 -translate-y-1/2"
                 >
                   {showPassword ? (
-                    <EyeSlashIcon className="h-5 w-5" />
+                    <EyeSlashIcon className="h-5 w-5 text-black" />
                   ) : (
-                    <EyeIcon className="h-5 w-5" />
+                    <EyeIcon className="h-5 w-5 text-black" />
                   )}
                 </button>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm text-black mb-1">
                 Confirm Password
               </label>
               <div className="relative">
@@ -204,19 +204,19 @@ const AuthCard = () => {
                   type={showPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-gray-900 shadow-input pr-12"
+                  className="w-full px-3 py-2 rounded border border-black text-black text-sm pr-10"
                   placeholder="••••••••"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-2 top-1/2 -translate-y-1/2"
                 >
                   {showPassword ? (
-                    <EyeSlashIcon className="h-5 w-5" />
+                    <EyeSlashIcon className="h-5 w-5 text-black" />
                   ) : (
-                    <EyeIcon className="h-5 w-5" />
+                    <EyeIcon className="h-5 w-5 text-black" />
                   )}
                 </button>
               </div>
@@ -225,26 +225,26 @@ const AuthCard = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors duration-200 disabled:opacity-50"
+              className="w-full py-2 bg-black text-white rounded text-sm font-normal disabled:opacity-50"
             >
               {isSubmitting ? 'Creating Account...' : 'Create Account'}
             </button>
 
-            <div className="relative mt-8">
+            <div className="relative mt-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
+                <div className="w-full border-t border-black"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-500">or</span>
+                <span className="px-2 bg-[#F8F9FA] text-black">or</span>
               </div>
             </div>
 
             <div className="text-center mt-6">
-              <span className="text-gray-600">Already have an account? </span>
+              <span className="text-sm text-black">Already have an account? </span>
               <button
                 type="button"
                 onClick={() => setIsLogin(true)}
-                className="text-primary hover:text-primary/80 font-medium"
+                className="text-sm text-black bg-black/10 rounded px-2 py-1 hover:bg-black/20"
               >
                 Login
               </button>

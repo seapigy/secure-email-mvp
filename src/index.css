@@ -11,12 +11,51 @@ html {
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #F8FAFC;
+  background-color: #F8F9FA;
+}
+
+/* Input placeholder styles */
+::placeholder {
+  color: #6B7280;
+  opacity: 0.8;
+}
+
+/* Focus styles */
+*:focus {
+  outline: none;
+}
+
+/* Remove default button styles */
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Toast customization */
+.Toastify__toast {
+  font-family: inherit;
+  border-radius: 4px;
+}
+
+.Toastify__toast--error {
+  background: #EF4444;
+}
+
+.Toastify__toast--success {
+  background: #10B981;
+}
+
+.Toastify__toast--info {
+  background: #3B82F6;
 }
 
 /* Dark mode detection and application */
@@ -46,17 +85,6 @@ body {
   flex-direction: column;
 }
 
-/* Input placeholder styles */
-::placeholder {
-  color: #94A3B8;
-  opacity: 0.8;
-}
-
-/* Focus styles */
-*:focus {
-  outline: none;
-}
-
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
@@ -73,25 +101,4 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-
-button:hover {
-  border-color: #646cff;
-}
-
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
 } 
