@@ -74,7 +74,7 @@ const AuthCard = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen px-4">
-      <div className="w-[400px] bg-white rounded-lg shadow-lg p-8">
+      <div className="relative w-[400px] bg-white rounded-lg shadow-[0_2px_15px_-3px_rgba(0,0,0,0.2),0_10px_20px_-2px_rgba(0,0,0,0.2)] p-8">
         <h1 className="text-2xl font-semibold text-gray-900 mb-1">Sign in</h1>
         <p className="text-sm text-gray-500 mb-6">To continue to SecureSystem Mail</p>
         
