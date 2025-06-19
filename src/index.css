@@ -16,6 +16,7 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #F8FAFC;
 }
 
 /* Dark mode detection and application */
@@ -27,11 +28,11 @@ body {
 
 /* Ensure proper contrast ratios for accessibility */
 .text-text-gray {
-  color: #4B5563;
+  color: #64748B;
 }
 
 .dark .text-text-gray {
-  color: #D1D5DB;
+  color: #94A3B8;
 }
 
 /* Smooth transitions for theme switching */
@@ -43,6 +44,35 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* Input placeholder styles */
+::placeholder {
+  color: #94A3B8;
+  opacity: 0.8;
+}
+
+/* Focus styles */
+*:focus {
+  outline: none;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
 }
 
 button {
