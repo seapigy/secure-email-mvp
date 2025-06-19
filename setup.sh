@@ -14,14 +14,14 @@ sudo apt-get upgrade -y
 
 # Install required packages
 echo "Installing required packages..."
-sudo apt-get install -y sqlite3 unzip ufw
+sudo apt-get install -y sqlite3 golang-go
 
 # Install Go v1.23
 echo "Installing Go v1.23..."
 if ! command -v go &> /dev/null || ! go version | grep -q "go1.23"; then
     wget https://go.dev/dl/go1.23.0.linux-amd64.tar.gz
     sudo tar -C /usr/local -xzf go1.23.0.linux-amd64.tar.gz
-    echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+    echo 'export PATH=$PATH:/usr/local/go/bin' | sudo tee -a /etc/profile
     source ~/.bashrc
     rm go1.23.0.linux-amd64.tar.gz
 fi
@@ -32,11 +32,13 @@ mkdir -p data logs certs
 
 # Configure UFW firewall
 echo "Configuring UFW firewall..."
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw allow 22/tcp  # SSH
-sudo ufw allow 80/tcp  # HTTP
-sudo ufw allow 443/tcp # HTTPS
+if [ "$(hostname)" == "api-vm" ]; then
+  sudo ufw allow 22
+  sudo ufw allow 80
+  sudo ufw allow 443
+else
+  sudo ufw allow 22
+fi
 sudo ufw --force enable
 
 # Disable root SSH
@@ -63,6 +65,9 @@ if [ ! -f .env ]; then
     cp .env.example .env
     echo "Please update .env with your configuration"
 fi
+
+# Note: Geolocation is handled by HTML5 Geolocation API in the browser
+# and OpenStreetMap Nominatim for reverse geocoding (no setup needed)
 
 echo "Setup completed at $(date)"
 echo "Please check $LOG_FILE for details" 

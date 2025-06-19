@@ -111,4 +111,49 @@
 2. **Cleanup**
    - Expired secure links
    - Old logs
-   - Temporary files 
+   - Temporary files
+
+# Infrastructure Setup Guide
+
+## Oracle Cloud
+1. Sign up for Free Tier: https://www.oracle.com/cloud/free/
+2. Create 2 VMs (Ubuntu 24.04, 1 GB RAM):
+   - VM1: Backend API (name: api-vm, ports 22, 80, 443)
+   - VM2: SQLite DB (name: db-vm, port 22)
+   ```bash
+   oci compute instance launch --compartment-id <id> --shape VM.Standard.E2.1.Micro --image-id <ubuntu-id> --subnet-id <subnet-id> --ssh-authorized-keys-file ~/.ssh/id_rsa.pub
+   ```
+   Note public IPs for .env
+
+## Cloudflare
+1. Add domain (e.g., securesystem.email)
+2. Create A record: api.securesystem.email -> VM1 IP
+3. Enable TLS 1.3, strict mode
+4. Create R2 bucket secure-email-blobs, generate API keys, add to .env
+
+## Geolocation
+1. Uses HTML5 Geolocation API (browser-based lat/long, Micro-Iterations 13, 18)
+2. Reverse geocoding via OpenStreetMap Nominatim: https://nominatim.openstreetmap.org/reverse
+3. Rate limit: 1 request/second, cache results (GDPR-compliant)
+4. Fallback: ipapi.co for IP-based location (free, 1,000 requests/day, Micro-Iteration 12)
+
+## Run Setup
+1. Copy .env.example to .env, fill keys
+2. Run setup.sh on both VMs:
+   ```bash
+   chmod +x setup.sh
+   ./setup.sh
+   ```
+3. Test connectivity:
+   ```bash
+   ./test_connect.sh
+   ```
+
+## GitHub
+1. Create repo (e.g., secure-email-mvp)
+2. Push initial files:
+   ```bash
+   git add .
+   git commit -m "Initial infrastructure setup"
+   git push origin main
+   ``` 
