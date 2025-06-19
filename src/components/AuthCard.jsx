@@ -95,9 +95,9 @@ const AuthCard = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-light dark:bg-neutral-dark p-4">
-      <div className="auth-card w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-neumorphic p-8">
+      <div className="auth-card w-full max-w-md bg-white/90 dark:bg-gray-800/90 rounded-xl shadow-neumorphic dark:shadow-neumorphic-dark p-8">
         <div className="flex justify-center mb-8">
-          <div className="inline-flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+          <div className="inline-flex bg-gray-100 dark:bg-gray-700/50 rounded-lg p-1">
             <button
               onClick={() => setIsLogin(true)}
               className={`px-6 py-2 rounded-lg transition-all duration-200 ${
@@ -132,7 +132,7 @@ const AuthCard = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary dark:bg-gray-700 dark:text-white"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200"
                 placeholder="user@securesystem.email"
                 required
               />
@@ -147,7 +147,7 @@ const AuthCard = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary dark:bg-gray-700 dark:text-white"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200"
                 placeholder="••••••••"
                 required
               />
@@ -163,7 +163,7 @@ const AuthCard = () => {
                 maxLength={6}
                 value={totpCode}
                 onChange={(e) => setTotpCode(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary dark:bg-gray-700 dark:text-white text-center tracking-widest"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-center tracking-widest transition-colors duration-200"
                 placeholder="123456"
                 required
               />
@@ -172,7 +172,7 @@ const AuthCard = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 bg-primary text-white rounded-lg font-medium hover:scale-[1.02] transition-transform duration-200 disabled:opacity-50"
+              className="w-full py-3 bg-primary text-white rounded-lg font-medium hover:scale-[1.02] transition-transform duration-200 disabled:opacity-50 disabled:hover:scale-100"
             >
               {isSubmitting ? 'Signing In...' : 'Sign In'}
             </button>
@@ -183,7 +183,7 @@ const AuthCard = () => {
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                 Set Up Two-Factor Authentication
               </h3>
-              <div className="bg-white p-4 rounded-lg inline-block mb-4">
+              <div className="bg-white p-4 rounded-lg inline-block mb-4 shadow-sm">
                 <QRCode value={totpQr} size={180} />
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
@@ -202,7 +202,7 @@ const AuthCard = () => {
                   maxLength={6}
                   value={totpCode}
                   onChange={(e) => setTotpCode(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary dark:bg-gray-700 dark:text-white text-center tracking-widest"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-center tracking-widest transition-colors duration-200"
                   placeholder="123456"
                   required
                 />
@@ -211,7 +211,7 @@ const AuthCard = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3 bg-accent text-white rounded-lg font-medium hover:scale-[1.02] transition-transform duration-200 disabled:opacity-50"
+                className="w-full py-3 bg-accent text-white rounded-lg font-medium hover:scale-[1.02] transition-transform duration-200 disabled:opacity-50 disabled:hover:scale-100"
               >
                 {isSubmitting ? 'Verifying...' : 'Verify & Complete Sign Up'}
               </button>
@@ -228,7 +228,7 @@ const AuthCard = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary dark:bg-gray-700 dark:text-white"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200"
                 placeholder="user@securesystem.email"
                 required
               />
@@ -243,7 +243,7 @@ const AuthCard = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary dark:bg-gray-700 dark:text-white"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200"
                 placeholder="••••••••"
                 required
               />
@@ -258,7 +258,7 @@ const AuthCard = () => {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary dark:bg-gray-700 dark:text-white"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200"
                 placeholder="••••••••"
                 required
               />
@@ -267,7 +267,7 @@ const AuthCard = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 bg-accent text-white rounded-lg font-medium hover:scale-[1.02] transition-transform duration-200 disabled:opacity-50"
+              className="w-full py-3 bg-accent text-white rounded-lg font-medium hover:scale-[1.02] transition-transform duration-200 disabled:opacity-50 disabled:hover:scale-100"
             >
               {isSubmitting ? 'Creating Account...' : 'Create Account'}
             </button>
