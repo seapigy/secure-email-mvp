@@ -74,25 +74,28 @@ const AuthCard = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen px-4">
-      <div className="w-80 max-w-xs mx-auto bg-white/10 backdrop-blur-lg rounded-xl shadow-lg border border-white/20 px-4 py-6">
+      <div className="w-[400px] bg-white rounded-lg shadow-lg p-8">
+        <h1 className="text-2xl font-semibold text-gray-900 mb-1">Sign in</h1>
+        <p className="text-sm text-gray-500 mb-6">To continue to SecureSystem Mail</p>
+        
         {isLogin ? (
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-sm mb-1 text-white font-medium">
-                Your email
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email or username
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="text-sm px-3 py-2 rounded-md bg-white/20 text-white w-full placeholder-gray-300 border border-white/20 focus:border-white/40 focus:outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 placeholder="user@securesystem.email"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm mb-1 text-white font-medium">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Password
               </label>
               <div className="relative">
@@ -100,80 +103,89 @@ const AuthCard = () => {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="text-sm px-3 py-2 rounded-md bg-white/20 text-white w-full pr-10 placeholder-gray-300 border border-white/20 focus:border-white/40 focus:outline-none transition-colors"
-                  placeholder="••••••••"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg pr-10 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Password"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
-                    <EyeSlashIcon className="w-5 h-5 text-gray-300" />
+                    <EyeSlashIcon className="w-5 h-5" />
                   ) : (
-                    <EyeIcon className="w-5 h-5 text-gray-300" />
+                    <EyeIcon className="w-5 h-5" />
                   )}
                 </button>
               </div>
-              <div className="flex justify-end mt-1">
-                <button
-                  type="button"
-                  className="text-sm text-gray-300 hover:text-white transition-colors"
-                  onClick={() => toast.info('Password reset coming soon!')}
-                >
-                  Forgot password?
-                </button>
-              </div>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="remember"
+                className="h-4 w-4 text-purple-500 focus:ring-purple-500 border-gray-300 rounded"
+              />
+              <label htmlFor="remember" className="ml-2 block text-sm text-gray-700">
+                Keep me signed in
+              </label>
+              <button
+                type="button"
+                className="ml-1 text-sm text-purple-600 hover:text-purple-500"
+                onClick={() => toast.info('Learn more about staying signed in')}
+              >
+                Why?
+              </button>
             </div>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-blue-900 text-white text-sm font-bold rounded-full py-2 hover:bg-blue-800 transition-colors disabled:opacity-50"
+              className="w-full bg-purple-500 text-white rounded-lg py-2 font-medium hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Signing in...' : 'Login'}
+              {isSubmitting ? 'Signing in...' : 'Sign in'}
             </button>
 
-            <div className="relative mt-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/20"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white/10 text-gray-300">or</span>
-              </div>
-            </div>
-
-            <div className="text-center mt-6">
-              <span className="text-sm text-gray-300">Don't have an account? </span>
+            <div className="text-center space-y-2">
+              <p className="text-sm text-gray-600">
+                New to SecureSystem?{' '}
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(false)}
+                  className="text-purple-600 hover:text-purple-500 font-medium"
+                >
+                  Create account
+                </button>
+              </p>
               <button
                 type="button"
-                onClick={() => setIsLogin(false)}
-                className="text-sm text-white font-medium hover:text-blue-200 transition-colors"
+                onClick={() => toast.info('Password reset coming soon!')}
+                className="text-sm text-purple-600 hover:text-purple-500"
               >
-                Register new
+                Trouble signing in?
               </button>
             </div>
           </form>
         ) : (
-          <form onSubmit={handleSignUp} className="space-y-4">
+          <form onSubmit={handleSignUp} className="space-y-6">
             <div>
-              <label className="block text-sm mb-1 text-white font-medium">
-                Your email
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="text-sm px-3 py-2 rounded-md bg-white/20 text-white w-full placeholder-gray-300 border border-white/20 focus:border-white/40 focus:outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 placeholder="user@securesystem.email"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm mb-1 text-white font-medium">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Password
               </label>
               <div className="relative">
@@ -181,27 +193,27 @@ const AuthCard = () => {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="text-sm px-3 py-2 rounded-md bg-white/20 text-white w-full pr-10 placeholder-gray-300 border border-white/20 focus:border-white/40 focus:outline-none transition-colors"
-                  placeholder="••••••••"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg pr-10 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Password"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
-                    <EyeSlashIcon className="w-5 h-5 text-gray-300" />
+                    <EyeSlashIcon className="w-5 h-5" />
                   ) : (
-                    <EyeIcon className="w-5 h-5 text-gray-300" />
+                    <EyeIcon className="w-5 h-5" />
                   )}
                 </button>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm mb-1 text-white font-medium">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Confirm Password
               </label>
               <div className="relative">
@@ -209,20 +221,20 @@ const AuthCard = () => {
                   type={showPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="text-sm px-3 py-2 rounded-md bg-white/20 text-white w-full pr-10 placeholder-gray-300 border border-white/20 focus:border-white/40 focus:outline-none transition-colors"
-                  placeholder="••••••••"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg pr-10 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Confirm password"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
-                    <EyeSlashIcon className="w-5 h-5 text-gray-300" />
+                    <EyeSlashIcon className="w-5 h-5" />
                   ) : (
-                    <EyeIcon className="w-5 h-5 text-gray-300" />
+                    <EyeIcon className="w-5 h-5" />
                   )}
                 </button>
               </div>
@@ -231,29 +243,22 @@ const AuthCard = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-blue-900 text-white text-sm font-bold rounded-full py-2 hover:bg-blue-800 transition-colors disabled:opacity-50"
+              className="w-full bg-purple-500 text-white rounded-lg py-2 font-medium hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Creating Account...' : 'Create Account'}
             </button>
 
-            <div className="relative mt-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/20"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white/10 text-gray-300">or</span>
-              </div>
-            </div>
-
-            <div className="text-center mt-6">
-              <span className="text-sm text-gray-300">Already have an account? </span>
-              <button
-                type="button"
-                onClick={() => setIsLogin(true)}
-                className="text-sm text-white font-medium hover:text-blue-200 transition-colors"
-              >
-                Login
-              </button>
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(true)}
+                  className="text-purple-600 hover:text-purple-500 font-medium"
+                >
+                  Sign in
+                </button>
+              </p>
             </div>
           </form>
         )}
