@@ -1,15 +1,16 @@
 [build]
-  command = "cd src && npm install && npm run build"
-  publish = "src/dist"
+  base = "src"
+  command = "npm install && npm run build"
+  publish = "dist"
   environment = { API_HOST = "https://api.securesystem.email" }
+
+[build.environment]
+  NODE_VERSION = "20"
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-[build.environment]
-  NODE_VERSION = "20"
 
 [[headers]]
   for = "/*"
