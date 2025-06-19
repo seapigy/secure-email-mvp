@@ -94,10 +94,10 @@ const AuthCard = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-light dark:bg-neutral-dark p-4">
-      <div className="auth-card w-full max-w-md bg-white/90 dark:bg-gray-800/90 rounded-xl shadow-neumorphic dark:shadow-neumorphic-dark p-8">
+    <div className="min-h-screen flex items-center justify-center bg-neutral-light dark:bg-neutral-dark">
+      <div className="auth-card w-full max-w-md mx-4 bg-white/95 dark:bg-gray-800/95 rounded-2xl shadow-neumorphic dark:shadow-neumorphic-dark p-8 backdrop-blur-sm">
         <div className="flex justify-center mb-8">
-          <div className="inline-flex bg-gray-100 dark:bg-gray-700/50 rounded-lg p-1">
+          <div className="inline-flex bg-gray-100/80 dark:bg-gray-700/50 rounded-lg p-1">
             <button
               onClick={() => setIsLogin(true)}
               className={`px-6 py-2 rounded-lg transition-all duration-200 ${
@@ -124,38 +124,38 @@ const AuthCard = () => {
         {isLogin ? (
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <LockClosedIcon className="w-4 h-4 inline-block mr-2 text-primary" />
+              <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <LockClosedIcon className="w-4 h-4 mr-2 text-primary" />
                 Email
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300/50 dark:border-gray-600/50 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white/50 dark:bg-gray-700/50 text-gray-900 dark:text-white transition-all duration-200 backdrop-blur-sm"
                 placeholder="user@securesystem.email"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <KeyIcon className="w-4 h-4 inline-block mr-2 text-primary" />
+              <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <KeyIcon className="w-4 h-4 mr-2 text-primary" />
                 Password
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300/50 dark:border-gray-600/50 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white/50 dark:bg-gray-700/50 text-gray-900 dark:text-white transition-all duration-200 backdrop-blur-sm"
                 placeholder="••••••••"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <QuestionMarkCircleIcon className="w-4 h-4 inline-block mr-2 text-primary" />
+              <label className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <QuestionMarkCircleIcon className="w-4 h-4 mr-2 text-primary" />
                 TOTP Code
               </label>
               <input
@@ -163,7 +163,7 @@ const AuthCard = () => {
                 maxLength={6}
                 value={totpCode}
                 onChange={(e) => setTotpCode(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-center tracking-widest transition-colors duration-200"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300/50 dark:border-gray-600/50 focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white/50 dark:bg-gray-700/50 text-gray-900 dark:text-white text-center tracking-widest transition-all duration-200 backdrop-blur-sm"
                 placeholder="123456"
                 required
               />
@@ -172,7 +172,7 @@ const AuthCard = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 bg-primary text-white rounded-lg font-medium hover:scale-[1.02] transition-transform duration-200 disabled:opacity-50 disabled:hover:scale-100"
+              className="w-full py-3 bg-primary text-white rounded-lg font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-lg"
             >
               {isSubmitting ? 'Signing In...' : 'Sign In'}
             </button>

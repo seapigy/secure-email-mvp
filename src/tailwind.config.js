@@ -20,8 +20,10 @@ export default {
         'inter': ['Inter', 'sans-serif'],
       },
       boxShadow: {
-        'neumorphic': '0 4px 6px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-        'neumorphic-dark': '0 4px 6px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+        'neumorphic': '12px 12px 24px rgba(0, 0, 0, 0.12), -12px -12px 24px rgba(255, 255, 255, 0.6), inset 0px 1px 1px rgba(255, 255, 255, 0.4)',
+        'neumorphic-dark': '12px 12px 24px rgba(0, 0, 0, 0.3), -12px -12px 24px rgba(255, 255, 255, 0.05), inset 0px 1px 1px rgba(255, 255, 255, 0.1)',
+        'neumorphic-inset': 'inset 2px 2px 5px rgba(0, 0, 0, 0.1), inset -3px -3px 7px rgba(255, 255, 255, 0.7)',
+        'neumorphic-inset-dark': 'inset 2px 2px 5px rgba(0, 0, 0, 0.3), inset -3px -3px 7px rgba(255, 255, 255, 0.05)',
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-in-out',
