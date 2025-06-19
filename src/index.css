@@ -16,12 +16,12 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #F8F9FA;
+  background-color: white;
 }
 
 /* Input placeholder styles */
 ::placeholder {
-  color: #6B7280;
+  color: #9CA3AF;
   opacity: 0.8;
 }
 
@@ -43,7 +43,7 @@ button {
 /* Toast customization */
 .Toastify__toast {
   font-family: inherit;
-  border-radius: 4px;
+  border-radius: 8px;
 }
 
 .Toastify__toast--error {
