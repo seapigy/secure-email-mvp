@@ -1,20 +1,88 @@
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import AuthCard from '../components/AuthCard';
 import * as api from '../lib/api';
-jest.mock('../lib/api');
 
-test('renders login form', () => {
-  render(<AuthCard />, { wrapper: MemoryRouter });
-  expect(screen.getByLabelText(/email input/i)).toBeInTheDocument();
-  expect(screen.getByLabelText(/password input/i)).toBeInTheDocument();
-  expect(screen.getByLabelText(/totp code input/i)).toBeInTheDocument();
-});
+// Mock the API functions
+jest.mock('../lib/api', () => ({
+  login: jest.fn(),
+  signup: jest.fn(),
+  verifyTotp: jest.fn(),
+}));
 
-test('toggles to sign-up form', () => {
-  render(<AuthCard />, { wrapper: MemoryRouter });
-  fireEvent.click(screen.getByText(/sign up/i));
-  expect(screen.getByLabelText(/confirm password input/i)).toBeInTheDocument();
+// Mock react-toastify
+jest.mock('react-toastify', () => ({
+  toast: {
+    success: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+  },
+  ToastContainer: () => <div data-testid="toast-container" />,
+}));
+
+// Mock GSAP
+jest.mock('gsap', () => ({
+  fromTo: jest.fn(),
+}));
+
+const renderWithRouter = (component) => {
+  return render(
+    <BrowserRouter>
+      {component}
+    </BrowserRouter>
+  );
+};
+
+describe('AuthCard', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('renders login form by default', () => {
+    renderWithRouter(<AuthCard />);
+    
+    expect(screen.getByText('Login')).toBeInTheDocument();
+    expect(screen.getByText('Sign Up')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(screen.getByLabelText('Password')).toBeInTheDocument();
+    expect(screen.getByLabelText('TOTP code')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign In' })).toBeInTheDocument();
+  });
+
+  test('switches to sign-up form when sign-up tab is clicked', () => {
+    renderWithRouter(<AuthCard />);
+    
+    const signUpTab = screen.getByText('Sign Up');
+    fireEvent.click(signUpTab);
+    
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(screen.getByLabelText('Password')).toBeInTheDocument();
+    expect(screen.getByLabelText('Confirm password')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign Up' })).toBeInTheDocument();
+  });
+
+  test('has proper accessibility attributes', () => {
+    renderWithRouter(<AuthCard />);
+    
+    const emailInput = screen.getByLabelText('Email');
+    const passwordInput = screen.getByLabelText('Password');
+    const totpInput = screen.getByLabelText('TOTP code');
+    
+    expect(emailInput).toHaveAttribute('type', 'email');
+    expect(passwordInput).toHaveAttribute('type', 'password');
+    expect(totpInput).toHaveAttribute('maxLength', '6');
+    expect(totpInput).toHaveAttribute('required');
+  });
+
+  test('applies correct CSS classes for neumorphic design', () => {
+    renderWithRouter(<AuthCard />);
+    
+    const authCard = screen.getByRole('form').closest('.auth-card');
+    expect(authCard).toHaveClass('auth-card');
+    expect(authCard).toHaveClass('bg-white');
+    expect(authCard).toHaveClass('rounded-xl');
+  });
 });
 
 test('shows error toast on invalid sign-up', async () => {

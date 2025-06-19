@@ -1,25 +1,28 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
-  content: ['./src/**/*.{js,jsx,ts,tsx}'],
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
   darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        primary: '#1E40AF',
-        accent: '#F472B6',
-        success: '#34D399',
-        error: '#EF4444',
-        'neutral-light': '#F9FAFB',
-        'neutral-dark': '#111827',
-        'text-gray': '#4B5563',
+        primary: '#1E40AF',      // Blue for buttons
+        accent: '#F472B6',       // Pink for accents
+        success: '#34D399',      // Green for success
+        error: '#EF4444',        // Red for errors
+        'neutral-light': '#F9FAFB', // Light background
+        'neutral-dark': '#111827',   // Dark background
+        'text-gray': '#4B5563',      // Text color
       },
       fontFamily: {
         'inter': ['Inter', 'sans-serif'],
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-in-out',
-        'slide-up': 'slideUp 0.4s ease-out',
-        'scale-hover': 'scaleHover 0.2s ease-in-out',
+        'slide-up': 'slideUp 0.35s ease-out',
+        'scale-hover': 'scaleHover 0.15s ease-in-out',
       },
       keyframes: {
         fadeIn: {
@@ -34,6 +37,13 @@ module.exports = {
           '0%': { transform: 'scale(1)' },
           '100%': { transform: 'scale(1.05)' },
         },
+      },
+      boxShadow: {
+        'neumorphic': '0 4px 6px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+        'glassmorphic': '0 8px 32px rgba(0, 0, 0, 0.1)',
+      },
+      backdropBlur: {
+        'xs': '2px',
       },
     },
   },
