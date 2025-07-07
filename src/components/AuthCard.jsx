@@ -8,6 +8,7 @@ import { login, signup } from '../lib/api';
 const AuthCard = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -21,7 +22,11 @@ const AuthCard = () => {
   };
 
   const validateSignUp = () => {
-    if (!/^[^@]+@securesystem\.email$/.test(email)) return 'Invalid email';
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername) return 'Username is required';
+    if (!/^[a-zA-Z0-9._%+-]+$/.test(trimmedUsername)) return 'Username can only contain letters, numbers, and ._%+-';
+    if (trimmedUsername.length < 3) return 'Username must be at least 3 characters';
+    if (trimmedUsername.length > 50) return 'Username must be 50 characters or less';
     if (password.length < 8 || password.length > 128) return 'Password must be 8–128 chars';
     if (password !== confirmPassword) return 'Passwords do not match';
     return null;
@@ -57,14 +62,24 @@ const AuthCard = () => {
       setIsSubmitting(false);
       return;
     }
+    
+    // Generate email from username
+    const trimmedUsername = username.trim();
+    const generatedEmail = `${trimmedUsername}@securesystem.email`;
+    
     try {
-      const response = await signup({ email, password, confirm_password: confirmPassword });
+      const response = await signup({ 
+        email: generatedEmail, 
+        password, 
+        confirm_password: confirmPassword 
+      });
       if (response.data.totp_qr) {
         // Show TOTP setup modal
         sessionStorage.setItem('temp_id', response.data.temp_id);
         sessionStorage.setItem('totp_qr', response.data.totp_qr);
         navigate('/setup-totp');
       }
+      toast.success('Account created successfully! Please set up your TOTP.');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Sign-up failed');
     } finally {
@@ -172,16 +187,22 @@ const AuthCard = () => {
           <form onSubmit={handleSignUp} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
+                Username
               </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="user@securesystem.email"
-                required
-              />
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="username"
+                  required
+                />
+                <span className="text-gray-600 font-medium">@securesystem.email</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Letters, numbers, and ._%+- only. 3-50 characters.
+              </p>
             </div>
 
             <div>
