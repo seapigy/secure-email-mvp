@@ -89,7 +89,7 @@ const AuthCard = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen px-4">
-      <div className="relative w-[400px] bg-white rounded-lg shadow-card p-8">
+      <div className="relative w-[450px] bg-white rounded-lg shadow-card p-8">
         <h1 className="text-2xl font-semibold text-gray-900 mb-1">Sign in</h1>
         <p className="text-sm text-gray-500 mb-6">To continue to SecureSystem Mail</p>
         
@@ -189,7 +189,7 @@ const AuthCard = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Username
               </label>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center">
                 <input
                   type="text"
                   value={username}
@@ -198,7 +198,7 @@ const AuthCard = () => {
                   placeholder="username"
                   required
                 />
-                <span className="text-gray-600 font-medium">@securesystem.email</span>
+                <span className="text-gray-600 font-medium ml-2 text-sm">@securesystem.email</span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 Letters, numbers, and ._%+- only. 3-50 characters.
