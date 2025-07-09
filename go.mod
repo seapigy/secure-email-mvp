@@ -14,6 +14,8 @@ require (
 )
 
 require (
+	github.com/aws/aws-sdk-go v1.55.7 // indirect
 	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 )

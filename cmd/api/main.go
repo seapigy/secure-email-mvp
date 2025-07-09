@@ -3,18 +3,24 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	"secure-email-mvp/pkg/auth"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/rs/cors"
 )
 
 type Server struct {
@@ -23,16 +29,34 @@ type Server struct {
 }
 
 func main() {
-	// Load .env
+	// Load .env with detailed logging
+	log.Printf("Starting Secure Email API server...")
+	log.Printf("Current working directory: %s", getCurrentDir())
+
 	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env:", err)
+		log.Printf("Warning: Error loading .env file: %v", err)
+		log.Printf("Attempting to load .env from /home/opc/secure-email-mvp/.env")
+		if err := godotenv.Load("/home/opc/secure-email-mvp/.env"); err != nil {
+			log.Fatal("Error loading .env from /home/opc/secure-email-mvp/.env:", err)
+		}
+		log.Printf("Successfully loaded .env from /home/opc/secure-email-mvp/.env")
+	} else {
+		log.Printf("Successfully loaded .env from current directory")
 	}
 
-	// Connect to SQLite
+	// Connect to SQLite with detailed logging
 	dbPath := os.Getenv("SQLITE_DB")
 	if dbPath == "" {
 		dbPath = "/var/db/secure-email.db"
 	}
+	log.Printf("Attempting to connect to database at: %s", dbPath)
+
+	// Ensure database directory exists
+	dbDir := filepath.Dir(dbPath)
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		log.Printf("Warning: Could not create database directory %s: %v", dbDir, err)
+	}
+
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Fatal("Error opening database:", err)
@@ -40,21 +64,44 @@ func main() {
 	defer db.Close()
 
 	// Test database connection
+	log.Printf("Testing database connection...")
 	if err := db.Ping(); err != nil {
 		log.Fatal("Error connecting to database:", err)
+	}
+	log.Printf("Database connection successful")
+
+	// Test R2 connection
+	if err := testR2Connection(); err != nil {
+		log.Printf("Warning: R2 connection test failed: %v", err)
+	} else {
+		log.Printf("R2 connection test passed")
 	}
 
 	// Initialize server
 	srv := &Server{db: db, rateLimits: &sync.Map{}}
 
-	// Apply schema
-	schema, err := os.ReadFile("schema/users.sql")
+	// Apply schema with detailed logging
+	log.Printf("Loading database schema...")
+	schemaPath := "schema/users.sql"
+	log.Printf("Attempting to read schema from: %s", schemaPath)
+
+	schema, err := os.ReadFile(schemaPath)
 	if err != nil {
-		log.Fatal("Error reading schema:", err)
+		log.Printf("Error reading schema from %s: %v", schemaPath, err)
+		log.Printf("Attempting to read schema from absolute path...")
+		absPath := filepath.Join(getCurrentDir(), "schema", "users.sql")
+		log.Printf("Trying absolute path: %s", absPath)
+		schema, err = os.ReadFile(absPath)
+		if err != nil {
+			log.Fatal("Error reading schema from absolute path:", err)
+		}
 	}
+
+	log.Printf("Schema file loaded successfully, applying to database...")
 	if _, err := db.Exec(string(schema)); err != nil {
 		log.Fatal("Error applying schema:", err)
 	}
+	log.Printf("Database schema applied successfully")
 
 	// Set up router
 	r := mux.NewRouter()
@@ -63,15 +110,11 @@ func main() {
 	r.HandleFunc("/api/auth/verify-totp", auth.VerifyTotpHandler(db)).Methods("POST")
 
 	// Apply middleware
+	r.Use(srv.corsMiddleware)
 	r.Use(srv.rateLimitMiddleware)
 	r.Use(srv.secureHeadersMiddleware)
 
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:3000", "https://secure-email-mvp.netlify.app"},
-		AllowedMethods: []string{"POST"},
-		AllowedHeaders: []string{"Content-Type"},
-	})
-	handler := c.Handler(r)
+	handler := r
 
 	// Start server
 	addr := ":8080"
@@ -126,12 +169,51 @@ func (srv *Server) rateLimitMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func (srv *Server) corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Define allowed origins
+		allowedOrigins := []string{
+			"http://localhost:3000",
+			"https://yourfrontend.netlify.app", // REPLACE WITH YOUR ACTUAL FRONTEND URL
+		}
+
+		origin := r.Header.Get("Origin")
+		allowed := false
+		for _, allowedOrigin := range allowedOrigins {
+			if origin == allowedOrigin {
+				allowed = true
+				break
+			}
+		}
+
+		if allowed {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
+
+		// Handle preflight OPTIONS requests
+		if r.Method == "OPTIONS" {
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Max-Age", "86400") // 24 hours
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Set CORS headers for actual requests
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (srv *Server) secureHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Security-Policy", "default-src 'self'")
-		w.Header().Set("Strict-Transport-Security", "max-age=31536000")
-		w.Header().Set("X-Frame-Options", "DENY")
+		// CORS-friendly security headers
+		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		next.ServeHTTP(w, r)
 	})
@@ -150,4 +232,73 @@ func (srv *Server) logError(r *http.Request, email, msg string) {
 	defer f.Close()
 	logger := log.New(f, "", log.LstdFlags)
 	logger.Printf("Error: %s, Email: %s, IP: %s", msg, email, r.RemoteAddr)
+}
+
+func testR2Connection() error {
+	// Get R2 credentials from environment
+	accessKey := os.Getenv("CLOUDFLARE_R2_ACCESS_KEY")
+	secretKey := os.Getenv("CLOUDFLARE_R2_SECRET_KEY")
+	bucket := os.Getenv("CLOUDFLARE_R2_BUCKET")
+	endpoint := os.Getenv("CLOUDFLARE_R2_ENDPOINT")
+
+	if accessKey == "" || secretKey == "" || bucket == "" || endpoint == "" {
+		return fmt.Errorf("R2 credentials not configured")
+	}
+
+	// Create AWS session for R2
+	sess, err := session.NewSession(&aws.Config{
+		Region:           aws.String("auto"),
+		Credentials:      credentials.NewStaticCredentials(accessKey, secretKey, ""),
+		Endpoint:         aws.String(endpoint),
+		S3ForcePathStyle: aws.Bool(true),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create R2 session: %v", err)
+	}
+
+	// Create S3 client
+	s3Client := s3.New(sess)
+
+	// Test upload
+	testContent := "Hello from Secure Email MVP!"
+	testKey := "test-upload.txt"
+
+	_, err = s3Client.PutObject(&s3.PutObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(testKey),
+		Body:   strings.NewReader(testContent),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to upload test file: %v", err)
+	}
+
+	// Test download
+	result, err := s3Client.GetObject(&s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(testKey),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to download test file: %v", err)
+	}
+	defer result.Body.Close()
+
+	// Clean up test file
+	_, err = s3Client.DeleteObject(&s3.DeleteObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(testKey),
+	})
+	if err != nil {
+		log.Printf("Warning: failed to delete test file: %v", err)
+	}
+
+	log.Printf("R2 connection test successful - bucket: %s", bucket)
+	return nil
+}
+
+func getCurrentDir() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "unknown"
+	}
+	return dir
 }
