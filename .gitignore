@@ -44,3 +44,36 @@ Thumbs.db
 
 # Local Netlify folder
 .netlify
+
+# Private SSH keys and certificates - NEVER COMMIT THESE
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*.p7b
+*.p7c
+*.p8
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Specific key files found in this project
+ssh-key-v3.key
+ssh-key.key
+ssh-key-*.key
+private_key.txt
+public_key.txt
+
+# VM connection keys
+vm_connection/private_key.txt
+vm_connection/public_key.txt
+
+# Compiled binaries (should be built on target system)
+api-server
+api-server-linux
+api-server-linux-x64
+api-server-linux-x86
