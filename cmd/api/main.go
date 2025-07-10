@@ -105,6 +105,7 @@ func main() {
 
 	// Set up router
 	r := mux.NewRouter()
+	r.HandleFunc("/ping", srv.pingHandler).Methods("GET")
 	r.HandleFunc("/api/auth/login", srv.loginHandler).Methods("POST")
 	r.HandleFunc("/api/auth/signup", auth.SignUpHandler(db)).Methods("POST")
 	r.HandleFunc("/api/auth/verify-totp", auth.VerifyTotpHandler(db)).Methods("POST")
@@ -122,6 +123,12 @@ func main() {
 	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatal("Server error:", err)
 	}
+}
+
+func (srv *Server) pingHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("pong"))
 }
 
 func (srv *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -174,7 +181,7 @@ func (srv *Server) corsMiddleware(next http.Handler) http.Handler {
 		// Define allowed origins
 		allowedOrigins := []string{
 			"http://localhost:3000",
-			"https://yourfrontend.netlify.app", // REPLACE WITH YOUR ACTUAL FRONTEND URL
+			"https://securesystem.email",
 		}
 
 		origin := r.Header.Get("Origin")
