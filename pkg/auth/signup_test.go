@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 func TestSignUpHandler(t *testing.T) {
-	db, _ := sql.Open("sqlite3", ":memory:")
+	db, _ := sql.Open("sqlite", ":memory:")
 	db.Exec("CREATE TABLE users (user_id TEXT, email TEXT UNIQUE, password_hash BLOB, totp_secret TEXT)")
 	handler := SignUpHandler(db)
 

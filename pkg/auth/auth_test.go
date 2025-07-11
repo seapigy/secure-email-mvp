@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/argon2"
+	_ "modernc.org/sqlite"
 )
 
 func TestValidateEmail(t *testing.T) {
@@ -114,7 +114,7 @@ func TestAuthenticate(t *testing.T) {
 	os.Setenv("JWT_SECRET", "test-secret-32-bytes-1234567890ab")
 
 	// Setup in-memory SQLite
-	db, err := sql.Open("sqlite3", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal("Failed to open database:", err)
 	}
@@ -180,7 +180,7 @@ func TestAuthenticate(t *testing.T) {
 
 func TestCreateUser(t *testing.T) {
 	// Setup in-memory SQLite
-	db, err := sql.Open("sqlite3", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal("Failed to open database:", err)
 	}
@@ -249,7 +249,7 @@ func TestValidateJWT(t *testing.T) {
 	os.Setenv("JWT_SECRET", "test-secret-32-bytes-1234567890ab")
 
 	// Test with valid JWT (we'll create one using the auth package)
-	db, err := sql.Open("sqlite3", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal("Failed to open database:", err)
 	}

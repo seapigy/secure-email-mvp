@@ -1,0 +1,221 @@
+package main
+
+import (
+	"bytes"
+	"database/sql"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"testing"
+	"time"
+
+	_ "modernc.org/sqlite"
+)
+
+func TestSignupLoginIntegration(t *testing.T) {
+	// Set JWT_SECRET for testing
+	os.Setenv("JWT_SECRET", "test-secret-key")
+
+	// Setup in-memory database for testing
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal("Failed to open test database:", err)
+	}
+	defer db.Close()
+
+	// Create users table
+	_, err = db.Exec(`CREATE TABLE users (
+		id INTEGER PRIMARY KEY,
+		email TEXT NOT NULL UNIQUE,
+		password TEXT NOT NULL,
+		fallback_email TEXT,
+		fallback_token TEXT,
+		fallback_confirmed BOOLEAN DEFAULT FALSE,
+		fallback_token_expiration TIMESTAMP,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	)`)
+	if err != nil {
+		t.Fatal("Failed to create test table:", err)
+	}
+
+	// Create handlers
+	signupHandler := signupHandlerFactory(db)
+	loginHandler := loginHandlerFactory(db)
+	confirmHandler := confirmFallbackHandlerFactory(db)
+
+	// Test data
+	testEmail := "integration@example.com"
+	testPassword := "securepassword123"
+
+	// Step 1: Sign up a new user
+	t.Run("Signup", func(t *testing.T) {
+		signupReq := SignupRequest{
+			Email:         testEmail,
+			Password:      testPassword,
+			FallbackEmail: "recovery@example.com",
+		}
+
+		body, err := json.Marshal(signupReq)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req := httptest.NewRequest("POST", "/signup", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		rr := httptest.NewRecorder()
+
+		signupHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusCreated {
+			t.Errorf("Expected status %d, got %d", http.StatusCreated, rr.Code)
+		}
+
+		var response SignupResponse
+		if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+
+		if response.Message != "User created" {
+			t.Errorf("Expected message 'User created', got '%s'", response.Message)
+		}
+	})
+
+	// Step 2: Confirm fallback email
+	t.Run("Confirm_fallback", func(t *testing.T) {
+		// Get the fallback token from the database
+		var fallbackToken string
+		var fallbackExpiration time.Time
+		err := db.QueryRow("SELECT fallback_token, fallback_token_expiration FROM users WHERE email = ?", testEmail).Scan(&fallbackToken, &fallbackExpiration)
+		if err != nil {
+			t.Fatalf("Failed to get fallback token: %v", err)
+		}
+		if time.Now().After(fallbackExpiration) {
+			t.Fatalf("Token should not be expired in test setup")
+		}
+
+		// Confirm fallback email
+		req := httptest.NewRequest("GET", "/confirm-fallback?token="+fallbackToken, nil)
+		rr := httptest.NewRecorder()
+
+		confirmHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("Expected status %d, got %d", http.StatusOK, rr.Code)
+		}
+
+		var response map[string]string
+		if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+
+		if response["message"] != "Fallback email confirmed successfully. You may now log in." {
+			t.Errorf("Expected message 'Fallback email confirmed successfully. You may now log in.', got '%s'", response["message"])
+		}
+	})
+
+	// Step 3: Login with the created user
+	t.Run("Login", func(t *testing.T) {
+		loginReq := LoginRequest{
+			Email:    testEmail,
+			Password: testPassword,
+		}
+
+		body, err := json.Marshal(loginReq)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req := httptest.NewRequest("POST", "/login", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		rr := httptest.NewRecorder()
+
+		loginHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("Expected status %d, got %d", http.StatusOK, rr.Code)
+		}
+
+		var response LoginResponse
+		if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+			t.Fatal(err)
+		}
+
+		if response.Message != "Login successful" {
+			t.Errorf("Expected message 'Login successful', got '%s'", response.Message)
+		}
+
+		// Check for JWT token
+		if response.Token == "" {
+			t.Error("Expected non-empty JWT token, got empty")
+		}
+		if len(response.Token) < 50 {
+			t.Errorf("Expected JWT token to be longer, got length %d", len(response.Token))
+		}
+	})
+
+	// Step 4: Try to login with wrong password
+	t.Run("Login with wrong password", func(t *testing.T) {
+		loginReq := LoginRequest{
+			Email:    testEmail,
+			Password: "wrongpassword",
+		}
+
+		body, err := json.Marshal(loginReq)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req := httptest.NewRequest("POST", "/login", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		rr := httptest.NewRecorder()
+
+		loginHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusUnauthorized {
+			t.Errorf("Expected status %d, got %d", http.StatusUnauthorized, rr.Code)
+		}
+
+		var errorResp map[string]string
+		if err := json.Unmarshal(rr.Body.Bytes(), &errorResp); err != nil {
+			t.Fatal(err)
+		}
+
+		if errorResp["error"] != "Invalid email or password" {
+			t.Errorf("Expected error 'Invalid email or password', got '%s'", errorResp["error"])
+		}
+	})
+
+	// Step 5: Try to signup with same email (should fail)
+	t.Run("Duplicate signup", func(t *testing.T) {
+		signupReq := SignupRequest{
+			Email:         testEmail,
+			Password:      testPassword,
+			FallbackEmail: "recovery@example.com",
+		}
+
+		body, err := json.Marshal(signupReq)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req := httptest.NewRequest("POST", "/signup", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		rr := httptest.NewRecorder()
+
+		signupHandler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("Expected status %d, got %d", http.StatusBadRequest, rr.Code)
+		}
+
+		var errorResp map[string]string
+		if err := json.Unmarshal(rr.Body.Bytes(), &errorResp); err != nil {
+			t.Fatal(err)
+		}
+
+		if errorResp["error"] != "User already exists" {
+			t.Errorf("Expected error 'User already exists', got '%s'", errorResp["error"])
+		}
+	})
+}

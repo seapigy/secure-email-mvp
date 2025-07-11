@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/pquerna/otp/totp"
+	_ "modernc.org/sqlite"
 )
 
 func TestVerifyTotpHandler(t *testing.T) {
-	db, _ := sql.Open("sqlite3", ":memory:")
+	db, _ := sql.Open("sqlite", ":memory:")
 	db.Exec("CREATE TABLE users (user_id TEXT, email TEXT UNIQUE, password_hash BLOB, totp_secret TEXT)")
 	os.Setenv("JWT_SECRET", "test-secret")
 	handler := VerifyTotpHandler(db)

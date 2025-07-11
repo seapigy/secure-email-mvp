@@ -51,7 +51,7 @@ import (
     "fmt"
     "log"
     "os"
-    _ "github.com/mattn/go-sqlite3"
+    	_ "modernc.org/sqlite"
     "github.com/your-username/secure-email-mvp/pkg/auth"
 )
 
@@ -69,7 +69,7 @@ func main() {
         dbPath = "/var/db/secure-email.db"
     }
     
-    db, err := sql.Open("sqlite3", dbPath)
+    	db, err := sql.Open("sqlite", dbPath)
     if err != nil {
         log.Fatal("Error opening database:", err)
     }
