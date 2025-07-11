@@ -118,6 +118,7 @@ func main() {
 	// Set up router
 	r := mux.NewRouter()
 	r.HandleFunc("/ping", srv.pingHandler).Methods("GET")
+	r.HandleFunc("/health", srv.healthHandler).Methods("GET")
 	// Wrap /login and /signup with rate limit middleware
 	r.Handle("/login", signupLoginLimiter.Middleware(loginHandlerFactory(db))).Methods("POST")
 	r.Handle("/api/auth/login", signupLoginLimiter.Middleware(http.HandlerFunc(srv.loginHandler))).Methods("POST")
@@ -147,6 +148,12 @@ func (srv *Server) pingHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("pong"))
+}
+
+func (srv *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
 func (srv *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
