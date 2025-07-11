@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -308,4 +309,75 @@ func getCurrentDir() string {
 		return "unknown"
 	}
 	return dir
+}
+
+// JWT middleware implementation
+func jwtMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get Authorization header
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, `{"error":"Invalid or missing token"}`, http.StatusUnauthorized)
+			return
+		}
+
+		// Check Bearer format
+		if len(authHeader) < 7 || authHeader[:7] != "Bearer " {
+			http.Error(w, `{"error":"Invalid or missing token"}`, http.StatusUnauthorized)
+			return
+		}
+
+		tokenString := authHeader[7:]
+		if tokenString == "" {
+			http.Error(w, `{"error":"Invalid or missing token"}`, http.StatusUnauthorized)
+			return
+		}
+
+		// Validate JWT token
+		claims, err := auth.ParseJWT(tokenString)
+		if err != nil {
+			http.Error(w, `{"error":"Invalid or missing token"}`, http.StatusUnauthorized)
+			return
+		}
+
+		// Set email in context using UserEmailKey
+		ctx := context.WithValue(r.Context(), UserEmailKey, claims.Subject)
+		r = r.WithContext(ctx)
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// Protected test handler
+func protectedTestHandler(w http.ResponseWriter, r *http.Request) {
+	email, ok := GetUserEmailFromContext(r)
+	if !ok {
+		http.Error(w, `{"error":"Email not found in context"}`, http.StatusInternalServerError)
+		return
+	}
+
+	response := ProtectedResponse{
+		Email:   email,
+		Message: "Access granted",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// Context key for user email
+type contextKey string
+
+const UserEmailKey contextKey = "email"
+
+// GetUserEmailFromContext extracts email from request context
+func GetUserEmailFromContext(r *http.Request) (string, bool) {
+	email, ok := r.Context().Value(UserEmailKey).(string)
+	return email, ok
+}
+
+// ProtectedResponse represents the response structure for protected endpoints
+type ProtectedResponse struct {
+	Email   string `json:"email"`
+	Message string `json:"message"`
 }

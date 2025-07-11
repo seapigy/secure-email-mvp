@@ -25,6 +25,7 @@ func GenerateJWT(email string) (string, error) {
 	claims := &Claims{
 		Email: email,
 		StandardClaims: jwt.StandardClaims{
+			Subject:   email,                                // Set Subject to email for context extraction
 			ExpiresAt: time.Now().Add(1 * time.Hour).Unix(), // 1 hour expiration
 			IssuedAt:  time.Now().Unix(),
 			Issuer:    "secure-email-mvp",

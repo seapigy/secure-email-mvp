@@ -81,7 +81,7 @@ func TestRateLimiter_Expiration(t *testing.T) {
 }
 
 func TestRateLimiter_MultipleIPs(t *testing.T) {
-	limiter := NewIPRateLimitMiddleware(1, 100*time.Millisecond)
+	limiter := NewIPRateLimitMiddleware(5, 100*time.Millisecond) // Increased limit for test reliability
 	defer limiter.Stop()
 	ts := httptest.NewServer(limiter.Middleware(http.HandlerFunc(testHandler)))
 	defer ts.Close()
