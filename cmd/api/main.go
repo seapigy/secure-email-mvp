@@ -20,7 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 type Server struct {
@@ -44,6 +44,14 @@ func main() {
 		log.Printf("Successfully loaded .env from current directory")
 	}
 
+	// Verify JWT_SECRET is loaded
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Printf("Warning: JWT_SECRET not found in environment, using default")
+	} else {
+		log.Printf("JWT_SECRET loaded successfully")
+	}
+
 	// Connect to SQLite with detailed logging
 	dbPath := os.Getenv("SQLITE_DB")
 	if dbPath == "" {
@@ -57,7 +65,7 @@ func main() {
 		log.Printf("Warning: Could not create database directory %s: %v", dbDir, err)
 	}
 
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		log.Fatal("Error opening database:", err)
 	}
@@ -82,14 +90,14 @@ func main() {
 
 	// Apply schema with detailed logging
 	log.Printf("Loading database schema...")
-	schemaPath := "schema/users.sql"
+	schemaPath := "schema/users_simple.sql"
 	log.Printf("Attempting to read schema from: %s", schemaPath)
 
 	schema, err := os.ReadFile(schemaPath)
 	if err != nil {
 		log.Printf("Error reading schema from %s: %v", schemaPath, err)
 		log.Printf("Attempting to read schema from absolute path...")
-		absPath := filepath.Join(getCurrentDir(), "schema", "users.sql")
+		absPath := filepath.Join(getCurrentDir(), "schema", "users_simple.sql")
 		log.Printf("Trying absolute path: %s", absPath)
 		schema, err = os.ReadFile(absPath)
 		if err != nil {
@@ -103,16 +111,25 @@ func main() {
 	}
 	log.Printf("Database schema applied successfully")
 
+	// Initialize per-IP rate limiter for signup and login
+	signupLoginLimiter := NewIPRateLimitMiddleware(5, time.Minute)
+
 	// Set up router
 	r := mux.NewRouter()
 	r.HandleFunc("/ping", srv.pingHandler).Methods("GET")
-	r.HandleFunc("/api/auth/login", srv.loginHandler).Methods("POST")
-	r.HandleFunc("/api/auth/signup", auth.SignUpHandler(db)).Methods("POST")
+	// Wrap /login and /signup with rate limit middleware
+	r.Handle("/login", signupLoginLimiter.Middleware(loginHandlerFactory(db))).Methods("POST")
+	r.Handle("/api/auth/login", signupLoginLimiter.Middleware(http.HandlerFunc(srv.loginHandler))).Methods("POST")
+	r.Handle("/api/auth/signup", signupLoginLimiter.Middleware(signupHandlerFactory(db))).Methods("POST")
 	r.HandleFunc("/api/auth/verify-totp", auth.VerifyTotpHandler(db)).Methods("POST")
+	r.HandleFunc("/confirm-fallback", confirmFallbackHandlerFactory(db)).Methods("GET")
+	r.HandleFunc("/resend-fallback", resendFallbackHandlerFactory(db)).Methods("POST")
 
-	// Apply middleware
+	// Protected routes (require JWT authentication)
+	r.Handle("/protected-test", jwtMiddleware(http.HandlerFunc(protectedTestHandler))).Methods("GET")
+
+	// Apply middleware (no global rate limit)
 	r.Use(srv.corsMiddleware)
-	r.Use(srv.rateLimitMiddleware)
 	r.Use(srv.secureHeadersMiddleware)
 
 	handler := r
@@ -157,23 +174,6 @@ func (srv *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	}{Token: token, UserID: userID}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
-}
-
-func (srv *Server) rateLimitMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip := r.RemoteAddr
-		count, _ := srv.rateLimits.LoadOrStore(ip, 0)
-		if count.(int) >= 10 {
-			http.Error(w, `{"error":"Too many requests"}`, http.StatusTooManyRequests)
-			return
-		}
-		srv.rateLimits.Store(ip, count.(int)+1)
-		go func() {
-			time.Sleep(time.Minute)
-			srv.rateLimits.Delete(ip)
-		}()
-		next.ServeHTTP(w, r)
-	})
 }
 
 func (srv *Server) corsMiddleware(next http.Handler) http.Handler {
