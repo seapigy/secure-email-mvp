@@ -117,22 +117,34 @@ func main() {
 
 	// Set up router
 	r := mux.NewRouter()
+
+	// Apply middleware BEFORE route registration
+	r.Use(srv.corsMiddleware)
+	r.Use(srv.secureHeadersMiddleware)
+
+	log.Printf("Registering /ping endpoint")
 	r.HandleFunc("/ping", srv.pingHandler).Methods("GET")
+
+	log.Printf("Registering /health endpoint")
 	r.HandleFunc("/health", srv.healthHandler).Methods("GET")
+
 	// Wrap /login and /signup with rate limit middleware
+	log.Printf("Registering /login endpoint")
 	r.Handle("/login", signupLoginLimiter.Middleware(loginHandlerFactory(db))).Methods("POST")
+	log.Printf("Registering /api/auth/login endpoint")
 	r.Handle("/api/auth/login", signupLoginLimiter.Middleware(http.HandlerFunc(srv.loginHandler))).Methods("POST")
+	log.Printf("Registering /api/auth/signup endpoint")
 	r.Handle("/api/auth/signup", signupLoginLimiter.Middleware(signupHandlerFactory(db))).Methods("POST")
+	log.Printf("Registering /api/auth/verify-totp endpoint")
 	r.HandleFunc("/api/auth/verify-totp", auth.VerifyTotpHandler(db)).Methods("POST")
+	log.Printf("Registering /confirm-fallback endpoint")
 	r.HandleFunc("/confirm-fallback", confirmFallbackHandlerFactory(db)).Methods("GET")
+	log.Printf("Registering /resend-fallback endpoint")
 	r.HandleFunc("/resend-fallback", resendFallbackHandlerFactory(db)).Methods("POST")
 
 	// Protected routes (require JWT authentication)
+	log.Printf("Registering /protected-test endpoint")
 	r.Handle("/protected-test", jwtMiddleware(http.HandlerFunc(protectedTestHandler))).Methods("GET")
-
-	// Apply middleware (no global rate limit)
-	r.Use(srv.corsMiddleware)
-	r.Use(srv.secureHeadersMiddleware)
 
 	handler := r
 
@@ -151,6 +163,7 @@ func (srv *Server) pingHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (srv *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Health handler called from IP: %s", r.RemoteAddr)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
