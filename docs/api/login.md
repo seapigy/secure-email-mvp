@@ -193,4 +193,15 @@ After successful authentication:
 ### Related Endpoints
 - `POST /api/auth/register` - User registration (future)
 - `POST /api/auth/refresh` - Token refresh (future)
-- `POST /api/auth/logout` - Token invalidation (future) 
+- `POST /api/auth/logout` - Token invalidation (future)
+- `GET /confirm-fallback?token=...` - Fallback email confirmation
+- `POST /resend-fallback` - Resend fallback confirmation email
+
+## Fallback Email Confirmation
+
+After signup, a confirmation link is sent to the fallback email. The user must confirm this email before being able to log in. The confirmation link expires after 1 hour. If expired or lost, the user can request a new confirmation email via the resend endpoint. This process ensures secure account recovery and prevents unauthorized access.
+
+- **/confirm-fallback**: Accepts a token as a query parameter. If valid and not expired, marks the fallback email as confirmed.
+- **/resend-fallback**: Accepts the user's email in the request body. Generates a new token and sends a new confirmation email (stub implementation).
+
+**Security:** Fallback tokens are HMAC-based, time-limited, and validated on the backend. All actions are logged for audit purposes. 

@@ -12,7 +12,8 @@ A web-based secure email system with end-to-end encryption, built with Go and Re
 - Modern, responsive UI with dark/light modes
 - TOTP authentication with QR code setup
 - Unified login/sign-up interface
-- Glassmorphic onboarding modal
+- Glassmorphic onboarding modal (first-time user guidance)
+- Fallback email confirmation for account recovery
 - Folder-based organization
 
 ## Tech Stack
@@ -215,6 +216,33 @@ See `docs/api/` for detailed API documentation.
 ## Next Steps
 
 **Micro-Iteration 4**: Email Send API with AES-256-GCM encryption, compression, and R2 storage.
+
+## Fallback Email Confirmation Flow
+
+To enhance account recovery and security, users must provide a fallback email during signup. After registration, a confirmation link is sent to the fallback email. The user must confirm this email before being able to log in. This ensures that account recovery is possible if the primary email is lost, while also preventing unauthorized access. The fallback confirmation link expires after 1 hour, and users can request a resend if needed.
+
+- **Endpoint:** `/confirm-fallback?token=...` (GET)
+- **Resend:** `/resend-fallback` (POST)
+- **Security:** Fallback tokens are HMAC-based, time-limited, and validated on the backend.
+
+## Onboarding Modal
+
+First-time users are greeted with a glassmorphic onboarding modal that explains the security features and guides them through the initial steps. This modal appears only once per browser/device and can be dismissed.
+
+## Current Limitations & Planned Features
+
+- The inbox is currently a placeholder; full email send/receive functionality is planned for future iterations.
+- Email sending, encryption, and storage in Cloudflare R2 are not yet implemented.
+- Password reset and advanced account management are not yet available.
+- Fallback email confirmation is required for login; ensure you have access to your fallback email.
+- The system is designed for up to 100 users (MVP phase); scalability improvements are planned.
+
+**Planned:**
+- Encrypted email send/receive (Micro-Iteration 4)
+- Email compression and R2 storage
+- Password reset and logout endpoints
+- Full inbox and folder management UI
+- Enhanced audit logging and admin tools
 
 ## License
 

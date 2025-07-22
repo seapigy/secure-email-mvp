@@ -13,7 +13,7 @@ type FallbackConfirmResponse struct {
 	Message string `json:"message"`
 }
 
-// confirmFallbackHandlerFactory creates a fallback confirmation handler with database access
+// confirmFallbackHandlerFactory returns an HTTP handler for confirming fallback email. It validates the token and updates user status.
 func confirmFallbackHandlerFactory(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Only allow GET method
@@ -80,7 +80,7 @@ func confirmFallbackHandlerFactory(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// getUserByFallbackToken looks up a user by their fallback token
+// getUserByFallbackToken looks up a user by their fallback token for confirmation.
 func getUserByFallbackToken(db *sql.DB, token string) (int, time.Time, error) {
 	var userID int
 	var fallbackExpiration time.Time
@@ -89,7 +89,7 @@ func getUserByFallbackToken(db *sql.DB, token string) (int, time.Time, error) {
 	return userID, fallbackExpiration, err
 }
 
-// confirmFallbackEmail sets fallback_confirmed to true for the given user
+// confirmFallbackEmail sets fallback_confirmed to true for the given user, enabling login.
 func confirmFallbackEmail(db *sql.DB, userID int) error {
 	query := `UPDATE users SET fallback_confirmed = true WHERE id = ?`
 	_, err := db.Exec(query, userID)

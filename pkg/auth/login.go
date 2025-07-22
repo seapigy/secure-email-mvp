@@ -19,29 +19,29 @@ import (
 
 var emailRegex = regexp.MustCompile(`^[^@]+@securesystem.email$`)
 
-// ValidateEmail checks if email matches securesystem.email domain
+// ValidateEmail checks if email matches securesystem.email domain for tenant isolation and phishing prevention.
 func ValidateEmail(email string) bool {
 	return emailRegex.MatchString(email)
 }
 
-// ValidatePassword checks length (8–128 characters)
+// ValidatePassword checks length (8–128 characters) for password policy enforcement.
 func ValidatePassword(password string) bool {
 	return len(password) >= 8 && len(password) <= 128
 }
 
-// ValidateTOTP checks 6-digit format
+// ValidateTOTP checks 6-digit format for TOTP code validity.
 func ValidateTOTP(code string) bool {
 	return len(code) == 6 && regexp.MustCompile(`^\d{6}$`).MatchString(code)
 }
 
-// HashPassword creates Argon2 hash with email as salt
+// HashPassword creates Argon2 hash with email as salt for strong password security and user-specific salting.
 func HashPassword(password, email string) (string, error) {
 	// Hash password using Argon2 with email as salt
 	hash := argon2.IDKey([]byte(password), []byte(email), 1, 64*1024, 4, 32)
 	return string(hash), nil
 }
 
-// GenerateTOTPSecret creates a new base32 TOTP secret
+// GenerateTOTPSecret creates a new base32 TOTP secret for 2FA setup.
 func GenerateTOTPSecret() (string, error) {
 	// Generate 20 random bytes for TOTP secret
 	secret := make([]byte, 20)
@@ -51,7 +51,7 @@ func GenerateTOTPSecret() (string, error) {
 	return base32.StdEncoding.EncodeToString(secret), nil
 }
 
-// Authenticate verifies credentials and returns JWT
+// Authenticate verifies credentials (email, password, TOTP) and returns a JWT if successful. Enforces all security checks.
 func Authenticate(db *sql.DB, email, password, totpCode string) (string, string, error) {
 	// Validate inputs
 	if !ValidateEmail(email) {
@@ -110,7 +110,7 @@ func Authenticate(db *sql.DB, email, password, totpCode string) (string, string,
 	return tokenString, user.ID, nil
 }
 
-// CreateUser creates a new user with hashed password and TOTP secret
+// CreateUser creates a new user with hashed password and TOTP secret, ensuring uniqueness and secure storage.
 func CreateUser(db *sql.DB, email, password string) (string, string, error) {
 	// Validate inputs
 	if !ValidateEmail(email) {
@@ -154,7 +154,7 @@ func CreateUser(db *sql.DB, email, password string) (string, string, error) {
 	return userID, totpSecret, nil
 }
 
-// ValidateJWT validates and parses JWT token
+// ValidateJWT validates and parses JWT token for protected endpoints.
 func ValidateJWT(tokenString string) (string, string, error) {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {

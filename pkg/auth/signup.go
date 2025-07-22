@@ -38,6 +38,8 @@ type TempState struct {
 
 var tempStore = sync.Map{} // In-memory store for temp TOTP state
 
+// SignUpHandler handles user registration, validates input, enforces password policy, and initiates TOTP setup with a QR code.
+// TempState stores temporary signup state for TOTP verification. Used to finalize user creation after TOTP is validated.
 func SignUpHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req SignUpRequest

@@ -19,7 +19,7 @@ type ResendFallbackResponse struct {
 	Message string `json:"message"`
 }
 
-// resendFallbackHandlerFactory creates the handler
+// resendFallbackHandlerFactory returns an HTTP handler for resending fallback confirmation emails. It generates a new token and sends a new link.
 func resendFallbackHandlerFactory(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

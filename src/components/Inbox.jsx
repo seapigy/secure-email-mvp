@@ -1,3 +1,4 @@
+// Inbox is a placeholder component. Full inbox functionality (email list, reading, sending) will be implemented in future iterations.
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 

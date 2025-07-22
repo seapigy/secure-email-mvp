@@ -25,7 +25,7 @@ type SignupResponse struct {
 	Message string `json:"message"`
 }
 
-// signupHandlerFactory creates a signup handler with database access
+// signupHandlerFactory returns an HTTP handler for user signup. It validates input, enforces fallback email, and sends a confirmation link.
 func signupHandlerFactory(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Only allow POST method
@@ -105,28 +105,28 @@ func signupHandlerFactory(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// createUserWithFallback inserts a new user with fallback email into the database
+// createUserWithFallback inserts a new user with fallback email and token into the database. Used for account recovery security.
 func createUserWithFallback(db *sql.DB, email, hashedPassword, fallbackEmail, fallbackToken string, fallbackExpiration time.Time) error {
 	query := `INSERT INTO users (email, password, fallback_email, fallback_token, fallback_confirmed, fallback_token_expiration, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
 	_, err := db.Exec(query, email, hashedPassword, fallbackEmail, fallbackToken, false, fallbackExpiration, time.Now())
 	return err
 }
 
-// createUser inserts a new user into the database (legacy function)
+// createUser inserts a new user into the database (legacy function, not used in fallback flow).
 func createUser(db *sql.DB, email, hashedPassword string) error {
 	query := `INSERT INTO users (email, password, created_at) VALUES (?, ?, ?)`
 	_, err := db.Exec(query, email, hashedPassword, time.Now())
 	return err
 }
 
-// isValidEmail checks if the email format is valid using regex
+// isValidEmail checks if the email format is valid using regex.
 func isValidEmail(email string) bool {
 	// Basic email regex pattern
 	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 	return emailRegex.MatchString(strings.TrimSpace(email))
 }
 
-// isValidPassword checks if the password meets minimum requirements
+// isValidPassword checks if the password meets minimum requirements.
 func isValidPassword(password string) bool {
 	return len(strings.TrimSpace(password)) >= 8
 }

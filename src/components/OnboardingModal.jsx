@@ -1,3 +1,5 @@
+// OnboardingModal displays a welcome message and security overview to first-time users.
+// It appears only once per browser/device and can be dismissed. Uses GSAP for animation.
 import React, { useEffect, useState } from 'react';
 import { gsap } from 'gsap';
 import { XMarkIcon } from '@heroicons/react/24/outline';

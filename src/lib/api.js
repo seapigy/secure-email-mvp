@@ -1,3 +1,10 @@
+// API utility for Secure Email frontend. Configures axios instance and exports authentication endpoints.
+// All requests use the base API host and JSON content type.
+//
+// Endpoints:
+// - login: POST /api/auth/login
+// - signup: POST /api/auth/signup
+// - verifyTotp: POST /api/auth/verify-totp
 import axios from 'axios';
 
 const API_HOST = process.env.REACT_APP_API_HOST || 'https://api.securesystem.email';

@@ -5,6 +5,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { login, signup } from '../lib/api';
 
+// AuthCard is the main authentication component for login and sign-up.
+// It manages form state, validation, and handles API calls for authentication.
 const AuthCard = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -15,12 +17,14 @@ const AuthCard = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
+  // validateLogin checks login form input for correct email and password policy.
   const validateLogin = () => {
     if (!/^[^@]+@securesystem\.email$/.test(email)) return 'Invalid email';
     if (password.length < 8 || password.length > 128) return 'Password must be 8–128 chars';
     return null;
   };
 
+  // validateSignUp checks sign-up form input for username, password, and confirmation.
   const validateSignUp = () => {
     const trimmedUsername = username.trim();
     if (!trimmedUsername) return 'Username is required';
@@ -32,6 +36,8 @@ const AuthCard = () => {
     return null;
   };
 
+  // handleLogin submits the login form, calls the login API, and stores the JWT on success.
+  // Shows error toasts for invalid input or failed authentication.
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -53,6 +59,8 @@ const AuthCard = () => {
     }
   };
 
+  // handleSignUp submits the sign-up form, calls the signup API, and stores temp_id and TOTP QR on success.
+  // Navigates to TOTP setup if sign-up is successful.
   const handleSignUp = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);

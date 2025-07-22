@@ -24,11 +24,8 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-type Server struct {
-	db         *sql.DB
-	rateLimits *sync.Map // IP -> attempt count
-}
-
+// main is the entry point for the Secure Email API server. It loads environment variables, connects to the database,
+// applies schema migrations, sets up middleware, and registers all API endpoints including authentication and fallback flows.
 func main() {
 	// Load .env with detailed logging
 	log.Printf("Starting Secure Email API server...")
@@ -108,9 +105,58 @@ func main() {
 
 	log.Printf("Schema file loaded successfully, applying to database...")
 	if _, err := db.Exec(string(schema)); err != nil {
-		log.Fatal("Error applying schema:", err)
+		log.Printf("Error applying schema: %v", err)
+		log.Printf("Attempting to apply migration for existing database...")
+
+		// Try to apply migration for existing database
+		migrationPath := "schema/migrate_to_simple.sql"
+		log.Printf("Attempting to read migration from: %s", migrationPath)
+
+		migration, err := os.ReadFile(migrationPath)
+		if err != nil {
+			log.Printf("Error reading migration from %s: %v", migrationPath, err)
+			log.Printf("Attempting to read migration from absolute path...")
+			absMigrationPath := filepath.Join(getCurrentDir(), "schema", "migrate_to_simple.sql")
+			log.Printf("Trying absolute path: %s", absMigrationPath)
+			migration, err = os.ReadFile(absMigrationPath)
+			if err != nil {
+				log.Fatal("Error reading migration from absolute path:", err)
+			}
+		}
+
+		log.Printf("Migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(migration)); err != nil {
+			log.Fatal("Error applying migration:", err)
+		}
+		log.Printf("Database migration applied successfully")
+	} else {
+		log.Printf("Database schema applied successfully")
 	}
-	log.Printf("Database schema applied successfully")
+
+	// Apply emails schema
+	log.Printf("Loading emails schema...")
+	emailsSchemaPath := "schema/emails.sql"
+	log.Printf("Attempting to read emails schema from: %s", emailsSchemaPath)
+
+	emailsSchema, err := os.ReadFile(emailsSchemaPath)
+	if err != nil {
+		log.Printf("Error reading emails schema from %s: %v", emailsSchemaPath, err)
+		log.Printf("Attempting to read emails schema from absolute path...")
+		absEmailsPath := filepath.Join(getCurrentDir(), "schema", "emails.sql")
+		log.Printf("Trying absolute path: %s", absEmailsPath)
+		emailsSchema, err = os.ReadFile(absEmailsPath)
+		if err != nil {
+			log.Fatal("Error reading emails schema from absolute path:", err)
+		}
+	}
+
+	log.Printf("Emails schema file loaded successfully, applying to database...")
+	if _, err := db.Exec(string(emailsSchema)); err != nil {
+		log.Printf("Error applying emails schema: %v", err)
+		log.Printf("Emails table may already exist or have incompatible structure")
+	} else {
+		log.Printf("Emails schema applied successfully")
+	}
 
 	// Initialize per-IP rate limiter for signup and login
 	signupLoginLimiter := NewIPRateLimitMiddleware(5, time.Minute)
@@ -156,12 +202,20 @@ func main() {
 	}
 }
 
+// Server struct holds the database connection and rate limiter map for per-IP rate limiting.
+type Server struct {
+	db         *sql.DB
+	rateLimits *sync.Map // IP -> attempt count
+}
+
+// pingHandler is a simple health check endpoint for liveness probes.
 func (srv *Server) pingHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("pong"))
 }
 
+// healthHandler returns a JSON status for monitoring and health checks.
 func (srv *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Health handler called from IP: %s", r.RemoteAddr)
 	w.Header().Set("Content-Type", "application/json")
@@ -169,6 +223,8 @@ func (srv *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
+// loginHandler handles POST /api/auth/login. It authenticates the user using password and TOTP, and returns a JWT on success.
+// If authentication fails, it logs the error and returns an appropriate error response.
 func (srv *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email    string `json:"email"`
@@ -197,6 +253,7 @@ func (srv *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+// corsMiddleware restricts allowed origins and sets CORS headers for security.
 func (srv *Server) corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Define allowed origins
@@ -236,6 +293,7 @@ func (srv *Server) corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// secureHeadersMiddleware sets HTTP security headers to protect against common web vulnerabilities.
 func (srv *Server) secureHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// CORS-friendly security headers
@@ -247,6 +305,7 @@ func (srv *Server) secureHeadersMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// logError writes authentication and security errors to a log file for audit and monitoring.
 func (srv *Server) logError(r *http.Request, email, msg string) {
 	logPath := os.Getenv("LOG_FILE")
 	if logPath == "" {
@@ -262,6 +321,7 @@ func (srv *Server) logError(r *http.Request, email, msg string) {
 	logger.Printf("Error: %s, Email: %s, IP: %s", msg, email, r.RemoteAddr)
 }
 
+// testR2Connection verifies connectivity to Cloudflare R2 storage for future encrypted email storage.
 func testR2Connection() error {
 	// Get R2 credentials from environment
 	accessKey := os.Getenv("CLOUDFLARE_R2_ACCESS_KEY")
@@ -323,6 +383,7 @@ func testR2Connection() error {
 	return nil
 }
 
+// getCurrentDir returns the current working directory for logging and file path resolution.
 func getCurrentDir() string {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -332,6 +393,7 @@ func getCurrentDir() string {
 }
 
 // JWT middleware implementation
+// jwtMiddleware validates JWT tokens for protected endpoints and injects the user's email into the request context.
 func jwtMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Get Authorization header
@@ -369,6 +431,7 @@ func jwtMiddleware(next http.Handler) http.Handler {
 }
 
 // Protected test handler
+// protectedTestHandler is a sample protected endpoint that requires JWT authentication.
 func protectedTestHandler(w http.ResponseWriter, r *http.Request) {
 	email, ok := GetUserEmailFromContext(r)
 	if !ok {
@@ -385,18 +448,19 @@ func protectedTestHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// Context key for user email
+// contextKey is a type for context keys used in request context.
 type contextKey string
 
+// UserEmailKey is the context key for storing the user's email in the request context.
 const UserEmailKey contextKey = "email"
 
-// GetUserEmailFromContext extracts email from request context
+// GetUserEmailFromContext extracts the user's email from the request context.
 func GetUserEmailFromContext(r *http.Request) (string, bool) {
 	email, ok := r.Context().Value(UserEmailKey).(string)
 	return email, ok
 }
 
-// ProtectedResponse represents the response structure for protected endpoints
+// ProtectedResponse represents the response structure for protected endpoints.
 type ProtectedResponse struct {
 	Email   string `json:"email"`
 	Message string `json:"message"`

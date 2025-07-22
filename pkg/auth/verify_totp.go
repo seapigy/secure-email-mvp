@@ -22,6 +22,7 @@ type VerifyTotpResponse struct {
 	Token string `json:"token"`
 }
 
+// VerifyTotpHandler finalizes user creation after TOTP validation. Checks temp state, validates TOTP, and issues JWT.
 func VerifyTotpHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req VerifyTotpRequest

@@ -27,20 +27,20 @@
 .
 ├── cmd/
 │   └── api/          # Backend entry point
-├── pkg/              # Backend packages
-│   ├── auth/         # Authentication
-│   ├── email/        # Email handling
-│   └── geolocation/  # Location services
-├── src/              # Frontend source
+├── pkg/
+│   └── auth/         # Authentication logic
+├── schema/           # SQL schemas for users, emails, TOTP
+├── src/              # Frontend React app
 │   ├── components/   # React components
 │   ├── styles/       # CSS and Tailwind
-│   └── lib/          # Frontend utilities
+│   ├── lib/          # Frontend utilities
+│   └── tests/        # Frontend tests
 ├── docs/             # Documentation
-├── tests/            # Test files
-├── data/             # Database
-├── logs/             # Application logs
-└── certs/            # SSL certificates
+├── tests/            # Test scripts
+└── env.example       # Environment variables template
 ```
+
+_Note: Some directories (e.g., email/, geolocation/, data/, logs/, certs/) are planned for future iterations but are not present in the current MVP._
 
 ### Development Setup
 

@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// GenerateFallbackToken creates a secure token for fallback email verification
+// GenerateFallbackToken creates a secure HMAC-based token for fallback email verification. Uses JWT secret for signing.
 func GenerateFallbackToken(email string) string {
 	// Get secret from environment or use default
 	secret := os.Getenv("JWT_SECRET")
@@ -28,17 +28,17 @@ func GenerateFallbackToken(email string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// GenerateFallbackExpiration returns a timestamp 1 hour from now
+// GenerateFallbackExpiration returns a timestamp 1 hour from now for token expiry.
 func GenerateFallbackExpiration() time.Time {
 	return time.Now().Add(1 * time.Hour)
 }
 
-// IsTokenExpired checks if a given timestamp is in the past
+// IsTokenExpired checks if a given timestamp is in the past for token validity.
 func IsTokenExpired(expiration time.Time) bool {
 	return time.Now().After(expiration)
 }
 
-// SendFallbackConfirmationEmail sends a confirmation email (stub implementation)
+// SendFallbackConfirmationEmail logs a confirmation link (stub for real email sending). Used for account recovery.
 func SendFallbackConfirmationEmail(email, token string) error {
 	// In a real implementation, this would send an actual email
 	// For now, we'll just log the confirmation link
@@ -58,7 +58,7 @@ func SendFallbackConfirmationEmail(email, token string) error {
 	return nil
 }
 
-// ValidateFallbackToken validates a fallback token
+// ValidateFallbackToken checks token length and hex validity for basic security.
 func ValidateFallbackToken(token string) bool {
 	// Basic validation - token should be at least 32 characters
 	if len(token) < 32 {

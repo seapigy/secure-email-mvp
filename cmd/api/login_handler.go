@@ -24,7 +24,7 @@ type LoginResponse struct {
 	Message string `json:"message"`
 }
 
-// loginHandlerFactory creates a login handler with database access
+// loginHandlerFactory returns an HTTP handler for user login. It checks credentials, fallback confirmation, and issues a JWT on success.
 func loginHandlerFactory(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Only allow POST method
@@ -107,7 +107,7 @@ type User struct {
 	FallbackConfirmed bool   `json:"fallback_confirmed"`
 }
 
-// getUserByEmail retrieves a user by email from the database
+// getUserByEmail retrieves a user by email from the database, including fallback email status for security checks.
 func getUserByEmail(db *sql.DB, email string) (*User, error) {
 	query := `SELECT id, email, password, fallback_email, fallback_token, fallback_confirmed FROM users WHERE email = ?`
 
