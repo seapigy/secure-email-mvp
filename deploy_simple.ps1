@@ -113,3 +113,14 @@ Write-Host "Next steps:" -ForegroundColor Yellow
 Write-Host "1. SSH to VM: ssh -i `"$SSH_KEY`" $VM_USER@$VM_IP" -ForegroundColor Cyan
 Write-Host "2. Update .env: cd /home/opc/secure-email-mvp && nano .env" -ForegroundColor Cyan
 Write-Host "3. Start server: ./vm_startup.sh" -ForegroundColor Cyan 
+
+#
+# To run the Go API server in development mode, use:
+#   go run ./cmd/api/*.go
+#
+# Do NOT use 'go run cmd/api/main.go' directly, as it will not include all necessary files.
+#
+
+go run cmd/api/main.go cmd/api/rate_limit.go cmd/api/login_handler.go cmd/api/signup_handler.go cmd/api/fallback_handler.go cmd/api/resend_fallback_handler.go
+
+Let me know if you want to proceed or if you want to adjust the test setup! 

@@ -188,6 +188,10 @@ func main() {
 	log.Printf("Registering /resend-fallback endpoint")
 	r.HandleFunc("/resend-fallback", resendFallbackHandlerFactory(db)).Methods("POST")
 
+	// Register email send endpoint
+	log.Printf("Registering /api/email/send endpoint")
+	r.HandleFunc("/api/email/send", srv.sendEmailHandler).Methods("POST")
+
 	// Protected routes (require JWT authentication)
 	log.Printf("Registering /protected-test endpoint")
 	r.Handle("/protected-test", jwtMiddleware(http.HandlerFunc(protectedTestHandler))).Methods("GET")

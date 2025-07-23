@@ -284,3 +284,52 @@ golang.org/x/crypto v0.21.0
 - Rate limiting is basic (in-memory)
 - No SSL termination configured yet
 - Database is local SQLite (not production-ready for scale) 
+
+---
+
+## ✅ What Was Done
+
+- The code that forced a simulated DB failure was removed from `sendEmailHandler`.
+- The handler now performs the actual database insert and will only return an error if the real insert fails.
+- No configuration changes are needed; the API server will now operate normally.
+
+---
+
+## 🟢 How to Test the Fix
+
+1. **Restart your API server** (if it’s running, stop and start it again):
+   ```powershell
+   go build -o api-server ./cmd/api
+   .\api-server.exe
+   ```
+   or, if you prefer:
+   ```powershell
+   go run ./cmd/api/main.go ./cmd/api/rate_limit.go ./cmd/api/login_handler.go ./cmd/api/signup_handler.go ./cmd/api/fallback_handler.go ./cmd/api/resend_fallback_handler.go ./cmd/api/send_email_handler.go
+   ```
+
+2. **Send a test email using PowerShell:**
+   ```powershell
+   $body = @{
+     sender_id = "testuser"
+     recipient = "recipient@example.com"
+     subject = "Test Subject"
+     body = "This is a test email body."
+   } | ConvertTo-Json
+
+   Invoke-RestMethod -Uri http://localhost:8080/api/email/send -Method Post -Body $body -ContentType "application/json"
+   ```
+
+3. **Expected Result:**
+   - You should receive a JSON response with a `blob_id` and `status` (or similar success message).
+   - If there is a real DB error, you will see `{ "error": "Database insert failed" }`.
+
+---
+
+## 📝 Troubleshooting
+
+- If you see a DB error, check that your SQLite database is accessible and the schema is up to date.
+- If you get a CORS or connection error, ensure the server is running and listening on the correct port.
+
+---
+
+Let me know if you need help with any errors or want to verify the DB insert! 

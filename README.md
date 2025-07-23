@@ -247,3 +247,30 @@ First-time users are greeted with a glassmorphic onboarding modal that explains 
 ## License
 
 MIT License 
+
+## Running the Go API Server
+
+To build and run the Secure Email API server, use the following commands from the project root:
+
+### Build the server binary
+
+```
+go build -o api-server ./cmd/api
+```
+
+### Run the server (development)
+
+```
+go run ./cmd/api/*.go
+```
+
+Or, after building:
+
+```
+./api-server
+```
+
+> **Note:**
+> Do **not** run `go run cmd/api/main.go` directly, as this will not include all necessary files and will result in undefined errors. Always use the wildcard (`*.go`) or build the package as shown above.
+
+The server will start on port 8080 by default. 
