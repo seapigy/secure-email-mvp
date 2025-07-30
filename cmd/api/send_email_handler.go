@@ -3,26 +3,23 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"regexp"
 	"time"
 
-	"secure-email-mvp/pkg"
+	"secure-email-mvp/pkg/auth"
+	"secure-email-mvp/pkg/storage"
 
 	"github.com/google/uuid"
 )
 
 type SendEmailRequest struct {
-	SenderID  string `json:"sender_id"`
 	Recipient string `json:"recipient"`
 	Subject   string `json:"subject"`
 	Body      string `json:"body"`
@@ -32,24 +29,6 @@ type SendEmailResponse struct {
 	BlobID string `json:"blob_id,omitempty"`
 	Status string `json:"status,omitempty"`
 	Error  string `json:"error,omitempty"`
-}
-
-// Helper: AES-256-GCM encrypt
-func encryptAESGCM(key, plaintext []byte) (ciphertext, nonce []byte, err error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, nil, err
-	}
-	aesgcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, nil, err
-	}
-	nonce = make([]byte, aesgcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, nil, err
-	}
-	ciphertext = aesgcm.Seal(nil, nonce, plaintext, nil)
-	return ciphertext, nonce, nil
 }
 
 // sendEmailHandler handles POST /api/email/send. It compresses, encrypts, uploads, and stores metadata.
@@ -63,8 +42,18 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error":"Invalid request"}`))
 		return
 	}
-	if req.SenderID == "" || req.Recipient == "" || req.Subject == "" || req.Body == "" {
-		log.Printf("Missing required fields: sender_id=%q recipient=%q subject=%q body=%q", req.SenderID, req.Recipient, req.Subject, req.Body)
+	// Get authenticated user_id from context
+	userID, ok := GetUserIDFromContext(r)
+	if !ok {
+		log.Printf("User ID not found in context")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`{"error":"Authentication required"}`))
+		return
+	}
+
+	if req.Recipient == "" || req.Subject == "" || req.Body == "" {
+		log.Printf("Missing required fields: recipient=%q subject=%q body=%q", req.Recipient, req.Subject, req.Body)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"error":"Missing required fields"}`))
@@ -94,18 +83,8 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 	gz.Close()
 	compressed := buf.Bytes()
 
-	// 2. Generate per-email AES-256 key
-	dataKey := make([]byte, 32)
-	if _, err := rand.Read(dataKey); err != nil {
-		log.Printf("Key generation failed: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"Encryption key generation failed"}`))
-		return
-	}
-
-	// 3. Encrypt compressed content
-	ciphertext, nonce, err := encryptAESGCM(dataKey, compressed)
+	// 2. Encrypt compressed content using AES-256-GCM
+	encryptedData, err := auth.EncryptAES256GCM(compressed)
 	if err != nil {
 		log.Printf("Encryption failed: %v", err)
 		w.Header().Set("Content-Type", "application/json")
@@ -113,13 +92,18 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error":"Encryption failed"}`))
 		return
 	}
-	encrypted := append(nonce, ciphertext...) // Store nonce+ct together
+
+	// Combine ciphertext and auth tag for storage (nonce stored separately)
+	encrypted := append(encryptedData.Ciphertext, encryptedData.AuthTag...)
 
 	// 4. Generate blobID
 	blobID := uuid.New().String() + ".blob"
 
-	// 5. Upload to R2
-	if err := pkg.UploadToR2(blobID, encrypted); err != nil {
+	// 5. Upload to R2 with context and timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := storage.UploadToR2WithContext(ctx, blobID, encrypted); err != nil {
 		log.Printf("R2 upload failed: %v", err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -134,7 +118,7 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 7. Store metadata in SQLite
 	emailID := uuid.New().String()
-	encryptedKeyB64 := base64.StdEncoding.EncodeToString(dataKey) // For demo, store raw key; in production, encrypt with user key
+	encryptedKeyB64 := base64.StdEncoding.EncodeToString(encryptedData.Key)
 
 	if srv.db == nil {
 		log.Printf("ERROR: srv.db is nil!")
@@ -157,11 +141,17 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// --- END SIMULATED DB FAILURE BLOCK ---
 
+	// Store nonce and auth tag separately for decryption
+	nonceB64 := base64.StdEncoding.EncodeToString(encryptedData.Nonce)
+	authTagB64 := base64.StdEncoding.EncodeToString(encryptedData.AuthTag)
+
 	_, err = srv.db.Exec(`
 		INSERT INTO emails (
-			email_id, sender_id, recipient, subject, encrypted_blob_url, encrypted_key, sha256_hash, created_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		emailID, req.SenderID, req.Recipient, req.Subject, blobID, encryptedKeyB64, hashB64, time.Now(),
+			email_id, sender_id, recipient, subject, encrypted_blob_url, encrypted_key, 
+			encryption_nonce, encryption_auth_tag, compression_algo, sha256_hash, created_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		emailID, userID, req.Recipient, req.Subject, blobID, encryptedKeyB64,
+		nonceB64, authTagB64, "gzip", hashB64, time.Now(),
 	)
 	if err != nil {
 		log.Printf("DB insert failed: %v", err)

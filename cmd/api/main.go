@@ -188,9 +188,17 @@ func main() {
 	log.Printf("Registering /resend-fallback endpoint")
 	r.HandleFunc("/resend-fallback", resendFallbackHandlerFactory(db)).Methods("POST")
 
-	// Register email send endpoint
+	// Register protected email endpoints (require JWT authentication)
 	log.Printf("Registering /api/email/send endpoint")
-	r.HandleFunc("/api/email/send", srv.sendEmailHandler).Methods("POST")
+	r.Handle("/api/email/send", jwtMiddleware(http.HandlerFunc(srv.sendEmailHandler))).Methods("POST")
+	log.Printf("Registering /api/email/get endpoint")
+	r.Handle("/api/email/get", jwtMiddleware(http.HandlerFunc(srv.getEmailHandler))).Methods("POST")
+	log.Printf("Registering /api/email/list endpoint")
+	r.Handle("/api/email/list", jwtMiddleware(http.HandlerFunc(srv.listEmailHandler))).Methods("GET")
+	log.Printf("Registering /api/email/view/{id} endpoint")
+	r.Handle("/api/email/view/{id}", jwtMiddleware(http.HandlerFunc(srv.viewEmailHandler))).Methods("GET")
+	log.Printf("Registering /api/email/{id} endpoint")
+	r.Handle("/api/email/{id}", jwtMiddleware(http.HandlerFunc(srv.deleteEmailHandler))).Methods("DELETE")
 
 	// Protected routes (require JWT authentication)
 	log.Printf("Registering /protected-test endpoint")
@@ -397,7 +405,7 @@ func getCurrentDir() string {
 }
 
 // JWT middleware implementation
-// jwtMiddleware validates JWT tokens for protected endpoints and injects the user's email into the request context.
+// jwtMiddleware validates JWT tokens for protected endpoints and injects the user's user_id into the request context.
 func jwtMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Get Authorization header
@@ -426,8 +434,8 @@ func jwtMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Set email in context using UserEmailKey
-		ctx := context.WithValue(r.Context(), UserEmailKey, claims.Subject)
+		// Set user_id in context using UserIDKey
+		ctx := context.WithValue(r.Context(), UserIDKey, claims.Subject)
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)
@@ -437,14 +445,14 @@ func jwtMiddleware(next http.Handler) http.Handler {
 // Protected test handler
 // protectedTestHandler is a sample protected endpoint that requires JWT authentication.
 func protectedTestHandler(w http.ResponseWriter, r *http.Request) {
-	email, ok := GetUserEmailFromContext(r)
+	userID, ok := GetUserIDFromContext(r)
 	if !ok {
-		http.Error(w, `{"error":"Email not found in context"}`, http.StatusInternalServerError)
+		http.Error(w, `{"error":"User ID not found in context"}`, http.StatusInternalServerError)
 		return
 	}
 
 	response := ProtectedResponse{
-		Email:   email,
+		Email:   userID, // Using userID as email for backward compatibility
 		Message: "Access granted",
 	}
 
@@ -455,13 +463,22 @@ func protectedTestHandler(w http.ResponseWriter, r *http.Request) {
 // contextKey is a type for context keys used in request context.
 type contextKey string
 
-// UserEmailKey is the context key for storing the user's email in the request context.
-const UserEmailKey contextKey = "email"
+// UserIDKey is the context key for storing the user's ID in the request context.
+const UserIDKey contextKey = "user_id"
 
-// GetUserEmailFromContext extracts the user's email from the request context.
-func GetUserEmailFromContext(r *http.Request) (string, bool) {
-	email, ok := r.Context().Value(UserEmailKey).(string)
-	return email, ok
+// GetUserIDFromContext extracts the user's ID from the request context.
+func GetUserIDFromContext(r *http.Request) (string, bool) {
+	userID, ok := r.Context().Value(UserIDKey).(string)
+	return userID, ok
+}
+
+// GetUserID is a helper function for extracting user_id from context
+func GetUserID(ctx context.Context) (string, error) {
+	userID, ok := ctx.Value(UserIDKey).(string)
+	if !ok {
+		return "", fmt.Errorf("user_id not found in context")
+	}
+	return userID, nil
 }
 
 // ProtectedResponse represents the response structure for protected endpoints.
