@@ -4,12 +4,37 @@
 
 ```
 /home/opc/secure-email-mvp/
-├── cmd/api/main.go                    # Go backend server entry point
-├── pkg/auth/                          # Authentication package
+├── cmd/api/                           # Backend API server
+│   ├── main.go                        # Server entry point with JWT middleware
+│   ├── send_email_handler.go          # Email sending with encryption
+│   ├── get_email_handler.go           # Email retrieval with decryption
+│   ├── list_email_handler.go          # List user's emails
+│   ├── view_email_handler.go          # View individual email
+│   ├── delete_email_handler.go        # Delete email with cleanup
+│   └── *_test.go                      # Comprehensive test suites
+├── pkg/auth/                          # Authentication & encryption
+│   ├── jwt.go                         # JWT token generation/validation
+│   ├── encryption.go                  # AES-256-GCM encryption
 │   ├── login.go                       # Login handler
 │   ├── signup.go                      # Signup handler  
 │   ├── verify_totp.go                 # TOTP verification
 │   └── *_test.go                      # Test files
+├── pkg/storage/                       # Cloudflare R2 storage
+│   ├── r2.go                          # R2 client and operations
+│   └── r2_test.go                     # Storage tests
+├── docs/                              # API documentation
+│   ├── jwt_authentication.md          # JWT implementation guide
+│   ├── encryption_implementation.md   # Encryption details
+│   ├── r2_storage_implementation.md   # R2 storage guide
+│   ├── complete_email_flow.md         # End-to-end email flow
+│   ├── list_email_endpoint.md         # List endpoint docs
+│   ├── view_email_endpoint.md         # View endpoint docs
+│   └── delete_email_endpoint.md       # Delete endpoint docs
+├── schema/                            # Database migrations
+│   └── migrate_add_encryption_fields.sql
+├── examples/                          # Usage examples
+│   ├── encryption_example.go          # Encryption demo
+│   └── email_upload_example.go        # R2 upload demo
 ├── src/                               # React frontend
 │   ├── App.jsx                        # Main app component
 │   ├── components/
@@ -37,6 +62,8 @@
 - **Database**: SQLite with go-sqlite3 driver
 - **Authentication**: JWT tokens + TOTP (Google Authenticator)
 - **Password Hashing**: Argon2 (via golang.org/x/crypto)
+- **Encryption**: AES-256-GCM for email content
+- **Storage**: Cloudflare R2 for encrypted blobs
 - **Rate Limiting**: In-memory IP-based rate limiting (10 req/min)
 - **CORS**: Configured for localhost:3000 and Netlify domain
 
@@ -52,8 +79,9 @@
 1. **User Registration**: Frontend → `/api/auth/signup` → SQLite users table
 2. **TOTP Setup**: QR code generation → Google Authenticator app
 3. **Login**: Frontend → `/api/auth/login` → JWT token generation
-4. **Email Storage**: Encrypted content → Cloudflare R2 (planned)
-5. **Access Control**: IP-based rate limiting + geolocation restrictions
+4. **Email Sending**: Content → gzip compression → AES-256-GCM encryption → R2 storage
+5. **Email Retrieval**: R2 download → decryption → decompression → plaintext
+6. **Access Control**: JWT validation + user authorization + IP-based rate limiting
 
 ## 📊 DATABASE
 
@@ -75,12 +103,16 @@ CREATE TABLE users (
 CREATE TABLE emails (
     id TEXT PRIMARY KEY,
     sender_id TEXT NOT NULL,
-    recipient_email TEXT NOT NULL,
+    recipient TEXT NOT NULL,
     subject TEXT,
-    encrypted_content TEXT NOT NULL,
-    access_password_hash TEXT,
-    geolocation_circles TEXT,
-    expires_at TIMESTAMP,
+    encrypted_blob_url TEXT NOT NULL,
+    encrypted_key TEXT NOT NULL,
+    encryption_nonce TEXT NOT NULL,
+    encryption_auth_tag TEXT NOT NULL,
+    compression_algo TEXT DEFAULT 'gzip',
+    sha256_hash TEXT,
+    access_count INTEGER DEFAULT 0,
+    last_access_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sender_id) REFERENCES users(id)
 );
@@ -142,8 +174,22 @@ CREATE TABLE email_folders (
 1. **Registration**: Username → `username@securesystem.email` + password
 2. **TOTP Setup**: QR code generation for Google Authenticator
 3. **Login**: Email + password + TOTP code
-4. **JWT Token**: 32-byte secret (needs generation)
+4. **JWT Token**: 32-byte secret with user context injection
 5. **Session**: Token stored in sessionStorage
+
+### Email Encryption Flow
+1. **Content Preparation**: Email subject + body
+2. **Compression**: gzip compression to reduce size
+3. **Encryption**: AES-256-GCM with random key and nonce
+4. **Storage**: Encrypted blob uploaded to Cloudflare R2
+5. **Metadata**: Encryption parameters stored in SQLite
+6. **Retrieval**: Download → decrypt → decompress → plaintext
+
+### Authorization System
+- **JWT Validation**: Token validation on all protected endpoints
+- **User Context**: user_id injected into request context
+- **Ownership Verification**: Users can only access their own emails
+- **Access Logging**: All access attempts logged for audit
 
 ### Password Security
 - **Hashing**: Argon2 (golang.org/x/crypto/argon2)
@@ -206,11 +252,13 @@ DEBUG=false
 - **Logs**: `/home/opc/api.log`
 - **Binary**: `/tmp/api-server`
 
-### Planned Storage (R2)
+### Cloudflare R2 Storage
 - **Bucket**: `secure-email-blobs`
 - **Purpose**: Encrypted email content storage
-- **Status**: ⏳ Not yet configured
+- **Status**: ✅ Implemented and tested
 - **Access**: Via Cloudflare R2 API keys
+- **Operations**: Upload, download, delete encrypted blobs
+- **Path Structure**: `emails/{blob_id}` for organized storage
 
 ## ⚙️ BACKEND STATUS
 
@@ -224,6 +272,11 @@ DEBUG=false
 - `POST /api/auth/login` - User authentication
 - `POST /api/auth/signup` - User registration  
 - `POST /api/auth/verify-totp` - TOTP verification
+- `POST /api/email/send` - Send encrypted email
+- `POST /api/email/get` - Retrieve encrypted email
+- `GET /api/email/list` - List user's emails
+- `GET /api/email/view/{id}` - View individual email
+- `DELETE /api/email/{id}` - Delete email with cleanup
 
 ### Dependencies (Go)
 ```go
@@ -235,6 +288,7 @@ github.com/mattn/go-sqlite3 v1.14.22
 github.com/pquerna/otp v1.4.0
 github.com/rs/cors v1.11.1
 golang.org/x/crypto v0.21.0
+github.com/aws/aws-sdk-go v1.50.0  # For Cloudflare R2 (S3-compatible)
 ```
 
 ## 🧹 OPTIONAL CLEANUP
@@ -271,65 +325,21 @@ golang.org/x/crypto v0.21.0
 
 ### Current Focus
 - ✅ Backend API server running
-- ✅ Database initialized
+- ✅ Database initialized with encryption fields
 - ✅ Frontend deployed to Netlify
-- ⏳ Cloudflare R2 configuration pending
-- ⏳ Email encryption/storage implementation
-- ⏳ Geolocation access controls
-- ⏳ Production environment variables
+- ✅ JWT authentication implemented
+- ✅ AES-256-GCM encryption implemented
+- ✅ Cloudflare R2 storage integrated
+- ✅ Complete email CRUD operations
+- ✅ Comprehensive test coverage
+- ⏳ Geolocation access controls (future enhancement)
+- ⏳ Production environment variables (needs configuration)
 
 ### Security Notes
-- JWT secret needs generation (32 bytes)
-- R2 API keys need configuration
-- Rate limiting is basic (in-memory)
-- No SSL termination configured yet
-- Database is local SQLite (not production-ready for scale) 
-
----
-
-## ✅ What Was Done
-
-- The code that forced a simulated DB failure was removed from `sendEmailHandler`.
-- The handler now performs the actual database insert and will only return an error if the real insert fails.
-- No configuration changes are needed; the API server will now operate normally.
-
----
-
-## 🟢 How to Test the Fix
-
-1. **Restart your API server** (if it’s running, stop and start it again):
-   ```powershell
-   go build -o api-server ./cmd/api
-   .\api-server.exe
-   ```
-   or, if you prefer:
-   ```powershell
-   go run ./cmd/api/main.go ./cmd/api/rate_limit.go ./cmd/api/login_handler.go ./cmd/api/signup_handler.go ./cmd/api/fallback_handler.go ./cmd/api/resend_fallback_handler.go ./cmd/api/send_email_handler.go
-   ```
-
-2. **Send a test email using PowerShell:**
-   ```powershell
-   $body = @{
-     sender_id = "testuser"
-     recipient = "recipient@example.com"
-     subject = "Test Subject"
-     body = "This is a test email body."
-   } | ConvertTo-Json
-
-   Invoke-RestMethod -Uri http://localhost:8080/api/email/send -Method Post -Body $body -ContentType "application/json"
-   ```
-
-3. **Expected Result:**
-   - You should receive a JSON response with a `blob_id` and `status` (or similar success message).
-   - If there is a real DB error, you will see `{ "error": "Database insert failed" }`.
-
----
-
-## 📝 Troubleshooting
-
-- If you see a DB error, check that your SQLite database is accessible and the schema is up to date.
-- If you get a CORS or connection error, ensure the server is running and listening on the correct port.
-
----
-
-Let me know if you need help with any errors or want to verify the DB insert! 
+- ✅ JWT authentication with user context injection
+- ✅ AES-256-GCM encryption for email content
+- ✅ User authorization (users can only access their own emails)
+- ✅ R2 API keys need configuration for production
+- ✅ Rate limiting is basic (in-memory)
+- ⏳ SSL termination not configured yet
+- ⏳ Database is local SQLite (not production-ready for scale) 
