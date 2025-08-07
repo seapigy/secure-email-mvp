@@ -271,9 +271,9 @@ const UnlockModal: React.FC<UnlockModalProps> = ({
                 Demo password: <code className="bg-secondary-100 dark:bg-secondary-700 px-1 py-0.5 rounded">demo123</code>
               </div>
 
-              {/* Skip Note */}
+              {/* Cancel Note */}
               <div className="text-xs text-secondary-500 dark:text-secondary-400 text-center">
-                You can skip this step and return to the email list if you don't want to unlock this email.
+                You can cancel and return to the email list if you don't want to unlock this email now.
               </div>
 
               {/* Action Buttons */}
@@ -284,7 +284,7 @@ const UnlockModal: React.FC<UnlockModalProps> = ({
                   disabled={isLoading}
                   className="flex-1 px-4 py-2 border border-secondary-300 dark:border-secondary-600 text-secondary-700 dark:text-secondary-300 rounded-lg hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Skip
+                  Cancel
                 </button>
                 <button
                   type="submit"
