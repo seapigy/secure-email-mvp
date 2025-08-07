@@ -49,6 +49,9 @@ CREATE TABLE IF NOT EXISTS emails (
     -- Max allowed failed attempts before the email self-deletes
     max_attempts INTEGER DEFAULT 3,
 
+    -- Should the email self-destruct after max failed attempts?
+    self_destruct_after_attempts INTEGER DEFAULT 0,
+
     -- 🔁 Interactivity Controls --
 
     -- Can recipient reply to sender?
@@ -102,6 +105,7 @@ CREATE INDEX IF NOT EXISTS idx_emails_secure_link_id ON emails(secure_link_id);
 CREATE INDEX IF NOT EXISTS idx_emails_created_at ON emails(created_at);
 CREATE INDEX IF NOT EXISTS idx_emails_expires_at ON emails(expires_at);
 CREATE INDEX IF NOT EXISTS idx_emails_burn_after_read ON emails(burn_after_read);
+CREATE INDEX IF NOT EXISTS idx_emails_self_destruct ON emails(self_destruct_after_attempts);
 
 -- Trigger to update updated_at timestamp
 CREATE TRIGGER IF NOT EXISTS update_emails_updated_at 

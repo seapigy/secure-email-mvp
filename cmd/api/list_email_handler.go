@@ -8,10 +8,12 @@ import (
 )
 
 type EmailListItem struct {
-	EmailID   string    `json:"email_id"`
-	Recipient string    `json:"recipient"`
-	Subject   string    `json:"subject"`
-	CreatedAt time.Time `json:"created_at"`
+	EmailID                   string    `json:"email_id"`
+	Recipient                 string    `json:"recipient"`
+	Subject                   string    `json:"subject"`
+	CreatedAt                 time.Time `json:"created_at"`
+	SelfDestructAfterAttempts bool      `json:"selfDestructAfterAttempts"`
+	MaxFailedAttempts         int       `json:"maxFailedAttempts"`
 }
 
 type ListEmailResponse struct {
@@ -45,7 +47,8 @@ func (srv *Server) listEmailHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Query database for emails sent by this user
 	rows, err := srv.db.Query(`
-		SELECT email_id, recipient, subject, created_at
+		SELECT email_id, recipient, subject, created_at, 
+		       self_destruct_after_attempts, max_attempts
 		FROM emails 
 		WHERE sender_id = ?
 		ORDER BY created_at DESC`,
@@ -64,11 +67,14 @@ func (srv *Server) listEmailHandler(w http.ResponseWriter, r *http.Request) {
 	var emails []EmailListItem
 	for rows.Next() {
 		var email EmailListItem
-		err := rows.Scan(&email.EmailID, &email.Recipient, &email.Subject, &email.CreatedAt)
+		var selfDestructInt int
+		err := rows.Scan(&email.EmailID, &email.Recipient, &email.Subject, &email.CreatedAt, 
+			&selfDestructInt, &email.MaxFailedAttempts)
 		if err != nil {
 			log.Printf("Failed to scan email row: %v", err)
 			continue // Skip this row and continue with others
 		}
+		email.SelfDestructAfterAttempts = selfDestructInt == 1
 		emails = append(emails, email)
 	}
 

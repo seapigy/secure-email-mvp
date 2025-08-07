@@ -23,6 +23,9 @@ type SendEmailRequest struct {
 	Recipient string `json:"recipient"`
 	Subject   string `json:"subject"`
 	Body      string `json:"body"`
+	// Security settings
+	SelfDestructAfterAttempts bool `json:"selfDestructAfterAttempts,omitempty"`
+	MaxFailedAttempts         int  `json:"maxFailedAttempts,omitempty"`
 }
 
 type SendEmailResponse struct {
@@ -68,6 +71,20 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"error":"Invalid recipient email format"}`))
 		return
+	}
+
+	// Validate self-destruct settings
+	if req.SelfDestructAfterAttempts {
+		if req.MaxFailedAttempts < 1 || req.MaxFailedAttempts > 10 {
+			log.Printf("Invalid maxFailedAttempts: %d (must be between 1-10)", req.MaxFailedAttempts)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"maxFailedAttempts must be between 1 and 10"}`))
+			return
+		}
+	} else {
+		// If self-destruct is disabled, set maxFailedAttempts to 0
+		req.MaxFailedAttempts = 0
 	}
 
 	// 1. Compress (gzip)
@@ -145,13 +162,20 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 	nonceB64 := base64.StdEncoding.EncodeToString(encryptedData.Nonce)
 	authTagB64 := base64.StdEncoding.EncodeToString(encryptedData.AuthTag)
 
+	// Convert boolean to integer for SQLite storage
+	selfDestructInt := 0
+	if req.SelfDestructAfterAttempts {
+		selfDestructInt = 1
+	}
+
 	_, err = srv.db.Exec(`
 		INSERT INTO emails (
 			email_id, sender_id, recipient, subject, encrypted_blob_url, encrypted_key, 
-			encryption_nonce, encryption_auth_tag, compression_algo, sha256_hash, created_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			encryption_nonce, encryption_auth_tag, compression_algo, sha256_hash, 
+			self_destruct_after_attempts, max_attempts, created_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		emailID, userID, req.Recipient, req.Subject, blobID, encryptedKeyB64,
-		nonceB64, authTagB64, "gzip", hashB64, time.Now(),
+		nonceB64, authTagB64, "gzip", hashB64, selfDestructInt, req.MaxFailedAttempts, time.Now(),
 	)
 	if err != nil {
 		log.Printf("DB insert failed: %v", err)

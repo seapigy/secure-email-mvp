@@ -18,13 +18,15 @@ import (
 )
 
 type ViewEmailResponse struct {
-	EmailID   string    `json:"email_id"`
-	Recipient string    `json:"recipient"`
-	Subject   string    `json:"subject"`
-	Body      string    `json:"body"`
-	CreatedAt time.Time `json:"created_at"`
-	Status    string    `json:"status"`
-	Error     string    `json:"error,omitempty"`
+	EmailID                   string    `json:"email_id"`
+	Recipient                 string    `json:"recipient"`
+	Subject                   string    `json:"subject"`
+	Body                      string    `json:"body"`
+	CreatedAt                 time.Time `json:"created_at"`
+	Status                    string    `json:"status"`
+	Error                     string    `json:"error,omitempty"`
+	SelfDestructAfterAttempts bool      `json:"selfDestructAfterAttempts"`
+	MaxFailedAttempts         int       `json:"maxFailedAttempts"`
 }
 
 // viewEmailHandler handles GET /api/email/view/{id}. It retrieves, decrypts, and returns a specific email.
@@ -66,15 +68,18 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 		blobID, encryptedKeyB64, nonceB64, authTagB64, compressionAlgo string
 		senderID, recipient, subject                                   string
 		createdAt                                                      time.Time
+		selfDestructAfterAttempts                                      int
+		maxFailedAttempts                                              int
 	)
 
 	err := srv.db.QueryRow(`
 		SELECT encrypted_blob_url, encrypted_key, encryption_nonce, encryption_auth_tag, 
-		       compression_algo, sender_id, recipient, subject, created_at
+		       compression_algo, sender_id, recipient, subject, created_at,
+		       self_destruct_after_attempts, max_attempts
 		FROM emails WHERE email_id = ?`,
 		emailID,
 	).Scan(&blobID, &encryptedKeyB64, &nonceB64, &authTagB64, &compressionAlgo,
-		&senderID, &recipient, &subject, &createdAt)
+		&senderID, &recipient, &subject, &createdAt, &selfDestructAfterAttempts, &maxFailedAttempts)
 
 	if err != nil {
 		log.Printf("Database query failed: %v", err)
@@ -213,14 +218,16 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 		// Don't fail the request for tracking errors
 	}
 
-	// 11. Return decrypted email
+	// 11. Return decrypted email with self-destruct settings
 	response := ViewEmailResponse{
-		EmailID:   emailID,
-		Recipient: recipient,
-		Subject:   subject,
-		Body:      string(plaintext),
-		CreatedAt: createdAt,
-		Status:    "success",
+		EmailID:                   emailID,
+		Recipient:                 recipient,
+		Subject:                   subject,
+		Body:                      string(plaintext),
+		CreatedAt:                 createdAt,
+		Status:                    "success",
+		SelfDestructAfterAttempts: selfDestructAfterAttempts == 1,
+		MaxFailedAttempts:         maxFailedAttempts,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
