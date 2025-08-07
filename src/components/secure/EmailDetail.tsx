@@ -78,6 +78,7 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack, isCompact = fa
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [unlockError, setUnlockError] = useState<string>('');
+  const [userManuallyClosed, setUserManuallyClosed] = useState(false);
   
   // Self-destruct feature state
   const [failedAttempts, setFailedAttempts] = useState(0);
@@ -93,20 +94,22 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack, isCompact = fa
    * - Per-email vs per-session mode
    * - Whether email is already unlocked
    * - Whether email has been self-destructed
+   * - Whether user has manually closed the modal
    */
-  const needsPasswordPrompt = email.passwordProtected && !isSelfDestructed && (
+  const needsPasswordPrompt = email.passwordProtected && !isSelfDestructed && !userManuallyClosed && (
     securitySettings?.perEmailPassword ? !isEmailUnlocked(email.id) : !showDecrypted
   );
 
   /**
    * Show unlock modal when email is selected and needs password
    * Automatically triggers unlock modal when email requires password verification
+   * Only shows if user hasn't manually closed it
    */
   React.useEffect(() => {
-    if (needsPasswordPrompt && !showUnlockModal) {
+    if (needsPasswordPrompt && !showUnlockModal && !userManuallyClosed) {
       setShowUnlockModal(true);
     }
-  }, [needsPasswordPrompt, showUnlockModal]);
+  }, [needsPasswordPrompt, showUnlockModal, userManuallyClosed]);
 
   /**
    * Get status configuration for visual display
@@ -184,6 +187,19 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack, isCompact = fa
     setShowUnlockModal(false);
     setUnlockError('');
     setIsUnlocking(false);
+    setUserManuallyClosed(true); // Mark that user manually closed
+  };
+
+  // Handle back navigation - allow going back even if not unlocked
+  const handleBack = () => {
+    if (needsPasswordPrompt && !userManuallyClosed) {
+      // If modal is open and user hasn't manually closed, close it first
+      setShowUnlockModal(false);
+      setUserManuallyClosed(true);
+    } else {
+      // Otherwise proceed with normal back navigation
+      onBack();
+    }
   };
 
   // Copy to clipboard
@@ -201,7 +217,7 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack, isCompact = fa
           <div className="flex items-center space-x-4 min-w-0">
             {!isCompact && (
               <button
-                onClick={onBack}
+                onClick={handleBack}
                 className="p-2 text-secondary-600 hover:bg-secondary-100 dark:text-secondary-400 dark:hover:bg-secondary-700 rounded-lg transition-colors duration-200 flex-shrink-0"
               >
                 <ArrowLeft className="w-5 h-5" />
