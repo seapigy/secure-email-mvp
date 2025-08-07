@@ -5,7 +5,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { login, signup } from '../lib/api';
 
-// AuthCard is the main authentication component for login and sign-up.
+// AuthCard is a legacy authentication component for login and sign-up.
+// This component has been replaced by LoginForm.tsx and is kept for testing purposes only.
 // It manages form state, validation, and handles API calls for authentication.
 const AuthCard = () => {
   const [isLogin, setIsLogin] = useState(true);

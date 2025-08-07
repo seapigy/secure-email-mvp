@@ -82,13 +82,7 @@ button {
 }
 
 /* Ensure proper contrast ratios for accessibility */
-.text-text-gray {
-  color: #64748B;
-}
-
-.dark .text-text-gray {
-  color: #94A3B8;
-}
+/* Removed conflicting text-text-gray class - using Tailwind classes instead */
 
 /* Smooth transitions for theme switching */
 * {
@@ -97,9 +91,7 @@ button {
 
 #root {
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 100%;
 }
 
 /* Custom scrollbar */

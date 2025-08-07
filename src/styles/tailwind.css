@@ -9,34 +9,34 @@
   }
   
   body {
-    @apply bg-neutral-light dark:bg-neutral-dark text-text-gray dark:text-white;
+    @apply bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text;
     font-family: 'Inter', sans-serif;
   }
 }
 
 @layer components {
   .auth-card {
-    @apply bg-white dark:bg-gray-800 rounded-xl shadow-neumorphic;
+    @apply bg-white dark:bg-gray-800 rounded-xl shadow-soft;
   }
   
   .modal {
-    @apply bg-white dark:bg-gray-800 bg-opacity-85 backdrop-blur-[10px] rounded-xl shadow-glassmorphic;
+    @apply bg-white dark:bg-gray-800 bg-opacity-85 backdrop-blur-[10px] rounded-xl shadow-medium;
   }
   
   .btn-primary {
-    @apply bg-primary text-white rounded-lg font-medium hover:scale-105 transition-all duration-150 shadow-sm hover:shadow-md;
+    @apply bg-primary-600 text-white rounded-lg font-medium hover:scale-105 transition-all duration-150 shadow-sm hover:shadow-md;
   }
   
   .btn-accent {
-    @apply bg-accent text-white rounded-lg font-medium hover:scale-105 transition-all duration-150 shadow-sm hover:shadow-md;
+    @apply bg-accent-600 text-white rounded-lg font-medium hover:scale-105 transition-all duration-150 shadow-sm hover:shadow-md;
   }
   
   .input-field {
-    @apply w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-neutral-light dark:bg-gray-700 text-text-gray dark:text-white focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200;
+    @apply w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200;
   }
   
   .input-field-accent {
-    @apply w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-neutral-light dark:bg-gray-700 text-text-gray dark:text-white focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-200;
+    @apply w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-light-surface dark:bg-dark-surface text-light-text dark:text-dark-text focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 transition-all duration-200;
   }
 
   .neumorphic {
@@ -73,11 +73,11 @@
 
   /* Toast customization */
   .toast-error {
-    @apply bg-error text-white;
+    @apply bg-error-500 text-white;
   }
 
   .toast-success {
-    @apply bg-success text-white;
+    @apply bg-success-500 text-white;
   }
 }
 
@@ -88,7 +88,7 @@
 
   /* Focus styles for accessibility */
   .focus-visible {
-    @apply outline-none ring-2 ring-primary ring-offset-2;
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
   }
 
   /* Screen reader only text */

@@ -24,13 +24,20 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// main is the entry point for the Secure Email API server. It loads environment variables, connects to the database,
-// applies schema migrations, sets up middleware, and registers all API endpoints including authentication and fallback flows.
+// main is the entry point for the Secure Email API server. It initializes the application by:
+// 1. Loading environment variables from .env file
+// 2. Establishing database connection with SQLite
+// 3. Testing Cloudflare R2 storage connectivity
+// 4. Applying database schema migrations
+// 5. Setting up HTTP server with middleware (CORS, security headers, rate limiting)
+// 6. Registering all API endpoints for authentication and email operations
+// 7. Starting the HTTP server on the configured port
 func main() {
-	// Load .env with detailed logging
+	// Initialize logging and load environment configuration
 	log.Printf("Starting Secure Email API server...")
 	log.Printf("Current working directory: %s", getCurrentDir())
 
+	// Load environment variables from .env file with fallback paths
 	if err := godotenv.Load(); err != nil {
 		log.Printf("Warning: Error loading .env file: %v", err)
 		log.Printf("Attempting to load .env from /home/opc/secure-email-mvp/.env")
@@ -42,7 +49,7 @@ func main() {
 		log.Printf("Successfully loaded .env from current directory")
 	}
 
-	// Verify JWT_SECRET is loaded
+	// Validate critical environment variables
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		log.Printf("Warning: JWT_SECRET not found in environment, using default")
@@ -50,43 +57,44 @@ func main() {
 		log.Printf("JWT_SECRET loaded successfully")
 	}
 
-	// Connect to SQLite with detailed logging
+	// Initialize SQLite database connection
 	dbPath := os.Getenv("SQLITE_DB")
 	if dbPath == "" {
 		dbPath = "/var/db/secure-email.db"
 	}
 	log.Printf("Attempting to connect to database at: %s", dbPath)
 
-	// Ensure database directory exists
+	// Ensure database directory exists with proper permissions
 	dbDir := filepath.Dir(dbPath)
 	if err := os.MkdirAll(dbDir, 0755); err != nil {
 		log.Printf("Warning: Could not create database directory %s: %v", dbDir, err)
 	}
 
+	// Open database connection using modernc.org/sqlite driver
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		log.Fatal("Error opening database:", err)
 	}
 	defer db.Close()
 
-	// Test database connection
+	// Test database connectivity
 	log.Printf("Testing database connection...")
 	if err := db.Ping(); err != nil {
 		log.Fatal("Error connecting to database:", err)
 	}
 	log.Printf("Database connection successful")
 
-	// Test R2 connection
+	// Test Cloudflare R2 storage connectivity for encrypted email content
 	if err := testR2Connection(); err != nil {
 		log.Printf("Warning: R2 connection test failed: %v", err)
 	} else {
 		log.Printf("R2 connection test passed")
 	}
 
-	// Initialize server
+	// Initialize server instance with database and rate limiting
 	srv := &Server{db: db, rateLimits: &sync.Map{}}
 
-	// Apply schema with detailed logging
+	// Apply database schema with comprehensive error handling
 	log.Printf("Loading database schema...")
 	schemaPath := "schema/users_simple.sql"
 	log.Printf("Attempting to read schema from: %s", schemaPath)
@@ -108,7 +116,7 @@ func main() {
 		log.Printf("Error applying schema: %v", err)
 		log.Printf("Attempting to apply migration for existing database...")
 
-		// Try to apply migration for existing database
+		// Apply migration for existing database if schema application fails
 		migrationPath := "schema/migrate_to_simple.sql"
 		log.Printf("Attempting to read migration from: %s", migrationPath)
 
@@ -174,15 +182,54 @@ func main() {
 	log.Printf("Registering /health endpoint")
 	r.HandleFunc("/health", srv.healthHandler).Methods("GET")
 
+	// Apply refresh tokens schema
+	log.Printf("Loading refresh tokens schema...")
+	refreshTokensSchemaPath := "schema/refresh_tokens.sql"
+	log.Printf("Attempting to read refresh tokens schema from: %s", refreshTokensSchemaPath)
+
+	refreshTokensSchema, err := os.ReadFile(refreshTokensSchemaPath)
+	if err != nil {
+		log.Printf("Error reading refresh tokens schema from %s: %v", refreshTokensSchemaPath, err)
+		log.Printf("Attempting to read refresh tokens schema from absolute path...")
+		absRefreshTokensPath := filepath.Join(getCurrentDir(), "schema", "refresh_tokens.sql")
+		log.Printf("Trying absolute path: %s", absRefreshTokensPath)
+		refreshTokensSchema, err = os.ReadFile(absRefreshTokensPath)
+		if err != nil {
+			log.Printf("Error reading refresh tokens schema from absolute path: %v", err)
+		} else {
+			log.Printf("Refresh tokens schema file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(refreshTokensSchema)); err != nil {
+				log.Printf("Error applying refresh tokens schema: %v", err)
+				log.Printf("Refresh tokens table may already exist or have incompatible structure")
+			} else {
+				log.Printf("Refresh tokens schema applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Refresh tokens schema file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(refreshTokensSchema)); err != nil {
+			log.Printf("Error applying refresh tokens schema: %v", err)
+			log.Printf("Refresh tokens table may already exist or have incompatible structure")
+		} else {
+			log.Printf("Refresh tokens schema applied successfully")
+		}
+	}
+
 	// Wrap /login and /signup with rate limit middleware
 	log.Printf("Registering /login endpoint")
-	r.Handle("/login", signupLoginLimiter.Middleware(loginHandlerFactory(db))).Methods("POST")
+	r.Handle("/login", signupLoginLimiter.Middleware(http.HandlerFunc(srv.loginHandler))).Methods("POST")
 	log.Printf("Registering /api/auth/login endpoint")
-	r.Handle("/api/auth/login", signupLoginLimiter.Middleware(http.HandlerFunc(srv.loginHandler))).Methods("POST")
+	r.Handle("/api/auth/login", signupLoginLimiter.Middleware(loginHandler(db))).Methods("POST")
 	log.Printf("Registering /api/auth/signup endpoint")
 	r.Handle("/api/auth/signup", signupLoginLimiter.Middleware(signupHandlerFactory(db))).Methods("POST")
 	log.Printf("Registering /api/auth/verify-totp endpoint")
 	r.HandleFunc("/api/auth/verify-totp", auth.VerifyTotpHandler(db)).Methods("POST")
+	log.Printf("Registering /api/auth/refresh endpoint")
+	r.HandleFunc("/api/auth/refresh", refreshHandler(db)).Methods("POST")
+	log.Printf("Registering /api/auth/logout endpoint")
+	r.HandleFunc("/api/auth/logout", logoutHandler(db)).Methods("POST")
+	log.Printf("Registering /api/auth/me endpoint")
+	r.Handle("/api/auth/me", jwtMiddleware(meHandler())).Methods("GET")
 	log.Printf("Registering /confirm-fallback endpoint")
 	r.HandleFunc("/confirm-fallback", confirmFallbackHandlerFactory(db)).Methods("GET")
 	log.Printf("Registering /resend-fallback endpoint")

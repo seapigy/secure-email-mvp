@@ -1,4 +1,12 @@
--- Users table
+-- =============================================================================
+-- SECURE EMAIL MVP - DATABASE SCHEMA
+-- =============================================================================
+-- This schema defines the database structure for the Secure Email MVP application.
+-- It includes tables for user management, email storage, access tracking, and
+-- folder organization.
+-- =============================================================================
+
+-- Users table - Stores user account information and authentication data
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
@@ -8,7 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Emails table
+-- Emails table - Stores encrypted email content and metadata
 CREATE TABLE IF NOT EXISTS emails (
     id TEXT PRIMARY KEY,
     sender_id TEXT NOT NULL,
@@ -22,7 +30,7 @@ CREATE TABLE IF NOT EXISTS emails (
     FOREIGN KEY (sender_id) REFERENCES users(id)
 );
 
--- Access attempts table
+-- Access attempts table - Tracks failed access attempts for security monitoring
 CREATE TABLE IF NOT EXISTS access_attempts (
     id TEXT PRIMARY KEY,
     email_id TEXT NOT NULL,
@@ -32,7 +40,7 @@ CREATE TABLE IF NOT EXISTS access_attempts (
     FOREIGN KEY (email_id) REFERENCES emails(id)
 );
 
--- Folders table
+-- Folders table - User-defined email organization folders
 CREATE TABLE IF NOT EXISTS folders (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -41,7 +49,7 @@ CREATE TABLE IF NOT EXISTS folders (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
--- Email folders mapping
+-- Email folders mapping - Many-to-many relationship between emails and folders
 CREATE TABLE IF NOT EXISTS email_folders (
     email_id TEXT NOT NULL,
     folder_id TEXT NOT NULL,
@@ -50,7 +58,10 @@ CREATE TABLE IF NOT EXISTS email_folders (
     FOREIGN KEY (folder_id) REFERENCES folders(id)
 );
 
--- Create indexes
+-- =============================================================================
+-- DATABASE INDEXES
+-- =============================================================================
+-- Indexes for optimizing query performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_emails_sender ON emails(sender_id);
 CREATE INDEX IF NOT EXISTS idx_emails_recipient ON emails(recipient_email);

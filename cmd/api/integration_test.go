@@ -41,7 +41,7 @@ func TestSignupLoginIntegration(t *testing.T) {
 
 	// Create handlers
 	signupHandler := signupHandlerFactory(db)
-	loginHandler := loginHandlerFactory(db)
+	loginHandler := loginHandler(db)
 	confirmHandler := confirmFallbackHandlerFactory(db)
 
 	// Test data
@@ -119,6 +119,7 @@ func TestSignupLoginIntegration(t *testing.T) {
 		loginReq := LoginRequest{
 			Email:    testEmail,
 			Password: testPassword,
+			TOTPCode: "123456",
 		}
 
 		body, err := json.Marshal(loginReq)
@@ -126,7 +127,7 @@ func TestSignupLoginIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		req := httptest.NewRequest("POST", "/login", bytes.NewBuffer(body))
+		req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewBuffer(body))
 		req.Header.Set("Content-Type", "application/json")
 		rr := httptest.NewRecorder()
 
@@ -141,16 +142,17 @@ func TestSignupLoginIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if response.Message != "Login successful" {
-			t.Errorf("Expected message 'Login successful', got '%s'", response.Message)
+		// Check for access token
+		if response.AccessToken == "" {
+			t.Error("Expected non-empty access token, got empty")
+		}
+		if len(response.AccessToken) < 50 {
+			t.Errorf("Expected access token to be longer, got length %d", len(response.AccessToken))
 		}
 
-		// Check for JWT token
-		if response.Token == "" {
-			t.Error("Expected non-empty JWT token, got empty")
-		}
-		if len(response.Token) < 50 {
-			t.Errorf("Expected JWT token to be longer, got length %d", len(response.Token))
+		// Check for refresh token
+		if response.RefreshToken == "" {
+			t.Error("Expected non-empty refresh token, got empty")
 		}
 	})
 
@@ -159,6 +161,7 @@ func TestSignupLoginIntegration(t *testing.T) {
 		loginReq := LoginRequest{
 			Email:    testEmail,
 			Password: "wrongpassword",
+			TOTPCode: "123456",
 		}
 
 		body, err := json.Marshal(loginReq)
@@ -166,7 +169,7 @@ func TestSignupLoginIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		req := httptest.NewRequest("POST", "/login", bytes.NewBuffer(body))
+		req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewBuffer(body))
 		req.Header.Set("Content-Type", "application/json")
 		rr := httptest.NewRecorder()
 
@@ -181,8 +184,8 @@ func TestSignupLoginIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if errorResp["error"] != "Invalid email or password" {
-			t.Errorf("Expected error 'Invalid email or password', got '%s'", errorResp["error"])
+		if errorResp["error"] != "Invalid credentials" {
+			t.Errorf("Expected error 'Invalid credentials', got '%s'", errorResp["error"])
 		}
 	})
 

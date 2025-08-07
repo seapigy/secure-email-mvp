@@ -467,12 +467,13 @@ func TestLoginBeforeFallbackConfirmation(t *testing.T) {
 	}
 
 	// Create handler
-	handler := loginHandlerFactory(db)
+	handler := loginHandler(db)
 
 	// Test login before fallback confirmation
 	reqBody := map[string]string{
-		"email":    "test@example.com",
-		"password": "password123",
+		"email":     "test@example.com",
+		"password":  "password123",
+		"totp_code": "123456",
 	}
 	reqJSON, _ := json.Marshal(reqBody)
 
@@ -528,12 +529,13 @@ func TestLoginAfterFallbackConfirmation(t *testing.T) {
 	}
 
 	// Create handler
-	handler := loginHandlerFactory(db)
+	handler := loginHandler(db)
 
 	// Test login after fallback confirmation
 	reqBody := map[string]string{
-		"email":    "test@example.com",
-		"password": "password123",
+		"email":     "test@example.com",
+		"password":  "password123",
+		"totp_code": "123456",
 	}
 	reqJSON, _ := json.Marshal(reqBody)
 

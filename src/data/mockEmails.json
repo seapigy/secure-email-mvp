@@ -1,0 +1,163 @@
+{
+  "emails": [
+    {
+      "id": "msg_001",
+      "subject": "Confidential Project Details",
+      "from": "alice@securesystem.email",
+      "to": "bob@securesystem.email",
+      "date": "2024-01-15T10:30:00Z",
+      "expires": "2024-01-22T10:30:00Z",
+      "status": "pending",
+      "accessAttempts": 0,
+      "maxAttempts": 3,
+      "passwordProtected": true,
+      "geolocationRestricted": true,
+      "allowedCountries": ["US", "CA"],
+      "readOnce": false,
+      "autoDestruct": true,
+      "destructAfterAttempts": 3,
+      "decoyEnabled": false,
+      "fingerprint": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+      "metadataStripped": true,
+      "tamperAlerts": true,
+      "selfDestructAfterAttempts": true,
+      "maxFailedAttempts": 3,
+      "content": "VGhpcyBpcyBhbiBlbmNyeXB0ZWQgbWVzc2FnZSB0aGF0IHJlcXVpcmVzIGEgcGFzc3dvcmQgdG8gZGVjcnlwdC4gVGhlIGFjdHVhbCBjb250ZW50IGlzIGhpZGRlbiBiZWhpbmQgdGhpcyBlbmNyeXB0ZWQgc3RyaW5nLg==",
+      "preview": "Encrypted message requiring password for decryption...",
+      "attachments": [
+        {
+          "name": "project-specs.pdf",
+          "size": "2.3 MB",
+          "encrypted": true
+        }
+      ]
+    },
+    {
+      "id": "msg_002",
+      "subject": "Financial Report Q4 2023",
+      "from": "finance@securesystem.email",
+      "to": "management@securesystem.email",
+      "date": "2024-01-14T16:45:00Z",
+      "expires": "2024-01-21T16:45:00Z",
+      "status": "opened",
+      "accessAttempts": 1,
+      "maxAttempts": 5,
+      "passwordProtected": false,
+      "geolocationRestricted": true,
+      "allowedCountries": ["US"],
+      "readOnce": true,
+      "autoDestruct": false,
+      "destructAfterAttempts": null,
+      "decoyEnabled": true,
+      "fingerprint": "b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8",
+      "metadataStripped": true,
+      "tamperAlerts": true,
+      "selfDestructAfterAttempts": false,
+      "maxFailedAttempts": 3,
+      "content": "VGhlIGZpbmFuY2lhbCByZXBvcnQgZm9yIHRoZSBmb3VydGggcXVhcnRlciBzaG93cyBzdHJvbmcgZ3Jvd3RoIGluIGFsbCBzZWdtZW50cy4gUmV2ZW51ZSBpcyB1cCAyMyUgeWVhci1vdmVyLXllYXIu",
+      "preview": "The financial report for the fourth quarter shows strong growth...",
+      "attachments": []
+    },
+    {
+      "id": "msg_003",
+      "subject": "Security Audit Results",
+      "from": "security@securesystem.email",
+      "to": "admin@securesystem.email",
+      "date": "2024-01-13T09:15:00Z",
+      "expires": "2024-01-20T09:15:00Z",
+      "status": "expired",
+      "accessAttempts": 2,
+      "maxAttempts": 2,
+      "passwordProtected": true,
+      "geolocationRestricted": false,
+      "allowedCountries": [],
+      "readOnce": false,
+      "autoDestruct": true,
+      "destructAfterAttempts": 2,
+      "decoyEnabled": false,
+      "fingerprint": "c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9",
+      "metadataStripped": true,
+      "tamperAlerts": true,
+      "selfDestructAfterAttempts": true,
+      "maxFailedAttempts": 2,
+      "content": "VGhlIHNlY3VyaXR5IGF1ZGl0IGhhcyBiZWVuIGNvbXBsZXRlZC4gQWxsIHN5c3RlbXMgYXJlIHNlY3VyZSBhbmQgdXAgdG8gZGF0ZS4=",
+      "preview": "The security audit has been completed. All systems are secure...",
+      "attachments": [
+        {
+          "name": "audit-report.pdf",
+          "size": "1.8 MB",
+          "encrypted": true
+        },
+        {
+          "name": "vulnerability-scan.pdf",
+          "size": "945 KB",
+          "encrypted": true
+        }
+      ]
+    },
+    {
+      "id": "msg_004",
+      "subject": "Board Meeting Minutes",
+      "from": "board@securesystem.email",
+      "to": "directors@securesystem.email",
+      "date": "2024-01-12T14:20:00Z",
+      "expires": "2024-01-19T14:20:00Z",
+      "status": "pending",
+      "accessAttempts": 0,
+      "maxAttempts": 1,
+      "passwordProtected": true,
+      "geolocationRestricted": true,
+      "allowedCountries": ["US", "UK", "CA"],
+      "readOnce": true,
+      "autoDestruct": true,
+      "destructAfterAttempts": 1,
+      "decoyEnabled": true,
+      "fingerprint": "d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0",
+      "metadataStripped": true,
+      "tamperAlerts": true,
+      "content": "VGhlIGJvYXJkIG1lZXRpbmcgd2FzIGhlbGQgb24gSmFudWFyeSAxMnRoLiBLZXkgZGVjaXNpb25zIHdlcmUgbWFkZSBhYm91dCB0aGUgc3RyYXRlZ2ljIGRpcmVjdGlvbi4=",
+      "preview": "The board meeting was held on January 12th. Key decisions were made...",
+      "attachments": []
+    },
+    {
+      "id": "msg_005",
+      "subject": "HR Policy Updates",
+      "from": "hr@securesystem.email",
+      "to": "employees@securesystem.email",
+      "date": "2024-01-11T11:30:00Z",
+      "expires": "2024-01-18T11:30:00Z",
+      "status": "opened",
+      "accessAttempts": 1,
+      "maxAttempts": 10,
+      "passwordProtected": false,
+      "geolocationRestricted": false,
+      "allowedCountries": [],
+      "readOnce": false,
+      "autoDestruct": false,
+      "destructAfterAttempts": null,
+      "decoyEnabled": false,
+      "fingerprint": "e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1",
+      "metadataStripped": false,
+      "tamperAlerts": false,
+      "content": "VXBkYXRlZCBIViBwb2xpY2llcyBhcmUgbm93IGF2YWlsYWJsZS4gUGxlYXNlIHJldmlldyB0aGUgY2hhbmdlcyBhbmQgY29udGFjdCBIViBpZiB5b3UgaGF2ZSBxdWVzdGlvbnMu",
+      "preview": "Updated HR policies are now available. Please review the changes...",
+      "attachments": [
+        {
+          "name": "hr-policies-2024.pdf",
+          "size": "3.2 MB",
+          "encrypted": false
+        }
+      ]
+    }
+  ],
+  "stats": {
+    "total": 5,
+    "pending": 2,
+    "opened": 2,
+    "expired": 1,
+    "passwordProtected": 3,
+    "geolocationRestricted": 3,
+    "readOnce": 2,
+    "autoDestruct": 3
+  }
+} 

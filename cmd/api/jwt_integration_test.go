@@ -68,10 +68,14 @@ func TestJWTResponseFormat(t *testing.T) {
 		t.Fatalf("GenerateJWT failed: %v", err)
 	}
 
-	// Create response
+	// Create response with new structure
 	response := LoginResponse{
-		Token:   token,
-		Message: "Login successful",
+		AccessToken:  token,
+		RefreshToken: "refresh-token-placeholder",
+		TokenType:    "Bearer",
+		ExpiresIn:    900,
+		UserID:       "user-123",
+		Email:        email,
 	}
 
 	// Marshal to JSON to verify format
@@ -87,12 +91,12 @@ func TestJWTResponseFormat(t *testing.T) {
 		t.Fatalf("JSON unmarshal failed: %v", err)
 	}
 
-	if parsedResponse.Token != token {
-		t.Error("Token was not preserved in JSON marshaling")
+	if parsedResponse.AccessToken != token {
+		t.Error("AccessToken was not preserved in JSON marshaling")
 	}
 
-	if parsedResponse.Message != "Login successful" {
-		t.Error("Message was not preserved in JSON marshaling")
+	if parsedResponse.Email != email {
+		t.Error("Email was not preserved in JSON marshaling")
 	}
 
 	t.Logf("Login response JSON: %s", string(jsonData))

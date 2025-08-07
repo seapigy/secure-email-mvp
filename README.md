@@ -1,34 +1,74 @@
-# Secure Email System MVP
+# Secure Email MVP
 
-A web-based secure email system with end-to-end encryption, built with Go and React.
+A secure email system with end-to-end encryption, built with React, TypeScript, and Go.
 
-<!-- Webhook test - triggering deployment -->
+## 🔒 Security First
+
+**IMPORTANT**: This project handles sensitive data and credentials. Please follow these security guidelines:
+
+### Environment Setup
+1. **Never commit `.env` files** - they contain sensitive credentials
+2. **Use the secure setup script**: `.\scripts\secure_setup.ps1`
+3. **Generate new credentials** for each deployment
+4. **Keep credentials secure** and never share them
+
+### Credential Management
+- ✅ `.env` is in `.gitignore` 
+- ✅ `env.example` provides safe templates
+- ✅ JWT secrets are auto-generated
+- ⚠️ **You must add your own R2 credentials**
 
 ## Features
 
-- End-to-end encryption (AES-256-GCM)
-- Secure link-based delivery
-- Password-based access verification
-- Modern, responsive UI with dark/light modes
-- TOTP authentication with QR code setup
-- Unified login/sign-up interface
-- Glassmorphic onboarding modal (first-time user guidance)
-- Fallback email confirmation for account recovery
-- Folder-based organization
+- **End-to-end encryption** (AES-256-GCM) for all email content
+- **Secure link-based delivery** with password protection
+- **TOTP authentication** with QR code setup for enhanced security
+- **Modern, responsive UI** with dark/light theme support
+- **Unified login/sign-up interface** with seamless user experience
+- **Glassmorphic onboarding modal** for first-time user guidance
+- **Fallback email confirmation** for account recovery
+- **Folder-based organization** for email management
+- **Rate limiting** and comprehensive security measures
+- **Cloudflare R2 storage** for encrypted email blobs
+- **Complete email CRUD operations** (send, receive, list, view, delete)
+- **Secure Email UI** with privacy-first design inspired by ProtonMail and Skiff
+- **Health check system** for backend connectivity monitoring
+- **Advanced security features** including:
+  - **Per-email password protection** - Require password for individual emails
+  - **Self-destruct after failed attempts** - Auto-delete messages after 3 failed password attempts
+  - **Compose secure email interface** - Modern email composition with security options
+  - **Split-view inbox layout** - Desktop layout with inbox list and message detail panels
+  - **Mobile responsive design** - Single panel layout for mobile devices
+  - **Session management** - Track unlocked emails and failed attempts
+  - **Password protection** - Optional password protection for individual emails
+  - **Geolocation restrictions** - Restrict access by country
+  - **Time-based access** - Set unlock times for messages
+  - **Auto-destruct features** - Messages that self-destruct after viewing
+  - **Read-once mode** - Messages that can only be viewed once
+  - **Remote revoke** - Ability to revoke access to sent messages
+  - **Decoy messages** - Fake messages to mislead attackers
+  - **Metadata stripping** - Remove identifying information
+  - **Tamper alerts** - Detect unauthorized access attempts
 
 ## Tech Stack
 
-- Backend: Go 1.23
-- Frontend: React 18
-- Database: SQLite
-- Storage: Cloudflare R2
-- Hosting: Oracle Cloud Free Tier, Netlify
+- **Backend**: Go 1.23 with Gorilla Mux
+- **Frontend**: React 18 with TypeScript and Vite
+- **Database**: SQLite with modernc.org driver
+- **Storage**: Cloudflare R2 for encrypted email content
+- **Authentication**: JWT + TOTP (Google Authenticator)
+- **Styling**: Tailwind CSS with custom design system
+- **Hosting**: Oracle Cloud Free Tier (backend), Netlify (frontend)
+- **Icons**: Lucide React for modern iconography
+- **State Management**: Zustand for global state
+- **UI Components**: Custom components with responsive design
 
 ## Prerequisites
 
-- Node.js v20
-- Go v1.23
+- Node.js v20+
+- Go v1.23+
 - Git
+- Cloudflare R2 account (for email storage)
 
 ## Development Setup
 
@@ -45,17 +85,18 @@ A web-based secure email system with end-to-end encryption, built with Go and Re
 
 3. Create environment file:
    ```bash
-   echo "REACT_APP_API_HOST=http://localhost:8080" > .env.local
+   echo "VITE_API_HOST=http://localhost:8080" > .env.local
    ```
 
 4. Start development server:
    ```bash
-   npm start
+   npm run dev
    ```
 
-5. Run tests:
+5. Run tests and linting:
    ```bash
-   npm test
+   npm run lint
+   npm run type-check
    ```
 
 ### Backend Setup
@@ -71,7 +112,7 @@ A web-based secure email system with end-to-end encryption, built with Go and Re
    sudo chown $USER:$USER /var/db
    
    # Apply schema
-   sqlite3 /var/db/secure-email.db < schema/users.sql
+   sqlite3 /var/db/secure-email.db < schema.sql
    ```
 
 3. Generate JWT secret:
@@ -81,42 +122,52 @@ A web-based secure email system with end-to-end encryption, built with Go and Re
    # Add this to your .env file as JWT_SECRET
    ```
 
-4. Run the development server:
+4. Configure environment variables:
    ```bash
-   go run cmd/api/main.go
+   cp env.example .env
+   # Edit .env with your configuration
    ```
 
-5. Run tests:
+5. Run the development server:
+   ```bash
+   go run ./cmd/api/*.go
+   ```
+
+6. Run tests:
    ```bash
    go test ./pkg/auth
+   go test ./cmd/api
    ```
 
-## API Setup
+## API Endpoints
 
-The backend API provides authentication endpoints:
+### Authentication
+- `POST /api/auth/login` - User authentication with TOTP
+- `POST /api/auth/signup` - User registration with TOTP setup
+- `POST /api/auth/verify-totp` - TOTP verification
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/me` - Get current user info
+- `POST /api/auth/refresh` - Refresh JWT token
 
-### Login API
-- **Endpoint**: `POST /api/auth/login`
-- **Authentication**: Password (Argon2) + TOTP (6-digit)
-- **Response**: JWT token for subsequent requests
-- **Security**: Rate limiting, secure headers, TLS 1.3
+### Email Operations
+- `POST /api/email/send` - Send encrypted email
+- `POST /api/email/get` - Retrieve encrypted email
+- `GET /api/email/list` - List user's emails
+- `GET /api/email/view/{id}` - View individual email
+- `DELETE /api/email/{id}` - Delete email with cleanup
 
-### Sign-Up API
-- **Endpoint**: `POST /api/auth/signup`
-- **Input**: Email, password, confirm_password
-- **Response**: TOTP QR code and temp_id
-- **Validation**: Email format, password match, user count <100
+### System Health
+- `GET /health` - Backend health check endpoint
 
-### Verify TOTP API
-- **Endpoint**: `POST /api/auth/verify-totp`
-- **Input**: temp_id, totp_code
-- **Response**: JWT token
-- **Process**: Creates user after TOTP validation
+### Fallback Email
+- `POST /api/auth/fallback` - Send fallback confirmation
+- `GET /api/auth/confirm-fallback` - Confirm fallback email
+- `POST /api/auth/resend-fallback` - Resend fallback confirmation
 
 ### Testing the API
 ```bash
-# Run the test suite
-chmod +x tests/login_test.sh
+# Run the comprehensive test suite
+chmod +x tests/*.sh
 ./tests/login_test.sh
 
 # Manual testing with curl
@@ -129,9 +180,6 @@ curl -X POST https://api.securesystem.email/api/auth/login \
   }'
 ```
 
-### API Documentation
-See `docs/api/` for detailed API documentation.
-
 ## Deployment
 
 ### Backend (Oracle Cloud)
@@ -141,7 +189,7 @@ See `docs/api/` for detailed API documentation.
    ```bash
    # On VM1
    cd /opt/secure-email-mvp
-   go build -o api cmd/api/main.go
+   go build -o api-server ./cmd/api
    sudo systemctl enable secure-email-api
    sudo systemctl start secure-email-api
    ```
@@ -164,6 +212,7 @@ See `docs/api/` for detailed API documentation.
 
 4. Deploy to production:
    ```bash
+   npm run build
    netlify deploy --prod
    ```
 
@@ -171,21 +220,47 @@ See `docs/api/` for detailed API documentation.
 
 ```
 .
-├── cmd/
-│   └── api/          # Backend entry point
-├── pkg/
-│   └── auth/         # Authentication package
-├── schema/
-│   ├── users.sql     # Database schema
-│   └── temp_totp.sql # Temporary TOTP storage
-├── src/              # Frontend source
-│   ├── components/   # React components
-│   ├── styles/       # CSS and Tailwind
-│   ├── lib/          # Frontend utilities
-│   └── tests/        # Frontend tests
-├── docs/             # Documentation
-├── tests/            # Test files
-└── env.example       # Environment variables template
+├── cmd/api/                    # Backend API server
+│   ├── main.go                 # Server entry point
+│   ├── login_handler.go        # Authentication handlers
+│   ├── signup_handler.go       # Registration handlers
+│   ├── email_handlers.go       # Email CRUD operations
+│   └── *_test.go              # Comprehensive test suites
+├── pkg/auth/                   # Authentication & encryption
+│   ├── jwt.go                  # JWT token management
+│   ├── encryption.go           # AES-256-GCM encryption
+│   ├── login.go                # Login logic
+│   ├── signup.go               # Signup logic
+│   └── session.go              # Session management
+├── pkg/storage/                # Cloudflare R2 storage
+│   └── r2.go                   # R2 client operations
+├── src/                        # React frontend
+│   ├── components/             # React components
+│   │   ├── auth/              # Authentication components
+│   │   ├── email/             # Email management components
+│   │   ├── layout/            # Layout components
+│   │   ├── pages/             # Page components
+│   │   ├── secure/            # Secure email UI components
+│   │   │   ├── SecureEmailPage.tsx    # Main secure email interface
+│   │   │   ├── EmailInbox.tsx         # Email inbox with filtering
+│   │   │   ├── EmailDetail.tsx        # Email detail view
+│   │   │   ├── SecuritySettings.tsx   # Security settings panel
+│   │   │   ├── ComposeModal.tsx       # Email composition modal
+│   │   │   └── UnlockModal.tsx        # Password unlock modal
+│   │   └── ui/                # Reusable UI components
+│   ├── hooks/                 # Custom React hooks
+│   ├── stores/                # State management (Zustand)
+│   │   ├── authStore.ts       # Authentication state
+│   │   ├── uiStore.ts         # UI state management
+│   │   └── sessionStore.ts    # Session state for unlocked emails
+│   ├── lib/                   # Utility functions
+│   ├── types/                 # TypeScript type definitions
+│   └── data/                  # Mock data for development
+├── schema/                     # Database migrations
+│   └── *.sql                  # SQL schema files
+├── docs/                       # Comprehensive documentation
+├── tests/                      # Integration tests
+└── scripts/                    # Deployment scripts
 ```
 
 ## Security Features
@@ -196,8 +271,14 @@ See `docs/api/` for detailed API documentation.
 - **Password Hashing**: Argon2 with email as salt
 - **TOTP Authentication**: 6-digit codes, 30-second window
 - **JWT Tokens**: HS256 signed, 24-hour expiration
-- **Input Validation**: Email format, password length, TOTP format
+- **Input Validation**: Comprehensive validation for all inputs
 - **CORS Protection**: Restricted origins
+- **AES-256-GCM Encryption**: For all email content
+- **User Authorization**: Users can only access their own emails
+- **Access Logging**: All access attempts logged for audit
+- **Per-Email Password Protection**: Individual password protection for emails
+- **Self-Destruct After Failed Attempts**: Auto-delete messages after failed access
+- **Session Management**: Track unlocked emails and failed attempts
 
 ## Design System
 
@@ -206,23 +287,89 @@ See `docs/api/` for detailed API documentation.
 - **Animations**: GSAP for smooth transitions
 - **Accessibility**: WCAG 2.2 AA compliant
 - **Responsive**: Mobile-first design (320px–1440px)
+- **Theme**: Dark/light mode support
+- **Icons**: Lucide React for consistent iconography
+- **Layout**: Split-view design for desktop, single panel for mobile
 
 ## Development Status
 
 - ✅ **Micro-Iteration 1**: Infrastructure Setup (Oracle Cloud, Cloudflare, SQLite)
-- ✅ **Micro-Iteration 2**: Login API (Password + TOTP authentication)
-- ✅ **Micro-Iteration 3.1**: Login and Sign-Up UI Redesign (Next)
+- ✅ **Micro-Iteration 2**: Authentication API (Password + TOTP)
+- ✅ **Micro-Iteration 3**: Complete Email CRUD Operations
+- ✅ **Micro-Iteration 4**: Frontend Redesign & User Experience
+- ✅ **Micro-Iteration 5**: Advanced Security Features & Testing
+- ✅ **Iteration 5.1**: Frontend App with Vite + React + Tailwind CSS
+- ✅ **Iteration 5.2**: Secure Ping Health Check to Backend from Frontend
+- ✅ **Iteration 5.3**: Secure Email Send UI (MVP Stage)
+- ✅ **Iteration 5.2 (New)**: Secure Email UI with Privacy-First Design
+- ✅ **Iteration 5.3**: Split-View Inbox Layout Implementation
+- ✅ **Iteration 5.4**: Per-Email Password Protection
+- ✅ **Iteration 5.5**: Self-Destruct After Failed Attempts Feature
+- ✅ **Iteration 5.6**: Compose Secure Email Modal
+
+## Current Features
+
+### Authentication System
+- **Unified Login/Signup**: Seamless user experience
+- **TOTP Setup**: QR code generation for Google Authenticator
+- **Fallback Email**: Account recovery with confirmation
+- **Session Management**: JWT-based with refresh tokens
+- **Rate Limiting**: IP-based protection against brute force
+
+### Email System
+- **End-to-End Encryption**: AES-256-GCM for all content
+- **Cloudflare R2 Storage**: Secure blob storage for encrypted emails
+- **Complete CRUD**: Send, receive, list, view, delete operations
+- **Folder Organization**: User-defined email organization
+- **Access Control**: Password-protected email access
+
+### User Interface
+- **Modern Design**: Glassmorphic components with Tailwind CSS
+- **Theme Support**: Dark/light mode with system preference detection
+- **Responsive Layout**: Mobile-first design approach
+- **Onboarding**: First-time user guidance modal
+- **Toast Notifications**: User feedback for all actions
+- **Secure Email UI**: Privacy-first design with advanced security features
+- **Split-View Layout**: Desktop layout with inbox and detail panels
+- **Mobile Responsive**: Single panel layout for mobile devices
+- **Compose Modal**: Modern email composition interface
+- **Unlock Modal**: Password verification for protected emails
+
+### Health Monitoring
+- **Backend Health Check**: Real-time connectivity monitoring
+- **Status Indicators**: Visual feedback for system status
+- **Error Handling**: Graceful degradation when backend is unavailable
+
+### Advanced Security Features
+- **Per-Email Password Protection**: Individual password protection for emails
+- **Self-Destruct After Failed Attempts**: Auto-delete messages after failed access
+- **Session Management**: Track unlocked emails and failed attempts
+- **Compose Security Options**: Comprehensive security settings during composition
+- **Geolocation Restrictions**: Restrict access by country
+- **Time-Based Access**: Set unlock times for messages
+- **Auto-Destruct Features**: Messages that self-destruct after viewing
+- **Read-Once Mode**: Messages that can only be viewed once
+- **Remote Revoke**: Ability to revoke access to sent messages
+- **Decoy Messages**: Fake messages to mislead attackers
+- **Metadata Stripping**: Remove identifying information
+- **Tamper Alerts**: Detect unauthorized access attempts
 
 ## Next Steps
 
-**Micro-Iteration 4**: Email Send API with AES-256-GCM encryption, compression, and R2 storage.
+**Micro-Iteration 6**: Advanced Features & Production Optimization
+- Enhanced audit logging and admin tools
+- Geolocation-based access controls
+- Email compression and optimization
+- Advanced folder management
+- Bulk operations and search functionality
+- Real-time notifications and updates
 
 ## Fallback Email Confirmation Flow
 
-To enhance account recovery and security, users must provide a fallback email during signup. After registration, a confirmation link is sent to the fallback email. The user must confirm this email before being able to log in. This ensures that account recovery is possible if the primary email is lost, while also preventing unauthorized access. The fallback confirmation link expires after 1 hour, and users can request a resend if needed.
+To enhance account recovery and security, users must provide a fallback email during signup. After registration, a confirmation link is sent to the fallback email. The user must confirm this email before being able to log in. This ensures that account recovery is possible if the primary email is lost, while also preventing unauthorized access.
 
-- **Endpoint:** `/confirm-fallback?token=...` (GET)
-- **Resend:** `/resend-fallback` (POST)
+- **Endpoint:** `/api/auth/confirm-fallback?token=...` (GET)
+- **Resend:** `/api/auth/resend-fallback` (POST)
 - **Security:** Fallback tokens are HMAC-based, time-limited, and validated on the backend.
 
 ## Onboarding Modal
@@ -231,22 +378,22 @@ First-time users are greeted with a glassmorphic onboarding modal that explains 
 
 ## Current Limitations & Planned Features
 
-- The inbox is currently a placeholder; full email send/receive functionality is planned for future iterations.
-- Email sending, encryption, and storage in Cloudflare R2 are not yet implemented.
-- Password reset and advanced account management are not yet available.
-- Fallback email confirmation is required for login; ensure you have access to your fallback email.
-- The system is designed for up to 100 users (MVP phase); scalability improvements are planned.
+- The system is designed for up to 100 users (MVP phase); scalability improvements are planned
+- Advanced search and filtering capabilities are planned for future iterations
+- Email threading and conversation view are planned features
+- Mobile app development is planned for future iterations
 
 **Planned:**
-- Encrypted email send/receive (Micro-Iteration 4)
-- Email compression and R2 storage
-- Password reset and logout endpoints
-- Full inbox and folder management UI
 - Enhanced audit logging and admin tools
+- Geolocation-based access controls
+- Email compression and optimization
+- Advanced folder management
+- Bulk operations and search functionality
+- Real-time collaboration features
 
 ## License
 
-MIT License 
+MIT License
 
 ## Running the Go API Server
 
@@ -254,19 +401,19 @@ To build and run the Secure Email API server, use the following commands from th
 
 ### Build the server binary
 
-```
+```bash
 go build -o api-server ./cmd/api
 ```
 
 ### Run the server (development)
 
-```
+```bash
 go run ./cmd/api/*.go
 ```
 
 Or, after building:
 
-```
+```bash
 ./api-server
 ```
 
