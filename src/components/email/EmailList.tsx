@@ -224,7 +224,7 @@ const EmailList: React.FC<EmailListProps> = ({ className }) => {
 
             {/* Sender Avatar */}
             <div className={cn('mr-3 h-8 w-8 rounded-full flex items-center justify-center text-white text-sm font-medium', getRandomColor())}>
-              {getInitials(email.sender)}
+              {getInitials(email.sender || '')}
             </div>
 
             {/* Email Content */}
@@ -242,7 +242,7 @@ const EmailList: React.FC<EmailListProps> = ({ className }) => {
                   )}
                 </div>
                 <span className="text-xs text-secondary-500 dark:text-secondary-400 flex-shrink-0">
-                  {formatRelativeTime(email.receivedAt)}
+                  {formatRelativeTime(email.receivedAt || '')}
                 </span>
               </div>
               <div className="flex items-center justify-between mt-1">

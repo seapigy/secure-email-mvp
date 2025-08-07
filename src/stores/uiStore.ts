@@ -1,8 +1,20 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { UIState, EmailFilters } from '@/types';
+import type { EmailFilters } from '@/types';
 
-interface UIStore extends UIState {
+interface UIStore {
+  // State
+  sidebarOpen: boolean;
+  theme: 'light' | 'dark' | 'system';
+  selectedEmails: string[];
+  viewMode: 'list' | 'grid';
+  sortOrder: 'asc' | 'desc';
+  searchQuery: string;
+  filters: EmailFilters;
+  sidebarCollapsed: boolean;
+  selectedFolder: string;
+  sortBy: 'date' | 'sender' | 'subject' | 'size';
+
   // Actions
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
   toggleSidebar: () => void;
@@ -35,6 +47,7 @@ export const useUIStore = create<UIStore>()(
   persist(
     (set) => ({
       // Initial state
+      sidebarOpen: true,
       theme: 'system',
       sidebarCollapsed: false,
       selectedFolder: 'inbox',
@@ -57,7 +70,7 @@ export const useUIStore = create<UIStore>()(
       },
 
       toggleSidebar: () => {
-        set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed }));
+        set((state) => ({ sidebarOpen: !state.sidebarOpen }));
       },
 
       setSidebarCollapsed: (collapsed) => {

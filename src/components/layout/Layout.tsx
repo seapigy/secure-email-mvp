@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import Sidebar from './Sidebar';
@@ -21,7 +21,6 @@ import Header from './Header';
 const Layout: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const location = useLocation();
   const navigate = useNavigate();
 
   const handleLogout = () => {

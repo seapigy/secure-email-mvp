@@ -7,28 +7,14 @@ import {
   EyeOff, 
   Shield, 
   AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Settings,
-  User,
-  Calendar,
-  MapPin,
-  Fingerprint,
   AlertCircle,
   FileText,
-  Paperclip,
   Copy,
   Trash2,
-  Eye as EyeIcon,
-  Shield as ShieldIcon,
-  Globe as GlobeIcon,
-  Clock as ClockIcon,
-  AlertTriangle as AlertTriangleIcon,
-  CheckCircle as CheckCircleIcon,
-  XCircle as XCircleIcon,
   X,
   Save,
-  RefreshCw
+  RefreshCw,
+  XCircle
 } from 'lucide-react';
 import { SecuritySettings as SecuritySettingsType } from '@/types/secureEmail';
 

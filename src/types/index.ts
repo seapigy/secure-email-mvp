@@ -14,7 +14,7 @@ export interface User {
 export interface LoginCredentials {
   email: string;
   password: string;
-  totp_code: string;
+  totpCode: string;
 }
 
 export interface SignupData {
@@ -36,25 +36,37 @@ export interface AuthState {
 }
 
 // Theme types
-export type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark' | 'system';
 
 // Email types
 export interface Email {
   id: string;
-  from: string;
-  to: string;
+  from?: string;
+  to?: string;
   subject: string;
   content: string;
-  date: string;
-  read: boolean;
-  important: boolean;
+  date?: string;
+  read?: boolean;
+  important?: boolean;
   attachments?: EmailAttachment[];
+  // Additional properties used by components
+  sender?: string;
+  recipients?: string[];
+  isRead?: boolean;
+  isStarred?: boolean;
+  isEncrypted?: boolean;
+  hasAttachments?: boolean;
+  receivedAt?: string;
+  createdAt?: string;
+  labels?: string[];
 }
 
 export interface EmailAttachment {
+  id?: string;
   name: string;
-  size: string;
+  size: string | number;
   type?: string;
+  isEncrypted?: boolean;
 }
 
 // API response types
@@ -96,6 +108,7 @@ export interface ButtonProps {
 }
 
 export interface InputProps {
+  id?: string;
   type?: 'text' | 'email' | 'password' | 'number';
   placeholder?: string;
   value?: string;
@@ -103,6 +116,8 @@ export interface InputProps {
   disabled?: boolean;
   error?: string;
   className?: string;
+  required?: boolean;
+  maxLength?: number;
 }
 
 // Layout types
@@ -158,12 +173,56 @@ export interface AuthStore extends AuthState {
   updateUser: (updates: Partial<User>) => void;
 }
 
+export interface UIState {
+  sidebarOpen: boolean;
+  theme: 'light' | 'dark';
+  selectedEmails: string[];
+  viewMode: 'list' | 'grid';
+  sortOrder: 'asc' | 'desc';
+  searchQuery: string;
+  filters: any;
+  sidebarCollapsed: boolean;
+  selectedFolder: string;
+}
+
+export interface EmailFilters {
+  read?: boolean | null;
+  starred?: boolean | null;
+  encrypted?: boolean | null;
+  hasAttachments?: boolean | null;
+  dateRange?: {
+    start: string | null;
+    end: string | null;
+  };
+  labels?: string[];
+}
+
 export interface UIStore {
   sidebarOpen: boolean;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
+  // Additional properties used by components
+  theme?: 'light' | 'dark';
+  setTheme?: (theme: 'light' | 'dark') => void;
+  selectedEmails?: string[];
+  toggleEmailSelection?: (emailId: string) => void;
+  clearEmailSelection?: () => void;
+  viewMode?: 'list' | 'grid';
+  sortOrder?: 'asc' | 'desc';
+  searchQuery?: string;
+  filters?: any;
+  sidebarCollapsed?: boolean;
+  setSidebarCollapsed?: (collapsed: boolean) => void;
+  selectedFolder?: string;
+  setSelectedFolder?: (folderId: string) => void;
+  setSelectedEmails?: (emailIds: string[]) => void;
+  setViewMode?: (mode: 'list' | 'grid') => void;
+  setSortBy?: (sortBy: string) => void;
+  setSortOrder?: (order: 'asc' | 'desc') => void;
+  setSearchQuery?: (query: string) => void;
+  setFilters?: (filters: any) => void;
 }
 
 // Utility types
 export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
-export type Required<T, K extends keyof T> = T & Required<Pick<T, K>>; 
+export type MakeRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] }; 

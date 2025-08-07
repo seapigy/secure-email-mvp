@@ -12,13 +12,11 @@ import {
   FileText,
   Copy,
   EyeOff,
-  Calendar,
-  MapPin,
   Trash2,
-  AlertCircle,
-  CheckCircle,
-  XCircle
+  AlertCircle
 } from 'lucide-react';
+import { sendSecureEmail, isApiError, getErrorMessage } from '@/lib/api';
+import { toast } from 'react-toastify';
 
 /**
  * Compose Form Data Interface
@@ -216,31 +214,115 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate required fields
+    if (!formData.recipient || !formData.subject || !formData.body) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    // Validate recipient email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.recipient)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
     // Validate password length if password protection is enabled
     if (formData.securitySettings.passwordProtection && 
         (!formData.securitySettings.password || 
          formData.securitySettings.password.length < 6)) {
-      alert('Password must be at least 6 characters long');
+      toast.error('Password must be at least 6 characters long');
       return;
+    }
+
+    // Validate self-destruct settings
+    if (formData.securitySettings.selfDestructAfterAttempts) {
+      const maxAttempts = formData.securitySettings.maxFailedAttempts || 0;
+      if (maxAttempts < 1 || maxAttempts > 10) {
+        toast.error('Maximum failed attempts must be between 1 and 10');
+        return;
+      }
+    }
+
+    // Validate time lock if enabled
+    if (formData.securitySettings.timeLock && !formData.securitySettings.unlockAfter) {
+      toast.error('Please set an unlock time when time lock is enabled');
+      return;
+    }
+
+    // Validate auto-destruct if enabled
+    if (formData.securitySettings.autoDestruct) {
+      const destructViews = formData.securitySettings.destructAfterViews || 0;
+      if (destructViews < 1) {
+        toast.error('Destruct after views must be at least 1');
+        return;
+      }
     }
 
     setIsSubmitting(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Prepare API request data
+      const apiRequest = {
+        recipient: formData.recipient,
+        subject: formData.subject,
+        body: formData.body,
+        // Security settings
+        selfDestructAfterAttempts: formData.securitySettings.selfDestructAfterAttempts,
+        maxFailedAttempts: formData.securitySettings.selfDestructAfterAttempts 
+          ? (formData.securitySettings.maxFailedAttempts || 3) 
+          : undefined,
+        passwordProtection: formData.securitySettings.passwordProtection,
+        password: formData.securitySettings.passwordProtection 
+          ? formData.securitySettings.password 
+          : undefined,
+        geolocationLock: formData.securitySettings.geolocationLock,
+        allowedCountries: formData.securitySettings.allowedCountries,
+        timeLock: formData.securitySettings.timeLock,
+        unlockAfter: formData.securitySettings.unlockAfter,
+        autoDestruct: formData.securitySettings.autoDestruct,
+        destructAfterViews: formData.securitySettings.autoDestruct 
+          ? formData.securitySettings.destructAfterViews 
+          : undefined,
+        readOnce: formData.securitySettings.readOnce,
+        remoteRevoke: formData.securitySettings.remoteRevoke,
+        decoyMessage: formData.securitySettings.decoyMessage,
+        stripMetadata: formData.securitySettings.stripMetadata,
+        tamperAlerts: formData.securitySettings.tamperAlerts,
+      };
+
+      // Send secure email via API
+      const response = await sendSecureEmail(apiRequest);
       
-      // Log form data to console (mock submission)
-      console.log('Compose Form Data:', formData);
-      
-      // Show success message
-      alert('Secure email composed successfully! (Mock submission)');
-      
-      // Close modal and reset form
-      handleClose();
+      if (response.status === 'success') {
+        toast.success('Secure email sent successfully!');
+        
+        // Log success details
+        console.log('Secure email sent:', {
+          blobId: response.blob_id,
+          recipient: formData.recipient,
+          securitySettings: {
+            selfDestructAfterAttempts: formData.securitySettings.selfDestructAfterAttempts,
+            maxFailedAttempts: formData.securitySettings.maxFailedAttempts,
+            passwordProtection: formData.securitySettings.passwordProtection,
+            // ... other settings
+          }
+        });
+        
+        // Close modal and reset form
+        handleClose();
+      } else {
+        toast.error(response.error || 'Failed to send secure email');
+      }
     } catch (error) {
-      console.error('Error composing email:', error);
-      alert('Error composing email. Please try again.');
+      console.error('Error sending secure email:', error);
+      
+      let errorMessage = 'Error sending secure email. Please try again.';
+      if (isApiError(error)) {
+        errorMessage = getErrorMessage(error);
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -650,7 +732,12 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                      <div className="flex items-center justify-between">
                        <div className="flex items-center space-x-2">
                          <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
-                         <span className="text-sm text-secondary-700 dark:text-secondary-300">Self-destruct after failed attempts</span>
+                         <div>
+                           <span className="text-sm text-secondary-700 dark:text-secondary-300">Self-destruct after failed attempts</span>
+                           <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
+                             Auto-delete message after failed password attempts
+                           </p>
+                         </div>
                        </div>
                        <label className="relative inline-flex items-center cursor-pointer">
                          <input
@@ -665,18 +752,38 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
 
                      {/* Failed Attempts Input */}
                      {formData.securitySettings.selfDestructAfterAttempts && (
-                       <div className="ml-6">
-                         <label className="block text-xs text-secondary-600 dark:text-secondary-400 mb-1">
-                           Max Failed Attempts
-                         </label>
-                         <input
-                           type="number"
-                           min="1"
-                           max="10"
-                           value={formData.securitySettings.maxFailedAttempts}
-                           onChange={(e) => handleSecurityChange('maxFailedAttempts', parseInt(e.target.value))}
-                           className="w-full px-3 py-2 text-sm border border-secondary-300 dark:border-secondary-600 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-secondary-600 dark:text-white"
-                         />
+                       <div className="ml-6 space-y-2">
+                         <div>
+                           <label className="block text-xs text-secondary-600 dark:text-secondary-400 mb-1">
+                             Max Failed Attempts
+                           </label>
+                           <div className="relative">
+                             <input
+                               type="number"
+                               min="1"
+                               max="10"
+                               value={formData.securitySettings.maxFailedAttempts}
+                               onChange={(e) => handleSecurityChange('maxFailedAttempts', parseInt(e.target.value))}
+                               className="w-full px-3 py-2 text-sm border border-secondary-300 dark:border-secondary-600 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-secondary-600 dark:text-white"
+                               placeholder="3"
+                             />
+                             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                               <AlertCircle className="w-4 h-4 text-secondary-400" />
+                             </div>
+                           </div>
+                           <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">
+                             Message will self-destruct after {formData.securitySettings.maxFailedAttempts || 3} failed password attempts
+                           </p>
+                         </div>
+                         
+                         {/* Security Warning */}
+                         <div className="flex items-start space-x-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                           <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                           <div className="text-xs text-yellow-700 dark:text-yellow-300">
+                             <p className="font-medium">Security Warning</p>
+                             <p>This message will be permanently deleted after failed access attempts. This action cannot be undone.</p>
+                           </div>
+                         </div>
                        </div>
                      )}
                   </div>

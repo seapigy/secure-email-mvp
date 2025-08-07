@@ -29,7 +29,7 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true, error: null });
         try {
           // Demo login for development - bypass API
-          if (credentials.email === 'demo@securesystem.email' && credentials.password === 'demo123' && credentials.totp_code === '123456') {
+          if (credentials.email === 'demo@securesystem.email' && credentials.password === 'demo123' && credentials.totpCode === '123456') {
             const mockUser: User = {
               id: 'demo-user-1',
               email: credentials.email,

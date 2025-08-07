@@ -1,7 +1,6 @@
 import React from 'react';
 import { 
   CheckCircleIcon, 
-  ExclamationTriangleIcon, 
   XCircleIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
@@ -65,10 +64,7 @@ const HealthStatusBanner: React.FC = () => {
     return 'Unable to connect to backend server';
   };
 
-  const getLastCheckedText = () => {
-    if (!lastChecked) return '';
-    return `Last checked: ${lastChecked.toLocaleTimeString()}`;
-  };
+
 
   return (
     <div className={`border rounded-lg p-4 mb-6 ${getStatusColor()}`}>

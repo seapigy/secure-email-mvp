@@ -30,6 +30,15 @@ interface UnlockModalProps {
   
   /** Error message to display */
   error?: string;
+  
+  /** Whether self-destruct after failed attempts is enabled */
+  selfDestructEnabled?: boolean;
+  
+  /** Maximum failed attempts before self-destruction */
+  maxFailedAttempts?: number;
+  
+  /** Current number of failed attempts */
+  failedAttempts?: number;
 }
 
 /**
@@ -60,7 +69,10 @@ const UnlockModal: React.FC<UnlockModalProps> = ({
   onSubmit,
   isPerEmailMode = false,
   isLoading = false,
-  error
+  error,
+  selfDestructEnabled = false,
+  maxFailedAttempts = 3,
+  failedAttempts = 0
 }) => {
   // Password input state
   const [password, setPassword] = useState('');
@@ -87,6 +99,10 @@ const UnlockModal: React.FC<UnlockModalProps> = ({
     setShowPassword(false);
     onClose();
   };
+
+  // Calculate remaining attempts
+  const remainingAttempts = maxFailedAttempts - failedAttempts;
+  const isLastAttempt = remainingAttempts === 1;
 
   // Don't render if modal is not open
   if (!isOpen) return null;
@@ -153,6 +169,45 @@ const UnlockModal: React.FC<UnlockModalProps> = ({
                   <p className="text-sm text-red-600 dark:text-red-400">
                     {error}
                   </p>
+                </div>
+              </div>
+            )}
+
+            {/* Self-Destruct Warning */}
+            {selfDestructEnabled && (
+              <div className={`mb-4 p-3 border rounded-lg ${
+                isLastAttempt 
+                  ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' 
+                  : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+              }`}>
+                <div className="flex items-start space-x-2">
+                  <AlertCircle className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                    isLastAttempt 
+                      ? 'text-red-600 dark:text-red-400' 
+                      : 'text-yellow-600 dark:text-yellow-400'
+                  }`} />
+                  <div className="text-sm">
+                    <p className={`font-medium ${
+                      isLastAttempt 
+                        ? 'text-red-700 dark:text-red-300' 
+                        : 'text-yellow-700 dark:text-yellow-300'
+                    }`}>
+                      {isLastAttempt 
+                        ? '⚠️ Last Attempt!' 
+                        : 'Self-Destruct Enabled'
+                      }
+                    </p>
+                    <p className={`${
+                      isLastAttempt 
+                        ? 'text-red-600 dark:text-red-400' 
+                        : 'text-yellow-600 dark:text-yellow-400'
+                    }`}>
+                      {isLastAttempt 
+                        ? `This is your final attempt. The message will be permanently deleted if the password is incorrect.`
+                        : `Failed attempts: ${failedAttempts}/${maxFailedAttempts}. Message will self-destruct after ${maxFailedAttempts} failed attempts.`
+                      }
+                    </p>
+                  </div>
                 </div>
               </div>
             )}

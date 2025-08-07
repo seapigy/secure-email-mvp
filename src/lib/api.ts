@@ -5,7 +5,7 @@
 // Handles authentication, error handling, and request/response interceptors.
 // =============================================================================
 
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { toast } from 'react-toastify';
 
 // API Configuration
@@ -30,6 +30,36 @@ export interface ApiError {
   message: string;
   status?: number;
   code?: string;
+}
+
+// Secure Email Request Interface
+export interface SendSecureEmailRequest {
+  recipient: string;
+  subject: string;
+  body: string;
+  // Security settings
+  selfDestructAfterAttempts?: boolean;
+  maxFailedAttempts?: number;
+  passwordProtection?: boolean;
+  password?: string;
+  geolocationLock?: boolean;
+  allowedCountries?: string[];
+  timeLock?: boolean;
+  unlockAfter?: string;
+  autoDestruct?: boolean;
+  destructAfterViews?: number;
+  readOnce?: boolean;
+  remoteRevoke?: boolean;
+  decoyMessage?: boolean;
+  stripMetadata?: boolean;
+  tamperAlerts?: boolean;
+}
+
+// Secure Email Response Interface
+export interface SendSecureEmailResponse {
+  blob_id?: string;
+  status: string;
+  error?: string;
 }
 
 // API Client Configuration
@@ -98,7 +128,7 @@ const apiClient = createApiClient();
 // Health Check API
 export const healthCheck = async (): Promise<HealthCheckResponse> => {
   try {
-    const response = await apiClient.get<HealthCheckResponse>('/health');
+    const response = await apiClient.get('/health');
     return response.data;
   } catch (error) {
     throw error as ApiError;
@@ -109,7 +139,7 @@ export const healthCheck = async (): Promise<HealthCheckResponse> => {
 export const login = async (credentials: {
   email: string;
   password: string;
-  totp_code: string;
+  totpCode: string;
 }) => {
   try {
     const response = await apiClient.post('/api/auth/login', credentials);
@@ -132,7 +162,7 @@ export const signup = async (data: {
   }
 };
 
-export const verifyTotp = async (data: { totp_code: string }) => {
+export const verifyTotp = async (data: { totpCode: string }) => {
   try {
     const response = await apiClient.post('/api/auth/verify-totp', data);
     return response.data;
@@ -161,7 +191,17 @@ export const getUserProfile = async () => {
   }
 };
 
-// Email APIs (for future use)
+// Secure Email APIs
+export const sendSecureEmail = async (emailData: SendSecureEmailRequest): Promise<SendSecureEmailResponse> => {
+  try {
+    const response = await apiClient.post('/api/email/send', emailData);
+    return response.data;
+  } catch (error) {
+    throw error as ApiError;
+  }
+};
+
+// Legacy Email APIs (for backward compatibility)
 export const getEmails = async (params?: {
   folder?: string;
   page?: number;

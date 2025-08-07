@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import Layout from '@/components/layout/Layout';
-import LoginForm from '@/components/auth/LoginForm';
 import SimpleLoginForm from '@/components/auth/SimpleLoginForm';
 import Dashboard from '@/components/pages/Dashboard';
 import Send from '@/components/pages/Send';

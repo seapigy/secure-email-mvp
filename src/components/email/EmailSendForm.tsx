@@ -9,14 +9,11 @@ import {
   Lock,
   Shield,
   AlertCircle,
-  CheckCircle,
   Loader2,
   ArrowLeft,
-  Paperclip,
   Eye,
   EyeOff,
   Globe,
-  Clock,
   AlertTriangle
 } from 'lucide-react';
 import { sendEmail } from '@/lib/api';

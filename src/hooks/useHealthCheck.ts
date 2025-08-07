@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { healthCheck, HealthCheckResponse, ApiError } from '@/lib/api';
+import { healthCheck, HealthCheckResponse } from '@/lib/api';
 
 export interface HealthStatus {
   isHealthy: boolean;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   InboxIcon,
   PaperAirplaneIcon,
@@ -23,7 +23,6 @@ import {
  * - Settings: User preferences
  */
 const Sidebar: React.FC = () => {
-  const location = useLocation();
   const navigate = useNavigate();
 
   const navigation = [
@@ -87,7 +86,6 @@ const Sidebar: React.FC = () => {
           {/* Navigation Links */}
           <div className="mt-6 space-y-1">
             {navigation.map((item) => {
-              const isActive = location.pathname === item.href;
               return (
                 <NavLink
                   key={item.name}

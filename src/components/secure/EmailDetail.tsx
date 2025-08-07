@@ -3,31 +3,18 @@ import {
   ArrowLeft, 
   Lock, 
   Globe, 
-  Clock, 
   Eye, 
-  EyeOff, 
-  Shield, 
   AlertTriangle,
-  CheckCircle,
-  XCircle,
   Download,
   Trash2,
   RefreshCw,
   User,
-  Calendar,
-  MapPin,
-  Fingerprint,
-  AlertCircle,
   FileText,
-  Paperclip,
   Copy,
-  Eye as EyeIcon,
   Shield as ShieldIcon,
   Globe as GlobeIcon,
-  Clock as ClockIcon,
-  AlertTriangle as AlertTriangleIcon,
-  CheckCircle as CheckCircleIcon,
-  XCircle as XCircleIcon
+  Eye as EyeIcon,
+  AlertTriangle as AlertTriangleIcon
 } from 'lucide-react';
 import { SecureEmail, StatusType, SecuritySettings } from '@/types/secureEmail';
 import { useSessionStore } from '@/stores/sessionStore';
@@ -451,6 +438,30 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack, isCompact = fa
                     </span>
                   </div>
                   
+                  {/* Self-Destruct After Failed Attempts */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                      <span className="text-sm text-secondary-700 dark:text-secondary-300 truncate">Self-Destruct After Failed Attempts</span>
+                    </div>
+                    <span className={`text-sm font-medium ${email.selfDestructAfterAttempts ? 'text-red-600 dark:text-red-400' : 'text-gray-400'} flex-shrink-0`}>
+                      {email.selfDestructAfterAttempts ? `Enabled (${email.maxFailedAttempts} attempts)` : 'Disabled'}
+                    </span>
+                  </div>
+                  
+                  {/* Access Attempts Counter */}
+                  {email.selfDestructAfterAttempts && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2 min-w-0">
+                        <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                        <span className="text-sm text-secondary-700 dark:text-secondary-300 truncate">Failed Attempts</span>
+                      </div>
+                      <span className={`text-sm font-medium ${failedAttempts > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-400'} flex-shrink-0`}>
+                        {failedAttempts} / {email.maxFailedAttempts}
+                      </span>
+                    </div>
+                  )}
+                  
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2 min-w-0">
                       <GlobeIcon className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
@@ -542,6 +553,9 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack, isCompact = fa
         isPerEmailMode={securitySettings?.perEmailPassword}
         isLoading={isUnlocking}
         error={unlockError}
+        selfDestructEnabled={email.selfDestructAfterAttempts}
+        maxFailedAttempts={email.maxFailedAttempts}
+        failedAttempts={failedAttempts}
       />
     </div>
   );

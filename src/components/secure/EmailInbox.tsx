@@ -11,8 +11,7 @@ import {
   Filter,
   SortAsc,
   SortDesc,
-  X,
-  Plus
+  X
 } from 'lucide-react';
 import { SecureEmail, StatusType, EmailStats, EmailFilters, SortConfig } from '@/types/secureEmail';
 import mockData from '@/data/mockEmails.json';

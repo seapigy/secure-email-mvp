@@ -6,8 +6,6 @@ import {
   Shield,
   Plus,
   Search,
-  Filter,
-  RefreshCw,
   ArrowLeft
 } from 'lucide-react';
 import EmailInbox from './EmailInbox';
@@ -16,7 +14,6 @@ import SecuritySettings from './SecuritySettings';
 import ComposeModal from './ComposeModal';
 import { SecureEmail, SecuritySettings as SecuritySettingsType } from '@/types/secureEmail';
 import { useTheme } from '@/hooks/useTheme';
-import mockData from '@/data/mockEmails.json';
 
 /**
  * SecureEmailPage Component
@@ -38,7 +35,7 @@ const SecureEmailPage: React.FC = () => {
   const [showSecuritySettings, setShowSecuritySettings] = useState(false);
   const [showComposeModal, setShowComposeModal] = useState(false);
   const [isMobileDetailView, setIsMobileDetailView] = useState(false);
-  const { theme, toggleTheme, isDark } = useTheme();
+  const { toggleTheme, isDark } = useTheme();
   const [securitySettings, setSecuritySettings] = useState<SecuritySettingsType>({
     passwordProtection: false,
     perEmailPassword: false, // New: Require password for every secure email
