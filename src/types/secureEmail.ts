@@ -28,6 +28,9 @@ export interface SecureEmail {
   /** Expiration date for the email */
   expires: string;
   
+  /** Optional expiration timestamp (ISO 8601 UTC format) */
+  expiresAt?: string | null;
+  
   /** Current status of the email */
   status: 'pending' | 'opened' | 'expired' | 'revoked';
   

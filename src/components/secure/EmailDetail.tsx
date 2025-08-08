@@ -14,7 +14,8 @@ import {
   Shield as ShieldIcon,
   Globe as GlobeIcon,
   Eye as EyeIcon,
-  AlertTriangle as AlertTriangleIcon
+  AlertTriangle as AlertTriangleIcon,
+  Clock
 } from 'lucide-react';
 import { SecureEmail, StatusType, SecuritySettings } from '@/types/secureEmail';
 import { useSessionStore } from '@/stores/sessionStore';
@@ -88,6 +89,42 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack, isCompact = fa
   const { unlockEmail, isEmailUnlocked } = useSessionStore();
 
   /**
+   * Check if the email has expired based on expiresAt timestamp
+   * @returns true if the email has expired, false otherwise
+   */
+  const isEmailExpired = (): boolean => {
+    if (!email.expiresAt) return false;
+    const expirationDate = new Date(email.expiresAt);
+    const now = new Date();
+    return now > expirationDate;
+  };
+
+  /**
+   * Get time remaining until expiration
+   * @returns string with time remaining or null if no expiration
+   */
+  const getTimeRemaining = (): string | null => {
+    if (!email.expiresAt) return null;
+    const expirationDate = new Date(email.expiresAt);
+    const now = new Date();
+    const diff = expirationDate.getTime() - now.getTime();
+    
+    if (diff <= 0) return null;
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 24) {
+      const days = Math.floor(hours / 24);
+      return `${days} day${days > 1 ? 's' : ''}`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  };
+
+  /**
    * Check if we need to show password prompt
    * Determines whether to show unlock modal based on:
    * - Email password protection status
@@ -95,8 +132,9 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack, isCompact = fa
    * - Whether email is already unlocked
    * - Whether email has been self-destructed
    * - Whether user has manually closed the modal
+   * - Whether email has expired
    */
-  const needsPasswordPrompt = email.passwordProtected && !isSelfDestructed && !userManuallyClosed && (
+  const needsPasswordPrompt = email.passwordProtected && !isSelfDestructed && !isEmailExpired() && !userManuallyClosed && (
     securitySettings?.perEmailPassword ? !isEmailUnlocked(email.id) : !showDecrypted
   );
 
@@ -300,6 +338,14 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack, isCompact = fa
                   <span className="text-sm font-medium truncate">Self-Destruct After {email.maxFailedAttempts} Attempts</span>
                 </div>
               )}
+              {email.expiresAt && (
+                <div className={`flex items-center space-x-2 ${isEmailExpired() ? 'text-red-600 dark:text-red-400' : 'text-purple-600 dark:text-purple-400'}`}>
+                  <Clock className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-sm font-medium truncate">
+                    {isEmailExpired() ? 'Expired' : `Expires in ${getTimeRemaining()}`}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Metadata */}
@@ -313,7 +359,10 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack, isCompact = fa
               <div className="min-w-0">
                 <p className="text-secondary-600 dark:text-secondary-400 truncate">Expires</p>
                 <p className="font-medium text-secondary-900 dark:text-white truncate">
-                  {new Date(email.expires).toLocaleString()}
+                  {email.expiresAt 
+                    ? new Date(email.expiresAt).toLocaleString()
+                    : new Date(email.expires).toLocaleString()
+                  }
                 </p>
               </div>
               <div className="min-w-0">
@@ -325,7 +374,7 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack, isCompact = fa
               <div className="min-w-0">
                 <p className="text-secondary-600 dark:text-secondary-400 truncate">Status</p>
                 <p className="font-medium text-secondary-900 dark:text-white capitalize truncate">
-                  {email.status}
+                  {isEmailExpired() ? 'expired' : email.status}
                 </p>
               </div>
             </div>
@@ -333,7 +382,30 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack, isCompact = fa
 
           {/* Email Content */}
           <div className="p-4 sm:p-6">
-            {isSelfDestructed ? (
+            {isEmailExpired() ? (
+              /* Expired Email Message */
+              <div className="text-center py-8 sm:py-12">
+                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Clock className="w-8 h-8 text-red-600 dark:text-red-400" />
+                </div>
+                <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">
+                  Message Has Expired
+                </h3>
+                <p className="text-secondary-600 dark:text-secondary-400 mb-6">
+                  ⏰ This message has expired and is no longer accessible.
+                </p>
+                <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                  <p className="text-sm text-red-700 dark:text-red-300">
+                    The message content has been permanently deleted and cannot be recovered.
+                  </p>
+                  {email.expiresAt && (
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                      Expired on: {new Date(email.expiresAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : isSelfDestructed ? (
               /* Self-Destruct Message */
               <div className="text-center py-8 sm:py-12">
                 <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -505,6 +577,20 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack, isCompact = fa
                     </div>
                     <span className={`text-sm font-medium ${email.autoDestruct ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400'} flex-shrink-0`}>
                       {email.autoDestruct ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                  
+                  {/* Email Expiration */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                      <span className="text-sm text-secondary-700 dark:text-secondary-300 truncate">Email Expiration</span>
+                    </div>
+                    <span className={`text-sm font-medium ${email.expiresAt ? (isEmailExpired() ? 'text-red-600 dark:text-red-400' : 'text-purple-600 dark:text-purple-400') : 'text-gray-400'} flex-shrink-0`}>
+                      {email.expiresAt 
+                        ? (isEmailExpired() ? 'Expired' : `Expires in ${getTimeRemaining()}`)
+                        : 'Disabled'
+                      }
                     </span>
                   </div>
                 </div>

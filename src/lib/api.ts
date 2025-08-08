@@ -53,6 +53,7 @@ export interface SendSecureEmailRequest {
   decoyMessage?: boolean;
   stripMetadata?: boolean;
   tamperAlerts?: boolean;
+  expiresAt?: string; // ISO 8601 UTC format
 }
 
 // Secure Email Response Interface

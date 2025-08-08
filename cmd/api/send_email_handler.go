@@ -24,8 +24,10 @@ type SendEmailRequest struct {
 	Subject   string `json:"subject"`
 	Body      string `json:"body"`
 	// Security settings
-	SelfDestructAfterAttempts bool `json:"selfDestructAfterAttempts,omitempty"`
-	MaxFailedAttempts         int  `json:"maxFailedAttempts,omitempty"`
+	SelfDestructAfterAttempts bool   `json:"selfDestructAfterAttempts,omitempty"`
+	MaxFailedAttempts         int    `json:"maxFailedAttempts,omitempty"`
+	BurnAfterRead             bool   `json:"burnAfterRead,omitempty"`
+	ExpiresAt                 string `json:"expiresAt,omitempty"` // ISO 8601 UTC format
 }
 
 type SendEmailResponse struct {
@@ -85,6 +87,31 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// If self-destruct is disabled, set maxFailedAttempts to 0
 		req.MaxFailedAttempts = 0
+	}
+
+	// Validate expiration timestamp if provided
+	var expiresAtValue interface{} = nil
+	if req.ExpiresAt != "" {
+		// Parse the ISO 8601 UTC timestamp
+		expiresAt, err := time.Parse(time.RFC3339, req.ExpiresAt)
+		if err != nil {
+			log.Printf("Invalid expiresAt format: %q (expected ISO 8601 UTC format)", req.ExpiresAt)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"expiresAt must be in ISO 8601 UTC format (e.g., 2024-01-15T14:30:00Z)"}`))
+			return
+		}
+
+		// Check that expiration is in the future
+		if expiresAt.Before(time.Now()) {
+			log.Printf("Expiration time is in the past: %v", expiresAt)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"expiresAt must be in the future"}`))
+			return
+		}
+
+		expiresAtValue = expiresAt
 	}
 
 	// 1. Compress (gzip)
@@ -168,14 +195,19 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 		selfDestructInt = 1
 	}
 
+	burnAfterReadInt := 0
+	if req.BurnAfterRead {
+		burnAfterReadInt = 1
+	}
+
 	_, err = srv.db.Exec(`
 		INSERT INTO emails (
 			email_id, sender_id, recipient, subject, encrypted_blob_url, encrypted_key, 
 			encryption_nonce, encryption_auth_tag, compression_algo, sha256_hash, 
-			self_destruct_after_attempts, max_attempts, created_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			self_destruct_after_attempts, max_attempts, created_at, burn_after_read, expires_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		emailID, userID, req.Recipient, req.Subject, blobID, encryptedKeyB64,
-		nonceB64, authTagB64, "gzip", hashB64, selfDestructInt, req.MaxFailedAttempts, time.Now(),
+		nonceB64, authTagB64, "gzip", hashB64, selfDestructInt, req.MaxFailedAttempts, time.Now(), burnAfterReadInt, expiresAtValue,
 	)
 	if err != nil {
 		log.Printf("DB insert failed: %v", err)

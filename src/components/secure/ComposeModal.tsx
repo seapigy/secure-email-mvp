@@ -83,6 +83,12 @@ interface ComposeFormData {
     
     /** Maximum failed attempts before self-destruction */
     maxFailedAttempts?: number;
+    
+    /** Enable email expiration */
+    enableExpiration: boolean;
+    
+    /** Expiration date/time (ISO 8601 UTC format) */
+    expiresAt?: string;
   };
 }
 
@@ -149,7 +155,9 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
       stripMetadata: true,
       tamperAlerts: true,
       selfDestructAfterAttempts: false,
-      maxFailedAttempts: 3
+      maxFailedAttempts: 3,
+      enableExpiration: false,
+      expiresAt: ''
     }
   });
 
@@ -259,6 +267,22 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
       }
     }
 
+    // Validate expiration if enabled
+    if (formData.securitySettings.enableExpiration) {
+      if (!formData.securitySettings.expiresAt) {
+        toast.error('Please set an expiration date/time when expiration is enabled');
+        return;
+      }
+      
+      // Check that expiration is in the future
+      const expirationDate = new Date(formData.securitySettings.expiresAt);
+      const now = new Date();
+      if (expirationDate <= now) {
+        toast.error('Expiration date must be in the future');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -289,6 +313,9 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
         decoyMessage: formData.securitySettings.decoyMessage,
         stripMetadata: formData.securitySettings.stripMetadata,
         tamperAlerts: formData.securitySettings.tamperAlerts,
+        expiresAt: formData.securitySettings.enableExpiration && formData.securitySettings.expiresAt
+          ? new Date(formData.securitySettings.expiresAt).toISOString()
+          : undefined,
       };
 
       // Send secure email via API
@@ -353,7 +380,9 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
         stripMetadata: true,
         tamperAlerts: true,
         selfDestructAfterAttempts: false,
-        maxFailedAttempts: 3
+        maxFailedAttempts: 3,
+        enableExpiration: false,
+        expiresAt: ''
       }
     });
     
@@ -786,6 +815,41 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                          </div>
                        </div>
                      )}
+
+                    {/* Email Expiration */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                        <span className="text-sm text-secondary-700 dark:text-secondary-300">Email Expiration</span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.securitySettings.enableExpiration}
+                          onChange={(e) => handleSecurityChange('enableExpiration', e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-secondary-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-secondary-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-secondary-600 peer-checked:bg-primary-600"></div>
+                      </label>
+                    </div>
+
+                    {/* Expiration Date/Time Input */}
+                    {formData.securitySettings.enableExpiration && (
+                      <div className="ml-6">
+                        <label className="block text-xs text-secondary-600 dark:text-secondary-400 mb-1">
+                          Expires At
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={formData.securitySettings.expiresAt}
+                          onChange={(e) => handleSecurityChange('expiresAt', e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-secondary-300 dark:border-secondary-600 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-secondary-600 dark:text-white"
+                        />
+                        <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">
+                          Message will be permanently deleted after this date/time.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

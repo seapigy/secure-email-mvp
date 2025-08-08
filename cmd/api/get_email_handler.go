@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -14,6 +15,9 @@ import (
 	"secure-email-mvp/pkg/auth"
 	"secure-email-mvp/pkg/storage"
 )
+
+// FAIL_ATTEMPT_LIMIT is the maximum number of failed attempts before email deletion
+const FAIL_ATTEMPT_LIMIT = 3
 
 type GetEmailRequest struct {
 	EmailID string `json:"email_id"`
@@ -67,15 +71,16 @@ func (srv *Server) getEmailHandler(w http.ResponseWriter, r *http.Request) {
 		blobID, encryptedKeyB64, nonceB64, authTagB64, compressionAlgo string
 		senderID, recipient, subject                                   string
 		createdAt                                                      time.Time
+		failCount                                                      int
 	)
 
 	err := srv.db.QueryRow(`
 		SELECT encrypted_blob_url, encrypted_key, encryption_nonce, encryption_auth_tag, 
-		       compression_algo, sender_id, recipient, subject, created_at
+		       compression_algo, sender_id, recipient, subject, created_at, fail_count
 		FROM emails WHERE email_id = ?`,
 		req.EmailID,
 	).Scan(&blobID, &encryptedKeyB64, &nonceB64, &authTagB64, &compressionAlgo,
-		&senderID, &recipient, &subject, &createdAt)
+		&senderID, &recipient, &subject, &createdAt, &failCount)
 
 	if err != nil {
 		log.Printf("Database query failed: %v", err)
@@ -88,6 +93,21 @@ func (srv *Server) getEmailHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if the authenticated user is the sender of this email
 	if senderID != userID {
 		log.Printf("Unauthorized access attempt: user %s trying to access email from sender %s", userID, senderID)
+
+		// Increment fail count and check if limit reached
+		if err := srv.handleFailedAccess(req.EmailID, blobID, failCount, "unauthorized access"); err != nil {
+			if _, ok := err.(EmailDeletedError); ok {
+				// Email was deleted due to too many failed attempts
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusGone)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": "Email deleted due to too many failed attempts",
+				})
+				return
+			}
+			log.Printf("Failed to handle failed access: %v", err)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte(`{"error":"Access denied"}`))
@@ -168,6 +188,21 @@ func (srv *Server) getEmailHandler(w http.ResponseWriter, r *http.Request) {
 	compressed, err := auth.DecryptAES256GCM(encryptedData)
 	if err != nil {
 		log.Printf("Decryption failed: %v", err)
+
+		// Increment fail count and check if limit reached
+		if err := srv.handleFailedAccess(req.EmailID, blobID, failCount, "decryption failed"); err != nil {
+			if _, ok := err.(EmailDeletedError); ok {
+				// Email was deleted due to too many failed attempts
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusGone)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": "Email deleted due to too many failed attempts",
+				})
+				return
+			}
+			log.Printf("Failed to handle failed access: %v", err)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":"Decryption failed"}`))
@@ -201,11 +236,12 @@ func (srv *Server) getEmailHandler(w http.ResponseWriter, r *http.Request) {
 		plaintext = compressed
 	}
 
-	// 9. Update access tracking
+	// 9. Update access tracking and reset fail count on successful access
 	_, err = srv.db.Exec(`
 		UPDATE emails SET 
 			last_access_at = CURRENT_TIMESTAMP,
-			access_count = access_count + 1
+			access_count = access_count + 1,
+			fail_count = 0
 		WHERE email_id = ?`,
 		req.EmailID,
 	)
@@ -226,4 +262,92 @@ func (srv *Server) getEmailHandler(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: createdAt,
 		Status:    "success",
 	})
+}
+
+// EmailDeletedError is returned when an email is deleted due to too many failed attempts
+type EmailDeletedError struct {
+	EmailID string
+}
+
+func (e EmailDeletedError) Error() string {
+	return fmt.Sprintf("email %s deleted due to too many failed attempts", e.EmailID)
+}
+
+// handleFailedAccess increments the fail count and deletes the email if limit is reached
+func (srv *Server) handleFailedAccess(emailID, blobID string, currentFailCount int, reason string) error {
+	// Get client IP for logging
+	clientIP := "unknown"
+	if r := srv.getCurrentRequest(); r != nil {
+		clientIP = r.RemoteAddr
+	}
+
+	// Log the failed attempt
+	log.Printf("Failed access attempt for email %s: %s (IP: %s)", emailID, reason, clientIP)
+
+	// Increment fail count
+	newFailCount := currentFailCount + 1
+
+	// Use a transaction to ensure atomicity
+	tx, err := srv.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Update fail count
+	_, err = tx.Exec(`
+		UPDATE emails SET fail_count = ? WHERE email_id = ?`,
+		newFailCount, emailID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update fail count: %w", err)
+	}
+
+	// Check if limit reached
+	if newFailCount >= FAIL_ATTEMPT_LIMIT {
+		log.Printf("Fail limit reached for email %s: %d/%d attempts", emailID, newFailCount, FAIL_ATTEMPT_LIMIT)
+
+		// Delete from R2 storage
+		if blobID != "" {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			if err := storage.DeleteBlob(ctx, blobID); err != nil {
+				log.Printf("Failed to delete email from R2: %v", err)
+				// Continue with database deletion even if R2 deletion fails
+			} else {
+				log.Printf("Successfully deleted email blob %s from R2", blobID)
+			}
+		}
+
+		// Delete email metadata from database
+		_, err = tx.Exec(`DELETE FROM emails WHERE email_id = ?`, emailID)
+		if err != nil {
+			return fmt.Errorf("failed to delete email metadata: %w", err)
+		}
+
+		log.Printf("Deleted email %s due to too many failed attempts", emailID)
+
+		// Commit the transaction
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("failed to commit transaction: %w", err)
+		}
+
+		// Return special error to indicate email was deleted
+		return EmailDeletedError{EmailID: emailID}
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// getCurrentRequest returns the current request from context (for logging purposes)
+func (srv *Server) getCurrentRequest() *http.Request {
+	// This is a simplified approach - in a real implementation you might want to pass the request
+	// through context or use a different approach to get the client IP
+	return nil
 }

@@ -9,11 +9,13 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"secure-email-mvp/pkg/auth"
+	"secure-email-mvp/pkg/cleanup"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -166,6 +168,72 @@ func main() {
 		log.Printf("Emails schema applied successfully")
 	}
 
+	// Apply failed attempts migration
+	log.Printf("Loading failed attempts migration...")
+	failedAttemptsMigrationPath := "schema/migrate_add_failed_attempts.sql"
+	log.Printf("Attempting to read failed attempts migration from: %s", failedAttemptsMigrationPath)
+
+	failedAttemptsMigration, err := os.ReadFile(failedAttemptsMigrationPath)
+	if err != nil {
+		log.Printf("Error reading failed attempts migration from %s: %v", failedAttemptsMigrationPath, err)
+		log.Printf("Attempting to read failed attempts migration from absolute path...")
+		absFailedAttemptsPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_failed_attempts.sql")
+		log.Printf("Trying absolute path: %s", absFailedAttemptsPath)
+		failedAttemptsMigration, err = os.ReadFile(absFailedAttemptsPath)
+		if err != nil {
+			log.Printf("Error reading failed attempts migration from absolute path: %v", err)
+		} else {
+			log.Printf("Failed attempts migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(failedAttemptsMigration)); err != nil {
+				log.Printf("Error applying failed attempts migration: %v", err)
+				log.Printf("Failed attempts migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("Failed attempts migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Failed attempts migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(failedAttemptsMigration)); err != nil {
+			log.Printf("Error applying failed attempts migration: %v", err)
+			log.Printf("Failed attempts migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("Failed attempts migration applied successfully")
+		}
+	}
+
+	// Apply fail_count migration
+	log.Printf("Loading fail_count migration...")
+	failCountMigrationPath := "schema/migrate_add_fail_count.sql"
+	log.Printf("Attempting to read fail_count migration from: %s", failCountMigrationPath)
+
+	failCountMigration, err := os.ReadFile(failCountMigrationPath)
+	if err != nil {
+		log.Printf("Error reading fail_count migration from %s: %v", failCountMigrationPath, err)
+		log.Printf("Attempting to read fail_count migration from absolute path...")
+		absFailCountPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_fail_count.sql")
+		log.Printf("Trying absolute path: %s", absFailCountPath)
+		failCountMigration, err = os.ReadFile(absFailCountPath)
+		if err != nil {
+			log.Printf("Error reading fail_count migration from absolute path: %v", err)
+		} else {
+			log.Printf("Fail_count migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(failCountMigration)); err != nil {
+				log.Printf("Error applying fail_count migration: %v", err)
+				log.Printf("Fail_count migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("Fail_count migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Fail_count migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(failCountMigration)); err != nil {
+			log.Printf("Error applying fail_count migration: %v", err)
+			log.Printf("Fail_count migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("Fail_count migration applied successfully")
+		}
+	}
+
 	// Initialize per-IP rate limiter for signup and login
 	signupLoginLimiter := NewIPRateLimitMiddleware(5, time.Minute)
 
@@ -247,9 +315,43 @@ func main() {
 	log.Printf("Registering /api/email/{id} endpoint")
 	r.Handle("/api/email/{id}", jwtMiddleware(http.HandlerFunc(srv.deleteEmailHandler))).Methods("DELETE")
 
+	// Register admin endpoints (require JWT authentication)
+	log.Printf("Registering /admin/email-retention-stats endpoint")
+	r.Handle("/admin/email-retention-stats", jwtMiddleware(http.HandlerFunc(srv.adminEmailRetentionStatsHandler))).Methods("GET")
+	log.Printf("Registering /admin/manual-cleanup endpoint")
+	r.Handle("/admin/manual-cleanup", jwtMiddleware(http.HandlerFunc(srv.adminManualCleanupHandler))).Methods("POST")
+
+	// TEST ONLY: Register self-destruct test endpoint
+	if os.Getenv("SIMULATE_SELF_DESTRUCT") == "1" {
+		log.Printf("Registering /test/self-destruct endpoint (TEST ONLY)")
+		r.HandleFunc("/test/self-destruct", srv.testSelfDestructHandler).Methods("POST")
+	}
+
 	// Protected routes (require JWT authentication)
 	log.Printf("Registering /protected-test endpoint")
 	r.Handle("/protected-test", jwtMiddleware(http.HandlerFunc(protectedTestHandler))).Methods("GET")
+
+	// Initialize and start email cleanup worker
+	log.Printf("Initializing email cleanup worker...")
+	cleanupIntervalStr := os.Getenv("EMAIL_CLEANUP_INTERVAL_MINUTES")
+	if cleanupIntervalStr == "" {
+		cleanupIntervalStr = "15" // Default to 15 minutes
+	}
+	cleanupInterval, err := strconv.Atoi(cleanupIntervalStr)
+	if err != nil {
+		log.Printf("Invalid EMAIL_CLEANUP_INTERVAL_MINUTES, using default 15 minutes")
+		cleanupInterval = 15
+	}
+
+	cleanupWorker, err := cleanup.NewEmailCleanupWorkerWithDB(db, cleanupInterval)
+	if err != nil {
+		log.Printf("Warning: Failed to initialize cleanup worker: %v", err)
+		log.Printf("Email cleanup will not be available")
+	} else {
+		log.Printf("Starting email cleanup worker with interval: %d minutes", cleanupInterval)
+		cleanupWorker.Start()
+		defer cleanupWorker.Stop()
+	}
 
 	handler := r
 
