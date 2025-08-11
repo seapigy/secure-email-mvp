@@ -31,10 +31,19 @@ import (
 // 1. Loading environment variables from .env file
 // 2. Establishing database connection with SQLite
 // 3. Testing Cloudflare R2 storage connectivity
-// 4. Applying database schema migrations
+// 4. Applying database schema migrations (including all security features)
 // 5. Setting up HTTP server with middleware (CORS, security headers, rate limiting)
-// 6. Registering all API endpoints for authentication and email operations
+// 6. Registering all API endpoints for authentication, email operations, MFA, and notifications
 // 7. Starting the HTTP server on the configured port
+//
+// Security Features Implemented:
+// - Multi-Factor Authentication (TOTP + Email-based)
+// - Enhanced Geolocation Verification (City + Country)
+// - Per-email Password Protection with Argon2id
+// - Brute Force Protection (Per-email + IP-based)
+// - Access Notification System
+// - Self-Destruct After Failed Attempts
+// - Session Management and Rate Limiting
 func main() {
 	// Initialize logging and load environment configuration
 	log.Printf("Starting Secure Email API server...")
@@ -97,7 +106,24 @@ func main() {
 	// Initialize server instance with database and rate limiting
 	srv := &Server{db: db, rateLimits: &sync.Map{}}
 
+	// =============================================================================
+	// DATABASE MIGRATIONS - SECURITY FEATURES
+	// =============================================================================
 	// Apply database schema with comprehensive error handling
+	// All migrations include fallback paths and error handling for production deployment
+	//
+	// Migration Order:
+	// 1. Core schema (users, emails)
+	// 2. Failed attempts tracking
+	// 3. Geolocation restrictions
+	// 4. Multi-Factor Authentication (MFA)
+	// 5. Simple geolocation (Micro-Iteration 4.10)
+	// 6. Brute force protection (Micro-Iteration 4.12)
+	// 7. IP tracking (Micro-Iteration 4.13)
+	// 8. Email password protection (Micro-Iteration 4.14)
+	// 9. Enhanced geolocation (Micro-Iteration 4.15)
+	// 10. Notification system (Micro-Iteration 4.17)
+	// =============================================================================
 	log.Printf("Loading database schema...")
 	schemaPath := "schema/users_simple.sql"
 	log.Printf("Attempting to read schema from: %s", schemaPath)
@@ -510,6 +536,21 @@ func main() {
 	// Initialize per-IP rate limiter for signup and login
 	signupLoginLimiter := NewIPRateLimitMiddleware(5, time.Minute)
 
+	// =============================================================================
+	// HTTP SERVER SETUP - API ENDPOINTS
+	// =============================================================================
+	// Set up router with comprehensive security middleware
+	// All endpoints are protected with JWT middleware and rate limiting
+	//
+	// Endpoint Categories:
+	// - Authentication: Login, signup, TOTP, refresh, logout
+	// - Email Operations: Send, get, list, view, delete
+	// - Multi-Factor Authentication: TOTP and email-based MFA
+	// - Notifications: Preferences and access event history
+	// - Admin: Cleanup statistics and manual triggers
+	// - Health: System health monitoring
+	// =============================================================================
+	
 	// Set up router
 	r := mux.NewRouter()
 
@@ -652,9 +693,18 @@ func main() {
 }
 
 // Server struct holds the database connection and rate limiter map for per-IP rate limiting.
+// Server represents the main API server with all security features
 type Server struct {
-	db         *sql.DB
-	rateLimits *sync.Map // IP -> attempt count
+	db         *sql.DB                    // SQLite database connection
+	rateLimits *sync.Map                  // IP -> attempt count for rate limiting
+	// Security features implemented:
+	// - Multi-Factor Authentication (TOTP + Email-based)
+	// - Enhanced Geolocation Verification (City + Country)
+	// - Per-email Password Protection with Argon2id
+	// - Brute Force Protection (Per-email + IP-based)
+	// - Access Notification System
+	// - Self-Destruct After Failed Attempts
+	// - Session Management and Rate Limiting
 }
 
 // pingHandler is a simple health check endpoint for liveness probes.

@@ -9,6 +9,8 @@
 │   ├── login_handler.go               # Login authentication handler
 │   ├── signup_handler.go              # User registration handler
 │   ├── verify_totp.go                 # TOTP verification handler
+│   ├── mfa_handlers.go                # Multi-factor authentication handlers
+│   ├── notification_handlers.go       # Access notification system handlers
 │   ├── fallback_handler.go            # Fallback email confirmation
 │   ├── resend_fallback_handler.go     # Resend fallback confirmation
 │   ├── logout_handler.go              # User logout handler
@@ -32,6 +34,24 @@
 │   ├── session.go                     # Session management
 │   ├── fallback.go                    # Fallback email logic
 │   └── *_test.go                      # Test files
+├── pkg/mfa/                           # Multi-factor authentication
+│   ├── mfa.go                         # TOTP and email-based MFA
+│   └── mfa_test.go                    # MFA unit tests
+├── pkg/geoverify/                     # Enhanced geolocation verification
+│   ├── geoverify.go                   # City and country verification
+│   └── geoverify_test.go              # Geolocation unit tests
+├── pkg/bruteforce/                    # Brute force protection
+│   ├── bruteforce.go                  # Per-email rate limiting
+│   └── bruteforce_test.go             # Brute force unit tests
+├── pkg/iptracking/                    # IP-based tracking
+│   ├── iptracking.go                  # IP-based lockout
+│   └── iptracking_test.go             # IP tracking unit tests
+├── pkg/emailpassword/                 # Email password protection
+│   ├── emailpassword.go               # Per-email passwords
+│   └── emailpassword_test.go          # Password protection tests
+├── pkg/notification/                  # Access notification system
+│   ├── notification.go                # Notification service
+│   └── notification_test.go           # Notification unit tests
 ├── pkg/storage/                       # Cloudflare R2 storage
 │   └── r2.go                          # R2 client and operations
 ├── docs/                              # API documentation
@@ -44,9 +64,31 @@
 │   ├── delete_email_endpoint.md       # Delete endpoint docs
 │   ├── session_management.md          # Session management guide
 │   ├── auth_middleware_and_frontend.md # Auth middleware docs
+│   ├── mfa_implementation.md          # Multi-factor authentication
+│   ├── geolocation_restrictions.md    # Geolocation access controls
+│   ├── brute_force_protection.md      # Brute force protection
+│   ├── ip_tracking_protection.md      # IP-based tracking
+│   ├── email_password_protection.md   # Email password protection
+│   ├── city_country_verification.md   # Enhanced geolocation
+│   ├── frontend-geolocation-verification.md # Frontend geolocation UI
+│   ├── notification-system.md         # Access notification system
+│   ├── micro-iteration-4.10-summary.md # Simplified geolocation
+│   ├── micro-iteration-4.12-summary.md # MFA and brute force
+│   ├── micro-iteration-4.13-summary.md # IP tracking
+│   ├── micro-iteration-4.14-summary.md # Password protection
+│   ├── micro-iteration-4.15-summary.md # Enhanced geolocation
+│   ├── micro-iteration-4.16-summary.md # Frontend geolocation
+│   ├── micro-iteration-4.17-summary.md # Notification system
 │   └── infra.md                       # Infrastructure setup
 ├── schema/                            # Database migrations
-│   └── migrate_add_encryption_fields.sql
+│   ├── emails.sql                     # Complete database schema
+│   ├── migrate_add_mfa_fields.sql     # MFA fields migration
+│   ├── migrate_add_simple_geolocation.sql # Simple geolocation
+│   ├── migrate_add_brute_force_protection.sql # Brute force protection
+│   ├── migrate_add_ip_tracking.sql    # IP tracking migration
+│   ├── migrate_add_email_password_protection.sql # Password protection
+│   ├── migrate_add_city_country_verification.sql # Enhanced geolocation
+│   └── migrate_add_notification_system.sql # Notification system
 ├── examples/                          # Usage examples
 │   ├── encryption_example.go          # Encryption demo
 │   └── email_upload_example.go        # R2 upload demo
@@ -62,7 +104,7 @@
 │   │   ├── layout/                    # Layout components
 │   │   │   ├── Layout.tsx             # Main layout component
 │   │   │   ├── Sidebar.tsx            # Navigation sidebar
-│   │   │   └── Header.tsx             # App header
+│   │   │   └── Header.tsx             # App header with notifications
 │   │   ├── pages/                     # Page components
 │   │   │   ├── Dashboard.tsx          # Dashboard page
 │   │   │   ├── Send.tsx               # Send email page
@@ -73,7 +115,8 @@
 │   │   │   ├── EmailDetail.tsx        # Email detail view
 │   │   │   ├── SecuritySettings.tsx   # Security settings panel
 │   │   │   ├── ComposeModal.tsx       # Email composition modal
-│   │   │   └── UnlockModal.tsx        # Password unlock modal
+│   │   │   ├── UnlockModal.tsx        # Password unlock modal
+│   │   │   └── NotificationPreferences.tsx # Notification settings
 │   │   └── ui/                        # Reusable UI components
 │   │       ├── Button.tsx             # Button component
 │   │       ├── Input.tsx              # Input component
@@ -92,6 +135,7 @@
 │   ├── lib/                           # Utility functions
 │   │   ├── api.ts                     # API client configuration
 │   │   ├── utils.ts                   # General utilities
+│   │   ├── geolocation.ts             # Geolocation utilities
 │   │   └── validation.ts              # Input validation
 │   ├── types/                         # TypeScript type definitions
 │   │   ├── auth.ts                    # Authentication types
@@ -118,7 +162,7 @@
 ### Backend Architecture (Go 1.23)
 - **Framework**: Gorilla Mux for routing
 - **Database**: SQLite with modernc.org driver
-- **Authentication**: JWT tokens + TOTP (Google Authenticator)
+- **Authentication**: JWT tokens + TOTP + Email-based MFA
 - **Password Hashing**: Argon2 (via golang.org/x/crypto)
 - **Encryption**: AES-256-GCM for email content
 - **Storage**: Cloudflare R2 for encrypted blobs
@@ -126,6 +170,10 @@
 - **CORS**: Configured for localhost:3000 and Netlify domain
 - **Session Management**: JWT-based with refresh tokens
 - **Health Monitoring**: `/health` endpoint for connectivity checks
+- **Multi-Factor Authentication**: TOTP and email-based verification
+- **Enhanced Geolocation**: City and country-based access restrictions
+- **Brute Force Protection**: Per-email and IP-based rate limiting
+- **Access Notifications**: Real-time alerts for email access events
 
 ### Frontend Architecture (React 18 + TypeScript)
 - **Build Tool**: Vite
@@ -139,20 +187,26 @@
 - **Health Monitoring**: Real-time backend connectivity checks
 - **Session Management**: Zustand store for tracking unlocked emails
 - **Modal System**: Custom modal components for compose and unlock
+- **Geolocation UI**: Enhanced geolocation verification interface
+- **Notification System**: User-configurable access alerts
 
 ### Data Flow
 1. **User Registration**: Frontend → `/api/auth/signup` → SQLite users table
 2. **TOTP Setup**: QR code generation → Google Authenticator app
-3. **Login**: Frontend → `/api/auth/login` → JWT token generation
-4. **Health Check**: Frontend → `/health` → Backend status monitoring
-5. **Email Sending**: Content → gzip compression → AES-256-GCM encryption → R2 storage
-6. **Email Retrieval**: R2 download → decryption → decompression → plaintext
-7. **Access Control**: JWT validation + user authorization + IP-based rate limiting
-8. **Session Management**: JWT refresh tokens for extended sessions
-9. **Secure Email UI**: Mock data loading → Privacy-first interface → Future API integration
-10. **Per-Email Password**: Individual password protection with session tracking
-11. **Self-Destruct Feature**: Failed attempt tracking and auto-deletion
-12. **Compose Interface**: Modern email composition with comprehensive security options
+3. **Email-based MFA**: 6-digit codes sent via email
+4. **Login**: Frontend → `/api/auth/login` → JWT token generation
+5. **Health Check**: Frontend → `/health` → Backend status monitoring
+6. **Email Sending**: Content → gzip compression → AES-256-GCM encryption → R2 storage
+7. **Email Retrieval**: R2 download → decryption → decompression → plaintext
+8. **Access Control**: JWT validation + user authorization + IP-based rate limiting
+9. **Session Management**: JWT refresh tokens for extended sessions
+10. **Secure Email UI**: Mock data loading → Privacy-first interface → Future API integration
+11. **Per-Email Password**: Individual password protection with session tracking
+12. **Self-Destruct Feature**: Failed attempt tracking and auto-deletion
+13. **Compose Interface**: Modern email composition with comprehensive security options
+14. **Geolocation Verification**: City and country-based access restrictions
+15. **Brute Force Protection**: Per-email and IP-based rate limiting
+16. **Access Notifications**: Real-time alerts for email access events
 
 ## 📊 DATABASE
 
@@ -166,6 +220,7 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     totp_secret TEXT,
+    phone_number TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -177,11 +232,70 @@ CREATE TABLE IF NOT EXISTS emails (
     recipient_email TEXT NOT NULL,
     subject TEXT,
     encrypted_content TEXT NOT NULL,
-    access_password_hash TEXT,
-    geolocation_circles TEXT,
+    encryption_nonce TEXT NOT NULL,
+    encryption_auth_tag TEXT NOT NULL,
     expires_at TIMESTAMP,
+    self_destructed BOOLEAN DEFAULT FALSE,
+    allowed_city TEXT,
+    allowed_country TEXT,
+    geo_verification_type TEXT CHECK (geo_verification_type IN ('none', 'country', 'city', 'city_country')),
+    geo_city TEXT,
+    geo_country TEXT,
+    require_mfa BOOLEAN DEFAULT FALSE,
+    mfa_type TEXT CHECK (mfa_type IN ('totp', 'email')),
+    encrypted_totp_secret TEXT,
+    mfa_failed_attempts INTEGER DEFAULT 0,
+    mfa_locked_until TIMESTAMP,
+    brute_force_failed_attempts INTEGER DEFAULT 0,
+    brute_force_last_failed_attempt TIMESTAMP,
+    brute_force_lockout_until TIMESTAMP,
+    brute_force_max_attempts INTEGER DEFAULT 3,
+    brute_force_lockout_duration_minutes INTEGER DEFAULT 15,
+    is_password_protected BOOLEAN DEFAULT FALSE,
+    password_hash TEXT,
+    password_salt TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sender_id) REFERENCES users(id)
+);
+
+-- IP access attempts tracking
+CREATE TABLE IF NOT EXISTS ip_access_attempts (
+    ip_address TEXT PRIMARY KEY,
+    failed_attempts INTEGER DEFAULT 0,
+    last_attempt_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    lockout_until TIMESTAMP
+);
+
+-- Notification preferences
+CREATE TABLE IF NOT EXISTS notification_preferences (
+    user_id TEXT PRIMARY KEY,
+    email_notifications BOOLEAN DEFAULT TRUE,
+    sms_notifications BOOLEAN DEFAULT FALSE,
+    notify_on_success BOOLEAN DEFAULT TRUE,
+    notify_on_failure BOOLEAN DEFAULT TRUE,
+    notify_on_blocked BOOLEAN DEFAULT TRUE,
+    include_geolocation BOOLEAN DEFAULT TRUE,
+    include_device_info BOOLEAN DEFAULT TRUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- Access events
+CREATE TABLE IF NOT EXISTS access_events (
+    event_id TEXT PRIMARY KEY,
+    email_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    event_type TEXT NOT NULL CHECK (event_type IN ('success', 'failure', 'blocked')),
+    ip_address TEXT NOT NULL,
+    user_agent TEXT,
+    country TEXT,
+    city TEXT,
+    device_type TEXT,
+    failure_reason TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (email_id) REFERENCES emails(email_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
 -- Access attempts tracking
@@ -217,11 +331,20 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_emails_sender ON emails(sender_id);
 CREATE INDEX IF NOT EXISTS idx_emails_recipient ON emails(recipient_email);
 CREATE INDEX IF NOT EXISTS idx_emails_expires ON emails(expires_at);
+CREATE INDEX IF NOT EXISTS idx_emails_geo_verification ON emails(geo_verification_type);
+CREATE INDEX IF NOT EXISTS idx_emails_mfa ON emails(require_mfa, mfa_type);
+CREATE INDEX IF NOT EXISTS idx_emails_brute_force ON emails(brute_force_failed_attempts, brute_force_lockout_until);
+CREATE INDEX IF NOT EXISTS idx_emails_password_protection ON emails(is_password_protected);
 CREATE INDEX IF NOT EXISTS idx_access_attempts_email ON access_attempts(email_id);
+CREATE INDEX IF NOT EXISTS idx_ip_access_attempts_ip ON ip_access_attempts(ip_address);
+CREATE INDEX IF NOT EXISTS idx_access_events_user_id ON access_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_access_events_email_id ON access_events(email_id);
+CREATE INDEX IF NOT EXISTS idx_access_events_timestamp ON access_events(timestamp);
+CREATE INDEX IF NOT EXISTS idx_access_events_event_type ON access_events(event_type);
 CREATE INDEX IF NOT EXISTS idx_folders_user ON folders(user_id);
 ```
 
-**Indexes**: Email lookups, sender/recipient queries, expiration tracking
+**Indexes**: Email lookups, sender/recipient queries, expiration tracking, geolocation, MFA, brute force, password protection, IP tracking, access events
 
 ## 🌐 NETWORKING & INFRASTRUCTURE
 
@@ -250,11 +373,12 @@ CREATE INDEX IF NOT EXISTS idx_folders_user ON folders(user_id);
 ### Authentication Flow
 1. **Registration**: Username → `username@securesystem.email` + password
 2. **TOTP Setup**: QR code generation for Google Authenticator
-3. **Login**: Email + password + TOTP code
-4. **JWT Token**: 32-byte secret with user context injection
-5. **Session**: Token stored in sessionStorage with refresh capability
-6. **Fallback Email**: Account recovery with confirmation flow
-7. **Health Monitoring**: Continuous backend connectivity validation
+3. **Email-based MFA**: 6-digit codes sent via email
+4. **Login**: Email + password + TOTP code + MFA code (if required)
+5. **JWT Token**: 32-byte secret with user context injection
+6. **Session**: Token stored in sessionStorage with refresh capability
+7. **Fallback Email**: Account recovery with confirmation flow
+8. **Health Monitoring**: Continuous backend connectivity validation
 
 ### Email Encryption Flow
 1. **Content Preparation**: Email subject + body
@@ -289,10 +413,13 @@ CREATE INDEX IF NOT EXISTS idx_folders_user ON folders(user_id);
 - Referrer-Policy: `strict-origin-when-cross-origin`
 
 ### Advanced Security Features
+- **Multi-Factor Authentication**: TOTP and email-based 2FA
+- **Enhanced Geolocation**: City and country-based access restrictions
 - **Per-Email Password Protection**: Individual password protection for emails
+- **Brute Force Protection**: Per-email and IP-based rate limiting
+- **Access Notifications**: Real-time alerts for email access events
 - **Self-Destruct After Failed Attempts**: Auto-delete messages after failed access
 - **Session Management**: Track unlocked emails and failed attempts
-- **Geolocation Restrictions**: Restrict access by country
 - **Time-Based Access**: Set unlock times for messages
 - **Auto-Destruct Features**: Messages that self-destruct after viewing
 - **Read-Once Mode**: Messages that can only be viewed once
@@ -372,11 +499,17 @@ DEBUG=false
 - `POST /api/auth/fallback` - Send fallback confirmation
 - `GET /api/auth/confirm-fallback` - Confirm fallback email
 - `POST /api/auth/resend-fallback` - Resend fallback confirmation
-- `POST /api/email/send` - Send encrypted email
+- `POST /api/email/send` - Send encrypted email with security options
 - `POST /api/email/get` - Retrieve encrypted email
 - `GET /api/email/list` - List user's emails
 - `GET /api/email/view/{id}` - View individual email
 - `DELETE /api/email/{id}` - Delete email with cleanup
+- `POST /api/mfa/setup` - Setup TOTP or email-based MFA
+- `POST /api/mfa/verify` - Verify MFA code
+- `POST /api/mfa/disable` - Disable MFA for email
+- `GET /api/notifications/preferences` - Get notification preferences
+- `PUT /api/notifications/preferences` - Update notification preferences
+- `GET /api/notifications/history` - Get access event history
 - `GET /health` - Backend health check
 
 ### Dependencies (Go)
@@ -417,13 +550,15 @@ modernc.org/sqlite v1.28.0
 - **Mobile Responsive**: Single panel layout for mobile devices
 - **Compose Modal**: Modern email composition interface
 - **Unlock Modal**: Password verification for protected emails
+- **Enhanced Geolocation UI**: City and country verification interface
+- **Notification Preferences**: User-configurable access alerts
 
 ### Component Structure
 - **Authentication**: LoginForm, SignupForm with TOTP setup
 - **Email Management**: EmailSendForm, EmailView, Dashboard
 - **Layout**: Layout, Sidebar, Header components
 - **Pages**: Dashboard, Send, View page components
-- **Secure Email**: SecureEmailPage, EmailInbox, EmailDetail, SecuritySettings, ComposeModal, UnlockModal
+- **Secure Email**: SecureEmailPage, EmailInbox, EmailDetail, SecuritySettings, ComposeModal, UnlockModal, NotificationPreferences
 - **UI**: Button, Input, Modal, HealthStatusBanner, and other reusable components
 - **Hooks**: useAuth, useTheme, useHealthCheck, useEmail for state management
 
@@ -440,6 +575,10 @@ modernc.org/sqlite v1.28.0
 - **Compose Modal**: Modern email composition with comprehensive security options
 - **Unlock Modal**: Password verification for protected emails
 - **Session Management**: Track unlocked emails and failed attempts
+- **Multi-Factor Authentication**: TOTP and email-based 2FA
+- **Enhanced Geolocation**: City and country-based access restrictions
+- **Brute Force Protection**: Per-email and IP-based rate limiting
+- **Access Notifications**: Real-time alerts for email access events
 
 ## 🧹 OPTIONAL CLEANUP
 
@@ -459,7 +598,7 @@ modernc.org/sqlite v1.28.0
 ### Technology Stack
 - **Frontend**: React 18 + TypeScript + Vite + Tailwind CSS + Lucide React
 - **Backend**: Go 1.23 + Gorilla Mux + SQLite
-- **Authentication**: JWT + TOTP (Google Authenticator)
+- **Authentication**: JWT + TOTP + Email-based MFA
 - **Deployment**: Netlify (frontend) + Oracle Cloud (backend)
 - **Storage**: Cloudflare R2 (encrypted email content)
 
@@ -476,7 +615,7 @@ modernc.org/sqlite v1.28.0
 
 ### Current Focus
 - ✅ Backend API server running
-- ✅ Database initialized with encryption fields
+- ✅ Database initialized with all security fields
 - ✅ Frontend deployed to Netlify
 - ✅ JWT authentication implemented
 - ✅ AES-256-GCM encryption implemented
@@ -492,7 +631,10 @@ modernc.org/sqlite v1.28.0
 - ✅ Per-email password protection
 - ✅ Self-destruct after failed attempts feature
 - ✅ Compose secure email modal
-- ⏳ Geolocation access controls (future enhancement)
+- ✅ Multi-factor authentication (TOTP + Email-based)
+- ✅ Enhanced geolocation verification (City + Country)
+- ✅ Brute force protection (Per-email + IP-based)
+- ✅ Access notification system
 - ⏳ Production environment variables (needs configuration)
 
 ### Security Notes
@@ -507,5 +649,9 @@ modernc.org/sqlite v1.28.0
 - ✅ Per-email password protection with session tracking
 - ✅ Self-destruct after failed attempts with attempt counting
 - ✅ Comprehensive security options in compose interface
+- ✅ Multi-factor authentication (TOTP + Email-based)
+- ✅ Enhanced geolocation verification (City + Country)
+- ✅ Brute force protection (Per-email + IP-based)
+- ✅ Access notification system with real-time alerts
 - ⏳ SSL termination not configured yet
 - ⏳ Database is local SQLite (not production-ready for scale) 

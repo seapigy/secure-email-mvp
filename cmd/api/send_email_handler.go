@@ -53,7 +53,25 @@ type SendEmailResponse struct {
 	Error  string `json:"error,omitempty"`
 }
 
-// sendEmailHandler handles POST /api/email/send. It compresses, encrypts, uploads, and stores metadata.
+// sendEmailHandler handles POST /api/email/send. It implements comprehensive security options:
+//
+// Security Features Supported:
+// - Self-destruct after failed attempts (1-10 attempts)
+// - Burn-after-read (one-time access)
+// - Email expiration (ISO 8601 UTC format)
+// - Enhanced geolocation verification (city/country restrictions)
+// - Multi-factor authentication (TOTP or email-based)
+// - Per-email password protection (Argon2id hashing)
+//
+// Process Flow:
+// 1. Validate all security parameters
+// 2. Normalize geolocation data (city names, country codes)
+// 3. Hash password with Argon2id if provided
+// 4. Compress email content with gzip
+// 5. Encrypt with AES-256-GCM
+// 6. Upload encrypted blob to Cloudflare R2
+// 7. Store metadata in SQLite database
+// 8. Return secure access link
 func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("sendEmailHandler started")
 	var req SendEmailRequest

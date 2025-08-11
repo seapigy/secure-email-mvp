@@ -34,10 +34,14 @@ A secure email system with end-to-end encryption, built with React, TypeScript, 
 - **Secure Email UI** with privacy-first design inspired by ProtonMail and Skiff
 - **Health check system** for backend connectivity monitoring
 - **Advanced security features** including:
+  - ✅ **Multi-Factor Authentication (MFA)** - TOTP and email-based 2FA
+  - ✅ **Enhanced Geolocation Verification** - City and country-based access restrictions
   - ✅ **Per-email password protection** - Individual password protection for emails
+  - ✅ **Brute-force protection** - Per-email and IP-based rate limiting with lockouts
   - ✅ **Email expiration** - Automatic expiration with cleanup worker
   - ✅ **Burn-after-read** - One-time access email deletion
   - ✅ **Self-destruct after failed attempts** - Auto-delete after 3 failed access attempts
+  - ✅ **Access notification system** - Real-time alerts for email access events
   - ✅ **Automated cleanup worker** - Background cleanup of expired/consumed emails
   - ✅ **Admin APIs** - Cleanup statistics and manual triggers
   - ✅ **Comprehensive security logging** - Audit trails for all security events
@@ -46,12 +50,17 @@ A secure email system with end-to-end encryption, built with React, TypeScript, 
 
 ## 🎯 Project Status
 
-**Current Version**: Micro-Iteration 4.10 Complete  
+**Current Version**: Micro-Iteration 4.17 Complete  
 **Status**: ✅ **PRODUCTION READY**
 
 ### ✅ Completed Features
-- **Authentication & Authorization**: JWT + TOTP 2FA
+- **Authentication & Authorization**: JWT + TOTP 2FA + Email-based MFA
 - **Email Encryption**: AES-256-GCM end-to-end encryption
+- **Multi-Factor Authentication**: TOTP and email-based verification
+- **Enhanced Geolocation**: City and country-based access restrictions
+- **Password Protection**: Per-email password protection with Argon2id
+- **Brute Force Protection**: Per-email and IP-based rate limiting
+- **Access Notifications**: Real-time alerts for email access events
 - **Email Expiration**: Automatic expiration with cleanup
 - **Burn-After-Read**: One-time access deletion
 - **Failed Attempt Protection**: Auto-delete after 3 failed attempts
@@ -82,7 +91,7 @@ A secure email system with end-to-end encryption, built with React, TypeScript, 
 - **Frontend**: React 18 with TypeScript and Vite
 - **Database**: SQLite with modernc.org driver
 - **Storage**: Cloudflare R2 for encrypted email content
-- **Authentication**: JWT + TOTP (Google Authenticator)
+- **Authentication**: JWT + TOTP + Email-based MFA
 - **Styling**: Tailwind CSS with custom design system
 - **Hosting**: Oracle Cloud Free Tier (backend), Netlify (frontend)
 - **Icons**: Lucide React for modern iconography
@@ -176,11 +185,21 @@ A secure email system with end-to-end encryption, built with React, TypeScript, 
 - `POST /api/auth/refresh` - Refresh JWT token
 
 ### Email Operations
-- `POST /api/email/send` - Send encrypted email
+- `POST /api/email/send` - Send encrypted email with security options
 - `POST /api/email/get` - Retrieve encrypted email
 - `GET /api/email/list` - List user's emails
 - `GET /api/email/view/{id}` - View individual email
 - `DELETE /api/email/{id}` - Delete email with cleanup
+
+### Multi-Factor Authentication
+- `POST /api/mfa/setup` - Setup TOTP or email-based MFA
+- `POST /api/mfa/verify` - Verify MFA code
+- `POST /api/mfa/disable` - Disable MFA for email
+
+### Notifications
+- `GET /api/notifications/preferences` - Get notification preferences
+- `PUT /api/notifications/preferences` - Update notification preferences
+- `GET /api/notifications/history` - Get access event history
 
 ### System Health
 - `GET /health` - Backend health check endpoint
@@ -250,6 +269,8 @@ curl -X POST https://api.securesystem.email/api/auth/login \
 │   ├── main.go                 # Server entry point
 │   ├── login_handler.go        # Authentication handlers
 │   ├── signup_handler.go       # Registration handlers
+│   ├── mfa_handlers.go         # Multi-factor authentication
+│   ├── notification_handlers.go # Access notification system
 │   ├── email_handlers.go       # Email CRUD operations
 │   └── *_test.go              # Comprehensive test suites
 ├── pkg/auth/                   # Authentication & encryption
@@ -258,6 +279,24 @@ curl -X POST https://api.securesystem.email/api/auth/login \
 │   ├── login.go                # Login logic
 │   ├── signup.go               # Signup logic
 │   └── session.go              # Session management
+├── pkg/mfa/                    # Multi-factor authentication
+│   ├── mfa.go                  # TOTP and email-based MFA
+│   └── mfa_test.go             # MFA unit tests
+├── pkg/geoverify/              # Enhanced geolocation verification
+│   ├── geoverify.go            # City and country verification
+│   └── geoverify_test.go       # Geolocation unit tests
+├── pkg/bruteforce/             # Brute force protection
+│   ├── bruteforce.go           # Per-email rate limiting
+│   └── bruteforce_test.go      # Brute force unit tests
+├── pkg/iptracking/             # IP-based tracking
+│   ├── iptracking.go           # IP-based lockout
+│   └── iptracking_test.go      # IP tracking unit tests
+├── pkg/emailpassword/          # Email password protection
+│   ├── emailpassword.go        # Per-email passwords
+│   └── emailpassword_test.go   # Password protection tests
+├── pkg/notification/           # Access notification system
+│   ├── notification.go         # Notification service
+│   └── notification_test.go    # Notification unit tests
 ├── pkg/storage/                # Cloudflare R2 storage
 │   └── r2.go                   # R2 client operations
 ├── src/                        # React frontend
@@ -272,7 +311,8 @@ curl -X POST https://api.securesystem.email/api/auth/login \
 │   │   │   ├── EmailDetail.tsx        # Email detail view
 │   │   │   ├── SecuritySettings.tsx   # Security settings panel
 │   │   │   ├── ComposeModal.tsx       # Email composition modal
-│   │   │   └── UnlockModal.tsx        # Password unlock modal
+│   │   │   ├── UnlockModal.tsx        # Password unlock modal
+│   │   │   └── NotificationPreferences.tsx # Notification settings
 │   │   └── ui/                # Reusable UI components
 │   ├── hooks/                 # Custom React hooks
 │   ├── stores/                # State management (Zustand)
@@ -296,13 +336,18 @@ curl -X POST https://api.securesystem.email/api/auth/login \
 - **Secure Headers**: HSTS, CSP, X-Frame-Options
 - **Password Hashing**: Argon2 with email as salt
 - **TOTP Authentication**: 6-digit codes, 30-second window
+- **Email-based MFA**: 6-digit codes sent via email
 - **JWT Tokens**: HS256 signed, 24-hour expiration
 - **Input Validation**: Comprehensive validation for all inputs
 - **CORS Protection**: Restricted origins
 - **AES-256-GCM Encryption**: For all email content
 - **User Authorization**: Users can only access their own emails
 - **Access Logging**: All access attempts logged for audit
+- **Multi-Factor Authentication**: TOTP and email-based 2FA
+- **Enhanced Geolocation**: City and country-based access restrictions
 - **Per-Email Password Protection**: Individual password protection for emails
+- **Brute Force Protection**: Per-email and IP-based rate limiting
+- **Access Notifications**: Real-time alerts for email access events
 - **Self-Destruct After Failed Attempts**: Auto-delete messages after failed access
 - **Session Management**: Track unlocked emails and failed attempts
 
@@ -332,12 +377,21 @@ curl -X POST https://api.securesystem.email/api/auth/login \
 - ✅ **Iteration 5.4**: Per-Email Password Protection
 - ✅ **Iteration 5.5**: Self-Destruct After Failed Attempts Feature
 - ✅ **Iteration 5.6**: Compose Secure Email Modal
+- ✅ **Micro-Iteration 4.10**: Simplified Geolocation Access Restrictions
+- ✅ **Micro-Iteration 4.12**: Multi-Factor Authentication (TOTP + Email-based)
+- ✅ **Micro-Iteration 4.12**: Rate Limiting & Brute-Force Protection
+- ✅ **Micro-Iteration 4.13**: IP-Based Tracking & Lockout
+- ✅ **Micro-Iteration 4.14**: Password Protection for Email Access
+- ✅ **Micro-Iteration 4.15**: Enhanced Geolocation Verification (City + Country)
+- ✅ **Micro-Iteration 4.16**: Frontend UI for Enhanced Geolocation Verification
+- ✅ **Micro-Iteration 4.17**: Access Notification System Implementation
 
 ## Current Features
 
 ### Authentication System
 - **Unified Login/Signup**: Seamless user experience
 - **TOTP Setup**: QR code generation for Google Authenticator
+- **Email-based MFA**: 6-digit codes sent via email
 - **Fallback Email**: Account recovery with confirmation
 - **Session Management**: JWT-based with refresh tokens
 - **Rate Limiting**: IP-based protection against brute force
@@ -348,6 +402,15 @@ curl -X POST https://api.securesystem.email/api/auth/login \
 - **Complete CRUD**: Send, receive, list, view, delete operations
 - **Folder Organization**: User-defined email organization
 - **Access Control**: Password-protected email access
+
+### Security Features
+- **Multi-Factor Authentication**: TOTP and email-based 2FA
+- **Enhanced Geolocation**: City and country-based access restrictions
+- **Per-Email Password Protection**: Individual password protection for emails
+- **Brute Force Protection**: Per-email and IP-based rate limiting
+- **Access Notifications**: Real-time alerts for email access events
+- **Self-Destruct After Failed Attempts**: Auto-delete messages after failed access
+- **Session Management**: Track unlocked emails and failed attempts
 
 ### User Interface
 - **Modern Design**: Glassmorphic components with Tailwind CSS
@@ -360,31 +423,17 @@ curl -X POST https://api.securesystem.email/api/auth/login \
 - **Mobile Responsive**: Single panel layout for mobile devices
 - **Compose Modal**: Modern email composition interface
 - **Unlock Modal**: Password verification for protected emails
+- **Notification Preferences**: User-configurable access alerts
 
 ### Health Monitoring
 - **Backend Health Check**: Real-time connectivity monitoring
 - **Status Indicators**: Visual feedback for system status
 - **Error Handling**: Graceful degradation when backend is unavailable
 
-### Advanced Security Features
-- **Per-Email Password Protection**: Individual password protection for emails
-- **Self-Destruct After Failed Attempts**: Auto-delete messages after failed access
-- **Session Management**: Track unlocked emails and failed attempts
-- **Compose Security Options**: Comprehensive security settings during composition
-- **Geolocation Restrictions**: Restrict access by country
-- **Time-Based Access**: Set unlock times for messages
-- **Auto-Destruct Features**: Messages that self-destruct after viewing
-- **Read-Once Mode**: Messages that can only be viewed once
-- **Remote Revoke**: Ability to revoke access to sent messages
-- **Decoy Messages**: Fake messages to mislead attackers
-- **Metadata Stripping**: Remove identifying information
-- **Tamper Alerts**: Detect unauthorized access attempts
-
 ## Next Steps
 
 **Micro-Iteration 6**: Advanced Features & Production Optimization
 - Enhanced audit logging and admin tools
-- Geolocation-based access controls
 - Email compression and optimization
 - Advanced folder management
 - Bulk operations and search functionality
@@ -411,7 +460,6 @@ First-time users are greeted with a glassmorphic onboarding modal that explains 
 
 **Planned:**
 - Enhanced audit logging and admin tools
-- Geolocation-based access controls
 - Email compression and optimization
 - Advanced folder management
 - Bulk operations and search functionality

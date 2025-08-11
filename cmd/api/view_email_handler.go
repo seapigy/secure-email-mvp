@@ -44,9 +44,21 @@ type ViewEmailResponse struct {
 	IsExpired                 bool       `json:"isExpired"`
 }
 
-// viewEmailHandler handles GET /api/email/view/{id}. It retrieves, decrypts, and returns a specific email.
-// For burn-after-read emails, it deletes the email after first successful access.
-// For self-destruct emails, it deletes the email after N failed access attempts.
+// viewEmailHandler handles GET /api/email/view/{id}. It implements a comprehensive security flow:
+// 
+// Security Flow Order:
+// 1. IP-based lockout check (prevents brute force from same IP)
+// 2. Enhanced geolocation verification (city/country restrictions)
+// 3. Per-email brute force protection (tracks failed attempts per email)
+// 4. Per-email password protection (Argon2id verification)
+// 5. Multi-factor authentication (TOTP or email-based MFA)
+// 6. Email retrieval and decryption (AES-256-GCM)
+// 7. Access notification recording (success/failure/blocked events)
+// 8. Self-destruct after failed attempts (auto-delete on threshold)
+// 9. Burn-after-read functionality (delete after first access)
+//
+// All security checks increment appropriate counters and return generic "Access denied" messages
+// to prevent information leakage. Failed attempts are tracked both per-email and per-IP.
 func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("viewEmailHandler started")
 
