@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { User, Theme } from '@/types';
 import {
   SunIcon,
@@ -6,6 +6,7 @@ import {
   BellIcon,
   UserCircleIcon,
 } from '@heroicons/react/24/outline';
+import NotificationPreferences from '@/components/secure/NotificationPreferences';
 
 interface HeaderProps {
   user: User | null;
@@ -27,6 +28,8 @@ interface HeaderProps {
  * - Logout functionality
  */
 const Header: React.FC<HeaderProps> = ({ user, onLogout, onToggleTheme, theme }) => {
+  const [showNotificationPreferences, setShowNotificationPreferences] = useState(false);
+
   return (
     <header className="bg-white dark:bg-secondary-800 border-b border-secondary-200 dark:border-secondary-700 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -61,7 +64,11 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onToggleTheme, theme })
           </button>
 
           {/* Notifications */}
-          <button className="p-2 rounded-lg text-secondary-600 hover:bg-secondary-100 dark:text-secondary-400 dark:hover:bg-secondary-700 transition-colors duration-200 relative">
+          <button 
+            onClick={() => setShowNotificationPreferences(true)}
+            className="p-2 rounded-lg text-secondary-600 hover:bg-secondary-100 dark:text-secondary-400 dark:hover:bg-secondary-700 transition-colors duration-200 relative"
+            title="Notification Settings"
+          >
             <BellIcon className="w-5 h-5" />
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
           </button>
@@ -92,6 +99,12 @@ const Header: React.FC<HeaderProps> = ({ user, onLogout, onToggleTheme, theme })
           </div>
         </div>
       </div>
+
+      {/* Notification Preferences Modal */}
+      <NotificationPreferences
+        isOpen={showNotificationPreferences}
+        onClose={() => setShowNotificationPreferences(false)}
+      />
     </header>
   );
 };

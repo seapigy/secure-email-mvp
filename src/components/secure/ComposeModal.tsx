@@ -17,6 +17,11 @@ import {
 } from 'lucide-react';
 import { sendSecureEmail, isApiError, getErrorMessage } from '@/lib/api';
 import { toast } from 'react-toastify';
+import { 
+  validateCountryCode, 
+  validateCityName, 
+  SUPPORTED_COUNTRIES
+} from '@/lib/geolocation';
 
 /**
  * Compose Form Data Interface
@@ -45,11 +50,14 @@ interface ComposeFormData {
     /** Password for protected emails */
     password?: string;
     
-    /** Enable geolocation-based restrictions */
-    geolocationLock: boolean;
+    /** Enhanced geolocation verification type */
+    geoVerificationType: string; // "none", "country", "city", "city_country"
     
-    /** List of allowed countries */
-    allowedCountries: string[];
+    /** Country for geolocation verification (ISO 3166-1 alpha-2 code) */
+    geoCountry?: string;
+    
+    /** City for geolocation verification */
+    geoCity?: string;
     
     /** Enable time-based access restrictions */
     timeLock: boolean;
@@ -89,6 +97,12 @@ interface ComposeFormData {
     
     /** Expiration date/time (ISO 8601 UTC format) */
     expiresAt?: string;
+    
+    /** Enable Multi-Factor Authentication */
+    requireMFA: boolean;
+    
+    /** MFA type (TOTP or EMAIL_CODE) */
+    mfaType?: string;
   };
 }
 
@@ -143,8 +157,9 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
     securitySettings: {
       passwordProtection: false,
       password: '',
-      geolocationLock: false,
-      allowedCountries: [],
+      geoVerificationType: 'none',
+      geoCountry: '',
+      geoCity: '',
       timeLock: false,
       unlockAfter: '',
       autoDestruct: false,
@@ -157,7 +172,8 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
       selfDestructAfterAttempts: false,
       maxFailedAttempts: 3,
       enableExpiration: false,
-      expiresAt: ''
+      expiresAt: '',
+      requireMFA: false
     }
   });
 
@@ -283,6 +299,41 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
       }
     }
 
+    // Validate enhanced geolocation verification settings
+    if (formData.securitySettings.geoVerificationType !== 'none') {
+      // Validate country requirement
+      if ((formData.securitySettings.geoVerificationType === 'country' || 
+           formData.securitySettings.geoVerificationType === 'city_country') && 
+          !formData.securitySettings.geoCountry) {
+        toast.error('Please select a country for geolocation verification');
+        return;
+      }
+
+      // Validate city requirement
+      if ((formData.securitySettings.geoVerificationType === 'city' || 
+           formData.securitySettings.geoVerificationType === 'city_country') && 
+          !formData.securitySettings.geoCity) {
+        toast.error('Please enter a city name for geolocation verification');
+        return;
+      }
+
+      // Validate city name format (if provided)
+      if (formData.securitySettings.geoCity) {
+        if (!validateCityName(formData.securitySettings.geoCity)) {
+          toast.error('City name must be between 2 and 100 characters and can only contain letters, spaces, hyphens, and apostrophes');
+          return;
+        }
+      }
+
+      // Validate country code format (if provided)
+      if (formData.securitySettings.geoCountry) {
+        if (!validateCountryCode(formData.securitySettings.geoCountry)) {
+          toast.error('Country code must be exactly 2 uppercase letters (e.g., US, CA, GB)');
+          return;
+        }
+      }
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -300,8 +351,9 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
         password: formData.securitySettings.passwordProtection 
           ? formData.securitySettings.password 
           : undefined,
-        geolocationLock: formData.securitySettings.geolocationLock,
-        allowedCountries: formData.securitySettings.allowedCountries,
+        geoVerificationType: formData.securitySettings.geoVerificationType,
+        geoCountry: formData.securitySettings.geoCountry,
+        geoCity: formData.securitySettings.geoCity,
         timeLock: formData.securitySettings.timeLock,
         unlockAfter: formData.securitySettings.unlockAfter,
         autoDestruct: formData.securitySettings.autoDestruct,
@@ -315,6 +367,10 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
         tamperAlerts: formData.securitySettings.tamperAlerts,
         expiresAt: formData.securitySettings.enableExpiration && formData.securitySettings.expiresAt
           ? new Date(formData.securitySettings.expiresAt).toISOString()
+          : undefined,
+        requireMFA: formData.securitySettings.requireMFA,
+        mfaType: formData.securitySettings.requireMFA 
+          ? formData.securitySettings.mfaType || 'TOTP'
           : undefined,
       };
 
@@ -368,8 +424,9 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
       securitySettings: {
         passwordProtection: false,
         password: '',
-        geolocationLock: false,
-        allowedCountries: [],
+        geoVerificationType: 'none',
+        geoCountry: '',
+        geoCity: '',
         timeLock: false,
         unlockAfter: '',
         autoDestruct: false,
@@ -382,7 +439,8 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
         selfDestructAfterAttempts: false,
         maxFailedAttempts: 3,
         enableExpiration: false,
-        expiresAt: ''
+        expiresAt: '',
+        requireMFA: false
       }
     });
     
@@ -590,21 +648,100 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                       </div>
                     )}
 
-                    {/* Geolocation Lock */}
+                    {/* Enhanced Geolocation Verification */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                        <span className="text-sm text-secondary-700 dark:text-secondary-300">Geolocation Lock</span>
+                        <div>
+                          <span className="text-sm text-secondary-700 dark:text-secondary-300">Enhanced Geolocation Verification</span>
+                          <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
+                            Restrict access based on recipient's location
+                          </p>
+                        </div>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.securitySettings.geolocationLock}
-                          onChange={(e) => handleSecurityChange('geolocationLock', e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-secondary-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-secondary-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-secondary-600 peer-checked:bg-primary-600"></div>
-                      </label>
+                    </div>
+
+                    {/* Geolocation Verification Type Selection */}
+                    <div className="ml-6 space-y-3">
+                      <div>
+                        <label className="block text-xs text-secondary-600 dark:text-secondary-400 mb-2">
+                          Verification Type
+                        </label>
+                        <select
+                          value={formData.securitySettings.geoVerificationType}
+                          onChange={(e) => handleSecurityChange('geoVerificationType', e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-secondary-300 dark:border-secondary-600 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-secondary-600 dark:text-white"
+                        >
+                          <option value="none">None - No location restrictions</option>
+                          <option value="country">Country only - Restrict by country</option>
+                          <option value="city">City only - Restrict by city</option>
+                          <option value="city_country">City + Country - Restrict by both</option>
+                        </select>
+                        <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">
+                          Choose the type of geolocation verification required for this email
+                        </p>
+                      </div>
+
+                      {/* Country Input (for country or city_country) */}
+                      {(formData.securitySettings.geoVerificationType === 'country' || formData.securitySettings.geoVerificationType === 'city_country') && (
+                        <div>
+                          <label className="block text-xs text-secondary-600 dark:text-secondary-400 mb-1">
+                            Required Country
+                          </label>
+                          <select
+                            value={formData.securitySettings.geoCountry || ''}
+                            onChange={(e) => handleSecurityChange('geoCountry', e.target.value)}
+                            required={formData.securitySettings.geoVerificationType === 'country' || formData.securitySettings.geoVerificationType === 'city_country'}
+                            className="w-full px-3 py-2 text-sm border border-secondary-300 dark:border-secondary-600 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-secondary-600 dark:text-white"
+                          >
+                            <option value="">Select a country (required)</option>
+                            {SUPPORTED_COUNTRIES.map(country => (
+                              <option key={country.code} value={country.code}>
+                                {country.name}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">
+                            Recipients must be located in this country to access the email
+                          </p>
+                        </div>
+                      )}
+
+                      {/* City Input (for city or city_country) */}
+                      {(formData.securitySettings.geoVerificationType === 'city' || formData.securitySettings.geoVerificationType === 'city_country') && (
+                        <div>
+                          <label className="block text-xs text-secondary-600 dark:text-secondary-400 mb-1">
+                            Required City
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Enter city name (e.g., New York, London, Tokyo)"
+                            value={formData.securitySettings.geoCity || ''}
+                            onChange={(e) => handleSecurityChange('geoCity', e.target.value)}
+                            required={formData.securitySettings.geoVerificationType === 'city' || formData.securitySettings.geoVerificationType === 'city_country'}
+                            className="w-full px-3 py-2 text-sm border border-secondary-300 dark:border-secondary-600 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-secondary-600 dark:text-white"
+                          />
+                          <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">
+                            Recipients must be located in this city to access the email
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Verification Info */}
+                      {formData.securitySettings.geoVerificationType !== 'none' && (
+                        <div className="flex items-start space-x-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                          <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                          <div className="text-xs text-blue-700 dark:text-blue-300">
+                            <p className="font-medium">Geolocation Verification</p>
+                            <p>
+                              {formData.securitySettings.geoVerificationType === 'country' && 'Recipients must be in the specified country.'}
+                              {formData.securitySettings.geoVerificationType === 'city' && 'Recipients must be in the specified city.'}
+                              {formData.securitySettings.geoVerificationType === 'city_country' && 'Recipients must be in both the specified city AND country.'}
+                            </p>
+                            <p className="mt-1">Location is determined by the recipient's IP address.</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Time Lock */}
@@ -850,6 +987,62 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                         </p>
                       </div>
                     )}
+
+                    {/* Multi-Factor Authentication */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <div>
+                          <span className="text-sm text-secondary-700 dark:text-secondary-300">Multi-Factor Authentication</span>
+                          <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
+                            Require additional verification to access this email
+                          </p>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.securitySettings.requireMFA}
+                          onChange={(e) => handleSecurityChange('requireMFA', e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-secondary-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-secondary-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-secondary-600 peer-checked:bg-primary-600"></div>
+                      </label>
+                    </div>
+
+                    {/* MFA Type Selection */}
+                    {formData.securitySettings.requireMFA && (
+                      <div className="ml-6 space-y-2">
+                        <div>
+                          <label className="block text-xs text-secondary-600 dark:text-secondary-400 mb-1">
+                            MFA Type
+                          </label>
+                          <select
+                            value={formData.securitySettings.mfaType || 'TOTP'}
+                            onChange={(e) => handleSecurityChange('mfaType', e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-secondary-300 dark:border-secondary-600 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-secondary-600 dark:text-white"
+                          >
+                            <option value="TOTP">TOTP (Google Authenticator/Authy)</option>
+                            <option value="EMAIL_CODE">Email Code</option>
+                          </select>
+                          <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">
+                            {formData.securitySettings.mfaType === 'TOTP' 
+                              ? 'Recipient will need to scan a QR code with their authenticator app'
+                              : 'Recipient will receive a 6-digit code via email'
+                            }
+                          </p>
+                        </div>
+                        
+                        {/* MFA Info */}
+                        <div className="flex items-start space-x-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                          <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                          <div className="text-xs text-blue-700 dark:text-blue-300">
+                            <p className="font-medium">MFA Security</p>
+                            <p>Recipients will need to provide additional verification before accessing this email.</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -865,17 +1058,21 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
               >
                 Cancel
               </button>
-                             <button
-                 type="submit"
-                 disabled={
-                   isSubmitting || 
-                   !formData.recipient || 
-                   !formData.subject || 
-                   !formData.body ||
-                   (formData.securitySettings.passwordProtection && (!formData.securitySettings.password || formData.securitySettings.password.length < 6))
-                 }
-                 className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-               >
+                                           <button
+                type="submit"
+                disabled={
+                  isSubmitting || 
+                  !formData.recipient || 
+                  !formData.subject || 
+                  !formData.body ||
+                  (formData.securitySettings.passwordProtection && (!formData.securitySettings.password || formData.securitySettings.password.length < 6)) ||
+                  // Geolocation validation
+                  (formData.securitySettings.geoVerificationType === 'country' && !formData.securitySettings.geoCountry) ||
+                  (formData.securitySettings.geoVerificationType === 'city' && !formData.securitySettings.geoCity) ||
+                  (formData.securitySettings.geoVerificationType === 'city_country' && (!formData.securitySettings.geoCountry || !formData.securitySettings.geoCity))
+                }
+                className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
                 {isSubmitting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>

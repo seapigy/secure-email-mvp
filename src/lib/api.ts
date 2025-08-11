@@ -42,8 +42,14 @@ export interface SendSecureEmailRequest {
   maxFailedAttempts?: number;
   passwordProtection?: boolean;
   password?: string;
+  // Enhanced geolocation verification (Micro-Iteration 4.15)
+  geoVerificationType?: string; // "none", "country", "city", "city_country"
+  geoCity?: string;
+  geoCountry?: string;
+  // Legacy geolocation fields (for backward compatibility)
   geolocationLock?: boolean;
-  allowedCountries?: string[];
+  allowedCountry?: string;
+  allowedCity?: string;
   timeLock?: boolean;
   unlockAfter?: string;
   autoDestruct?: boolean;
@@ -54,6 +60,8 @@ export interface SendSecureEmailRequest {
   stripMetadata?: boolean;
   tamperAlerts?: boolean;
   expiresAt?: string; // ISO 8601 UTC format
+  requireMFA?: boolean;
+  mfaType?: string;
 }
 
 // Secure Email Response Interface
@@ -61,6 +69,40 @@ export interface SendSecureEmailResponse {
   blob_id?: string;
   status: string;
   error?: string;
+}
+
+// Notification Interfaces
+export interface NotificationPreferences {
+  user_id: string;
+  email_notifications: boolean;
+  sms_notifications: boolean;
+  notify_on_success: boolean;
+  notify_on_failure: boolean;
+  notify_on_blocked: boolean;
+  include_geolocation: boolean;
+  include_device_info: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AccessEvent {
+  event_id: string;
+  email_id: string;
+  user_id: string;
+  event_type: 'success' | 'failure' | 'blocked';
+  ip_address: string;
+  user_agent: string;
+  country?: string;
+  city?: string;
+  device_type?: string;
+  failure_reason?: string;
+  timestamp: string;
+}
+
+export interface NotificationResponse {
+  success: boolean;
+  message?: string;
+  data?: any;
 }
 
 // API Client Configuration
@@ -250,6 +292,41 @@ export const getErrorMessage = (error: any): string => {
     return error.message;
   }
   return 'An unexpected error occurred';
+};
+
+// Notification API Functions
+export const getNotificationPreferences = async (): Promise<NotificationPreferences> => {
+  try {
+    const response = await apiClient.get('/api/notifications/preferences');
+    return response.data.data;
+  } catch (error) {
+    console.error('Error fetching notification preferences:', error);
+    throw error;
+  }
+};
+
+export const updateNotificationPreferences = async (
+  preferences: Partial<NotificationPreferences>
+): Promise<NotificationPreferences> => {
+  try {
+    const response = await apiClient.put('/api/notifications/preferences', preferences);
+    return response.data.data;
+  } catch (error) {
+    console.error('Error updating notification preferences:', error);
+    throw error;
+  }
+};
+
+export const getAccessEventHistory = async (limit?: number): Promise<AccessEvent[]> => {
+  try {
+    const response = await apiClient.get('/api/notifications/history', {
+      params: { limit },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('Error fetching access event history:', error);
+    throw error;
+  }
 };
 
 // Export the API client for direct use if needed

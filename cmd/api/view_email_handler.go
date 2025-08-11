@@ -12,9 +12,17 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"secure-email-mvp/pkg/auth"
+	"secure-email-mvp/pkg/bruteforce"
+	"secure-email-mvp/pkg/emailpassword"
+	"secure-email-mvp/pkg/geolocation"
+	"secure-email-mvp/pkg/geoverify"
+	"secure-email-mvp/pkg/iptracking"
+	"secure-email-mvp/pkg/mfa"
+	"secure-email-mvp/pkg/notification"
 	"secure-email-mvp/pkg/storage"
 
 	"github.com/gorilla/mux"
@@ -92,18 +100,32 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 		expiresAt                                                      *time.Time
 		selfDestructed                                                 int
 		failedAccessAttempts                                           int
+		allowedCity, allowedCountry                                    string
+		geoVerificationType, geoCity, geoCountry                       string // NEW for Micro-Iteration 4.15
+		requireMFA                                                     int
+		mfaType                                                        string
+		encryptedTOTPSecret                                            string
+		mfaFailedAttempts                                              int
+		mfaLockedUntil                                                 *time.Time
+		isPasswordProtected                                            int
 	)
 
 	err := srv.db.QueryRow(`
 		SELECT encrypted_blob_url, encrypted_key, encryption_nonce, encryption_auth_tag, 
 		       compression_algo, sender_id, recipient, subject, created_at,
 		       self_destruct_after_attempts, max_attempts, burn_after_read, access_count, expires_at,
-		       self_destructed, failed_access_attempts
+		       self_destructed, failed_access_attempts, allowed_city, allowed_country,
+		       geo_verification_type, geo_city, geo_country,
+		       require_mfa, mfa_type, encrypted_totp_secret, mfa_failed_attempts, mfa_locked_until,
+		       is_password_protected
 		FROM emails WHERE email_id = ?`,
 		emailID,
 	).Scan(&blobID, &encryptedKeyB64, &nonceB64, &authTagB64, &compressionAlgo,
 		&senderID, &recipient, &subject, &createdAt, &selfDestructAfterAttempts,
-		&maxFailedAttempts, &burnAfterRead, &accessCount, &expiresAt, &selfDestructed, &failedAccessAttempts)
+		&maxFailedAttempts, &burnAfterRead, &accessCount, &expiresAt, &selfDestructed, &failedAccessAttempts,
+		&allowedCity, &allowedCountry, &geoVerificationType, &geoCity, &geoCountry,
+		&requireMFA, &mfaType, &encryptedTOTPSecret, &mfaFailedAttempts, &mfaLockedUntil,
+		&isPasswordProtected)
 
 	if err != nil {
 		log.Printf("Database query failed: %v", err)
@@ -113,7 +135,13 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. Check if the authenticated user is the sender of this email
+	// 2. Initialize brute-force protection (Micro-Iteration 4.12)
+	bfProtection := bruteforce.NewBruteForceProtection(srv.db)
+
+	// 3. Initialize IP tracking (Micro-Iteration 4.13)
+	ipTracking := iptracking.NewIPTrackingService(srv.db)
+
+	// 4. Check if the authenticated user is the sender of this email
 	if senderID != userID {
 		log.Printf("Unauthorized access attempt: user %s trying to access email from sender %s", userID, senderID)
 		w.Header().Set("Content-Type", "application/json")
@@ -122,7 +150,343 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Check if email has been self-destructed
+	// 5. Check IP-based lockout (Micro-Iteration 4.13)
+	clientIP := getClientIP(r)
+	ipLocked, err := ipTracking.CheckIPLockout(clientIP)
+	if err != nil {
+		log.Printf("Failed to check IP lockout for IP %s: %v", clientIP, err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"Access denied"}`))
+		return
+	}
+	if ipLocked {
+		log.Printf("IP %s is locked out due to repeated failed attempts", clientIP)
+
+		// Record blocked access event
+		if err := srv.recordAccessEvent(r.Context(), emailID, senderID, notification.AccessEventTypeBlocked, r, "IP lockout"); err != nil {
+			log.Printf("Failed to record blocked access event: %v", err)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"error":"Access denied"}`))
+		return
+	}
+
+	// 6. Check geolocation restrictions (Micro-Iteration 4.10)
+	if allowedCity != "" || allowedCountry != "" {
+		// Get client IP address
+		clientIP := getClientIP(r)
+
+		// Get geolocation service
+		geoService := geolocation.NewGeolocationService()
+
+		// Get location for the client IP
+		location, err := geoService.GetLocationByIP(clientIP)
+		if err != nil {
+			log.Printf("Failed to get geolocation for IP %s: %v", clientIP, err)
+			// If geolocation fails, deny access for security
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"error":"Access denied"}`))
+			return
+		}
+
+		// Check geolocation restrictions with exact matching
+		accessAllowed := true
+
+		// Check country restriction if set
+		if allowedCountry != "" {
+			if strings.ToLower(strings.TrimSpace(location.Country)) != strings.ToLower(strings.TrimSpace(allowedCountry)) {
+				accessAllowed = false
+				log.Printf("Country mismatch for IP %s: expected %s, got %s", clientIP, allowedCountry, location.Country)
+			}
+		}
+
+		// Check city restriction if set
+		if allowedCity != "" {
+			normalizedClientCity := geolocation.NormalizeCityName(location.City)
+			normalizedAllowedCity := geolocation.NormalizeCityName(allowedCity)
+			if normalizedClientCity != normalizedAllowedCity {
+				accessAllowed = false
+				log.Printf("City mismatch for IP %s: expected %s, got %s", clientIP, allowedCity, location.City)
+			}
+		}
+
+		if !accessAllowed {
+			log.Printf("Geolocation access blocked for IP %s (%s, %s)", clientIP, location.City, strings.ToUpper(location.Country))
+
+			// Increment brute-force protection failed attempts
+			if err := bfProtection.IncrementFailedAttempt(emailID); err != nil {
+				log.Printf("Failed to increment brute-force attempts for geolocation failure: %v", err)
+			}
+
+			// Increment IP tracking failed attempts
+			if err := ipTracking.IncrementFailedAttempt(clientIP); err != nil {
+				log.Printf("Failed to increment IP attempts for geolocation failure: %v", err)
+			}
+
+			// Record blocked access event
+			if err := srv.recordAccessEvent(r.Context(), emailID, senderID, notification.AccessEventTypeBlocked, r, "Geolocation restriction"); err != nil {
+				log.Printf("Failed to record blocked access event: %v", err)
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"error":"Access denied"}`))
+			return
+		}
+
+		log.Printf("Geolocation check passed for IP %s (%s, %s)", clientIP, location.City, strings.ToUpper(location.Country))
+	}
+
+	// 6. Check enhanced geolocation verification (Micro-Iteration 4.15)
+	if geoVerificationType != "" && geoVerificationType != "none" {
+		// Get geolocation service
+		geoService := geolocation.NewGeolocationService()
+
+		// Get location for the client IP
+		location, err := geoService.GetLocationByIP(clientIP)
+		if err != nil {
+			log.Printf("Failed to get geolocation for enhanced verification for IP %s: %v", clientIP, err)
+			// If geolocation fails, deny access for security
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"error":"Access denied"}`))
+			return
+		}
+
+		// Use the geolocation verifier to check access
+		geoVerifier := geoverify.NewGeolocationVerifier()
+		verificationResult := geoVerifier.VerifyLocation(
+			geoverify.VerificationType(geoVerificationType),
+			location,
+			geoCity,
+			geoCountry,
+		)
+
+		if !verificationResult.Allowed {
+			log.Printf("Enhanced geolocation verification failed for IP %s (%s, %s): %s",
+				clientIP, location.City, strings.ToUpper(location.Country), verificationResult.Reason)
+
+			// Increment brute-force protection failed attempts
+			if err := bfProtection.IncrementFailedAttempt(emailID); err != nil {
+				log.Printf("Failed to increment brute-force attempts for enhanced geolocation failure: %v", err)
+			}
+
+			// Increment IP tracking failed attempts
+			if err := ipTracking.IncrementFailedAttempt(clientIP); err != nil {
+				log.Printf("Failed to increment IP attempts for enhanced geolocation failure: %v", err)
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"error":"Access denied"}`))
+			return
+		}
+
+		log.Printf("Enhanced geolocation verification passed for IP %s (%s, %s)",
+			clientIP, location.City, strings.ToUpper(location.Country))
+	}
+
+	// 7. Check brute-force lockout
+	locked, err := bfProtection.CheckLockout(emailID)
+	if err != nil {
+		log.Printf("Failed to check brute-force lockout for email %s: %v", emailID, err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"Access denied"}`))
+		return
+	}
+	if locked {
+		log.Printf("Email %s is locked out due to brute-force protection", emailID)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"error":"Access denied"}`))
+		return
+	}
+
+	// 8. Check password protection (Micro-Iteration 4.14)
+	if isPasswordProtected == 1 {
+		// Check if password is provided in the request body
+		var requestBody map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			log.Printf("Password required but no request body provided for email %s", emailID)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Password required",
+				"code":  "password_required",
+			})
+			return
+		}
+
+		password, ok := requestBody["password"].(string)
+		if !ok || password == "" {
+			log.Printf("Password required but no password provided for email %s", emailID)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Password required",
+				"code":  "password_required",
+			})
+			return
+		}
+
+		// Validate password
+		emailPasswordService := emailpassword.NewEmailPasswordService(srv.db)
+		valid, err := emailPasswordService.CheckEmailPassword(emailID, password)
+		if err != nil {
+			log.Printf("Password validation error: %v", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"error":"Password validation failed"}`))
+			return
+		}
+
+		if !valid {
+			// Increment brute-force protection failed attempts
+			if err := bfProtection.IncrementFailedAttempt(emailID); err != nil {
+				log.Printf("Failed to increment brute-force attempts for password failure: %v", err)
+			}
+
+			// Increment IP tracking failed attempts
+			if err := ipTracking.IncrementFailedAttempt(clientIP); err != nil {
+				log.Printf("Failed to increment IP attempts for password failure: %v", err)
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"error":"Access denied"}`))
+			return
+		}
+
+		// Reset failed attempts on successful password validation
+		if err := bfProtection.ResetFailedAttempts(emailID); err != nil {
+			log.Printf("Failed to reset brute-force attempts: %v", err)
+		}
+
+		if err := ipTracking.ResetFailedAttempts(clientIP); err != nil {
+			log.Printf("Failed to reset IP attempts: %v", err)
+		}
+
+		log.Printf("Password validation successful for email %s", emailID)
+	}
+
+	// 9. Check MFA requirements
+	if requireMFA == 1 {
+		// Check if MFA is locked due to too many failed attempts
+		if mfaLockedUntil != nil && time.Now().Before(*mfaLockedUntil) {
+			log.Printf("MFA is locked for email %s until %v", emailID, *mfaLockedUntil)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "MFA is temporarily locked due to too many failed attempts",
+				"code":  "mfa_locked",
+			})
+			return
+		}
+
+		// Check if MFA code is provided in the request
+		mfaCode := r.URL.Query().Get("mfa_code")
+		if mfaCode == "" {
+			log.Printf("MFA required but no code provided for email %s", emailID)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":    "MFA code required",
+				"code":     "mfa_required",
+				"mfa_type": mfaType,
+			})
+			return
+		}
+
+		// Validate MFA code
+		mfaService := mfa.NewMFAService(srv.db)
+		var valid bool
+		var err error
+
+		switch mfaType {
+		case "TOTP":
+			valid, err = mfaService.ValidateTOTP(emailID, mfaCode)
+		case "EMAIL_CODE":
+			valid, err = mfaService.ValidateEmailCode(emailID, mfaCode)
+		default:
+			log.Printf("Invalid MFA type: %s", mfaType)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"error":"Invalid MFA configuration"}`))
+			return
+		}
+
+		if err != nil {
+			log.Printf("MFA validation error: %v", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"error":"MFA validation failed"}`))
+			return
+		}
+
+		if !valid {
+			// Increment MFA failed attempts
+			if err := mfaService.IncrementFailedAttempts(emailID); err != nil {
+				log.Printf("Failed to increment MFA attempts: %v", err)
+			}
+
+			// Increment brute-force protection failed attempts
+			if err := bfProtection.IncrementFailedAttempt(emailID); err != nil {
+				log.Printf("Failed to increment brute-force attempts: %v", err)
+			}
+
+			// Increment IP tracking failed attempts
+			if err := ipTracking.IncrementFailedAttempt(clientIP); err != nil {
+				log.Printf("Failed to increment IP attempts for MFA failure: %v", err)
+			}
+
+			// Check if we should lock the account
+			locked, _, err := mfaService.CheckMFALockout(emailID)
+			if err != nil {
+				log.Printf("Failed to check MFA lockout: %v", err)
+			}
+
+			if locked {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusTooManyRequests)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": "Too many failed MFA attempts. Access is now locked.",
+					"code":  "mfa_locked",
+				})
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": "Invalid MFA code",
+					"code":  "invalid_mfa_code",
+				})
+			}
+			return
+		}
+
+		// Reset failed attempts on successful validation
+		if err := mfaService.ResetFailedAttempts(emailID); err != nil {
+			log.Printf("Failed to reset MFA attempts: %v", err)
+		}
+
+		// Reset brute-force protection failed attempts on successful validation
+		if err := bfProtection.ResetFailedAttempts(emailID); err != nil {
+			log.Printf("Failed to reset brute-force attempts: %v", err)
+		}
+
+		// Reset IP tracking failed attempts on successful validation
+		if err := ipTracking.ResetFailedAttempts(clientIP); err != nil {
+			log.Printf("Failed to reset IP attempts: %v", err)
+		}
+
+		log.Printf("MFA validation successful for email %s", emailID)
+	}
+
+	// 5. Check if email has been self-destructed
 	if selfDestructed == 1 {
 		log.Printf("Email %s has been self-destructed - returning 410 Gone", emailID)
 		w.Header().Set("Content-Type", "application/json")
@@ -368,6 +732,18 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 		// Don't fail the request for tracking errors
 	}
 
+	// Reset brute-force protection failed attempts on successful access
+	if err := bfProtection.ResetFailedAttempts(emailID); err != nil {
+		log.Printf("Failed to reset brute-force attempts on successful access: %v", err)
+		// Don't fail the request for tracking errors
+	}
+
+	// Reset IP tracking failed attempts on successful access
+	if err := ipTracking.ResetFailedAttempts(clientIP); err != nil {
+		log.Printf("Failed to reset IP attempts on successful access: %v", err)
+		// Don't fail the request for tracking errors
+	}
+
 	// 15. Handle burn-after-read deletion
 	if isBurnAfterRead {
 		log.Printf("Burn-after-read email %s accessed by user %s - deleting content", emailID, userID)
@@ -415,6 +791,12 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 		IsConsumed:                isBurnAfterRead && isAlreadyConsumed,
 		ExpiresAt:                 expiresAt,
 		IsExpired:                 expiresAt != nil && time.Now().After(*expiresAt),
+	}
+
+	// Record successful access event
+	if err := srv.recordAccessEvent(r.Context(), emailID, senderID, notification.AccessEventTypeSuccess, r, ""); err != nil {
+		log.Printf("Failed to record successful access event: %v", err)
+		// Continue with response even if notification fails
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -582,4 +964,35 @@ func (srv *Server) testSelfDestructHandler(w http.ResponseWriter, r *http.Reques
 	default:
 		http.Error(w, "Invalid action", http.StatusBadRequest)
 	}
+}
+
+// getClientIP extracts the client's IP address from the request
+// Handles various proxy headers and falls back to RemoteAddr
+func getClientIP(r *http.Request) string {
+	// Check for X-Forwarded-For header (set by proxies)
+	if forwardedFor := r.Header.Get("X-Forwarded-For"); forwardedFor != "" {
+		// X-Forwarded-For can contain multiple IPs, take the first one
+		if commaIndex := strings.Index(forwardedFor, ","); commaIndex != -1 {
+			return strings.TrimSpace(forwardedFor[:commaIndex])
+		}
+		return strings.TrimSpace(forwardedFor)
+	}
+
+	// Check for X-Real-IP header (set by nginx)
+	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+		return strings.TrimSpace(realIP)
+	}
+
+	// Check for CF-Connecting-IP header (set by Cloudflare)
+	if cfIP := r.Header.Get("CF-Connecting-IP"); cfIP != "" {
+		return strings.TrimSpace(cfIP)
+	}
+
+	// Fall back to RemoteAddr
+	ip := r.RemoteAddr
+	if colonIndex := strings.LastIndex(ip, ":"); colonIndex != -1 {
+		ip = ip[:colonIndex]
+	}
+
+	return ip
 }

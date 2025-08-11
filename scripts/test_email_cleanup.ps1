@@ -186,3 +186,4 @@ Write-Host "2. Configure EMAIL_CLEANUP_INTERVAL_MINUTES in your environment" -Fo
 Write-Host "3. Deploy the worker as a service or integrate with the main API" -ForegroundColor White
 Write-Host "4. Set up monitoring and alerting for the cleanup process" -ForegroundColor White
 
+

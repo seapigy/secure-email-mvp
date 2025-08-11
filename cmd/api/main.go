@@ -16,6 +16,7 @@ import (
 
 	"secure-email-mvp/pkg/auth"
 	"secure-email-mvp/pkg/cleanup"
+	"secure-email-mvp/pkg/iptracking"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -234,6 +235,278 @@ func main() {
 		}
 	}
 
+	// Apply geolocation restrictions migration
+	log.Printf("Loading geolocation restrictions migration...")
+	geolocationMigrationPath := "schema/migrate_add_geolocation_restrictions.sql"
+	log.Printf("Attempting to read geolocation restrictions migration from: %s", geolocationMigrationPath)
+
+	geolocationMigration, err := os.ReadFile(geolocationMigrationPath)
+	if err != nil {
+		log.Printf("Error reading geolocation restrictions migration from %s: %v", geolocationMigrationPath, err)
+		log.Printf("Attempting to read geolocation restrictions migration from absolute path...")
+		absGeolocationPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_geolocation_restrictions.sql")
+		log.Printf("Trying absolute path: %s", absGeolocationPath)
+		geolocationMigration, err = os.ReadFile(absGeolocationPath)
+		if err != nil {
+			log.Printf("Error reading geolocation restrictions migration from absolute path: %v", err)
+		} else {
+			log.Printf("Geolocation restrictions migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(geolocationMigration)); err != nil {
+				log.Printf("Error applying geolocation restrictions migration: %v", err)
+				log.Printf("Geolocation restrictions migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("Geolocation restrictions migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Geolocation restrictions migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(geolocationMigration)); err != nil {
+			log.Printf("Error applying geolocation restrictions migration: %v", err)
+			log.Printf("Geolocation restrictions migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("Geolocation restrictions migration applied successfully")
+		}
+	}
+
+	// Apply MFA migration
+	log.Printf("Loading MFA migration...")
+	mfaMigrationPath := "schema/migrate_add_mfa_fields.sql"
+	log.Printf("Attempting to read MFA migration from: %s", mfaMigrationPath)
+
+	mfaMigration, err := os.ReadFile(mfaMigrationPath)
+	if err != nil {
+		log.Printf("Error reading MFA migration from %s: %v", mfaMigrationPath, err)
+		log.Printf("Attempting to read MFA migration from absolute path...")
+		absMFAPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_mfa_fields.sql")
+		log.Printf("Trying absolute path: %s", absMFAPath)
+		mfaMigration, err = os.ReadFile(absMFAPath)
+		if err != nil {
+			log.Printf("Error reading MFA migration from absolute path: %v", err)
+		} else {
+			log.Printf("MFA migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(mfaMigration)); err != nil {
+				log.Printf("Error applying MFA migration: %v", err)
+				log.Printf("MFA migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("MFA migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("MFA migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(mfaMigration)); err != nil {
+			log.Printf("Error applying MFA migration: %v", err)
+			log.Printf("MFA migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("MFA migration applied successfully")
+		}
+	}
+
+	// Apply simple geolocation migration (Micro-Iteration 4.10)
+	log.Printf("Loading simple geolocation migration...")
+	simpleGeoMigrationPath := "schema/migrate_add_simple_geolocation.sql"
+	log.Printf("Attempting to read simple geolocation migration from: %s", simpleGeoMigrationPath)
+
+	simpleGeoMigration, err := os.ReadFile(simpleGeoMigrationPath)
+	if err != nil {
+		log.Printf("Error reading simple geolocation migration from %s: %v", simpleGeoMigrationPath, err)
+		log.Printf("Attempting to read simple geolocation migration from absolute path...")
+		absSimpleGeoPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_simple_geolocation.sql")
+		log.Printf("Trying absolute path: %s", absSimpleGeoPath)
+		simpleGeoMigration, err = os.ReadFile(absSimpleGeoPath)
+		if err != nil {
+			log.Printf("Error reading simple geolocation migration from absolute path: %v", err)
+		} else {
+			log.Printf("Simple geolocation migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(simpleGeoMigration)); err != nil {
+				log.Printf("Error applying simple geolocation migration: %v", err)
+				log.Printf("Simple geolocation migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("Simple geolocation migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Simple geolocation migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(simpleGeoMigration)); err != nil {
+			log.Printf("Error applying simple geolocation migration: %v", err)
+			log.Printf("Simple geolocation migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("Simple geolocation migration applied successfully")
+		}
+	}
+
+	// Apply brute-force protection migration (Micro-Iteration 4.12)
+	log.Printf("Loading brute-force protection migration...")
+	bruteForceMigrationPath := "schema/migrate_add_brute_force_protection.sql"
+	log.Printf("Attempting to read brute-force protection migration from: %s", bruteForceMigrationPath)
+
+	bruteForceMigration, err := os.ReadFile(bruteForceMigrationPath)
+	if err != nil {
+		log.Printf("Error reading brute-force protection migration from %s: %v", bruteForceMigrationPath, err)
+		log.Printf("Attempting to read brute-force protection migration from absolute path...")
+		absBruteForcePath := filepath.Join(getCurrentDir(), "schema", "migrate_add_brute_force_protection.sql")
+		log.Printf("Trying absolute path: %s", absBruteForcePath)
+		bruteForceMigration, err = os.ReadFile(absBruteForcePath)
+		if err != nil {
+			log.Printf("Error reading brute-force protection migration from absolute path: %v", err)
+		} else {
+			log.Printf("Brute-force protection migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(bruteForceMigration)); err != nil {
+				log.Printf("Error applying brute-force protection migration: %v", err)
+				log.Printf("Brute-force protection migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("Brute-force protection migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Brute-force protection migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(bruteForceMigration)); err != nil {
+			log.Printf("Error applying brute-force protection migration: %v", err)
+			log.Printf("Brute-force protection migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("Brute-force protection migration applied successfully")
+		}
+	}
+
+	// Apply IP tracking migration (Micro-Iteration 4.13)
+	log.Printf("Loading IP tracking migration...")
+	ipTrackingMigrationPath := "schema/migrate_add_ip_tracking.sql"
+	log.Printf("Attempting to read IP tracking migration from: %s", ipTrackingMigrationPath)
+
+	ipTrackingMigration, err := os.ReadFile(ipTrackingMigrationPath)
+	if err != nil {
+		log.Printf("Error reading IP tracking migration from %s: %v", ipTrackingMigrationPath, err)
+		log.Printf("Attempting to read IP tracking migration from absolute path...")
+		absIPTrackingPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_ip_tracking.sql")
+		log.Printf("Trying absolute path: %s", absIPTrackingPath)
+		ipTrackingMigration, err = os.ReadFile(absIPTrackingPath)
+		if err != nil {
+			log.Printf("Error reading IP tracking migration from absolute path: %v", err)
+		} else {
+			log.Printf("IP tracking migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(ipTrackingMigration)); err != nil {
+				log.Printf("Error applying IP tracking migration: %v", err)
+				log.Printf("IP tracking migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("IP tracking migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("IP tracking migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(ipTrackingMigration)); err != nil {
+			log.Printf("Error applying IP tracking migration: %v", err)
+			log.Printf("IP tracking migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("IP tracking migration applied successfully")
+		}
+	}
+
+	// Initialize IP tracking service and run cleanup
+	ipTrackingService := iptracking.NewIPTrackingService(db)
+	if err := ipTrackingService.CleanupOldRecords(); err != nil {
+		log.Printf("Warning: Failed to cleanup old IP records: %v", err)
+	} else {
+		log.Printf("IP tracking cleanup completed successfully")
+	}
+
+	// Apply password protection migration (Micro-Iteration 4.14)
+	log.Printf("Loading password protection migration...")
+	passwordProtectionMigrationPath := "schema/migrate_add_email_password_protection.sql"
+	log.Printf("Attempting to read password protection migration from: %s", passwordProtectionMigrationPath)
+
+	passwordProtectionMigration, err := os.ReadFile(passwordProtectionMigrationPath)
+	if err != nil {
+		log.Printf("Error reading password protection migration from %s: %v", passwordProtectionMigrationPath, err)
+		log.Printf("Attempting to read password protection migration from absolute path...")
+		absPasswordProtectionPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_email_password_protection.sql")
+		log.Printf("Trying absolute path: %s", absPasswordProtectionPath)
+		passwordProtectionMigration, err = os.ReadFile(absPasswordProtectionPath)
+		if err != nil {
+			log.Printf("Error reading password protection migration from absolute path: %v", err)
+		} else {
+			log.Printf("Password protection migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(passwordProtectionMigration)); err != nil {
+				log.Printf("Error applying password protection migration: %v", err)
+				log.Printf("Password protection migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("Password protection migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Password protection migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(passwordProtectionMigration)); err != nil {
+			log.Printf("Error applying password protection migration: %v", err)
+			log.Printf("Password protection migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("Password protection migration applied successfully")
+		}
+	}
+
+	// Apply enhanced geolocation verification migration (Micro-Iteration 4.15)
+	log.Printf("Loading enhanced geolocation verification migration...")
+	geoVerificationMigrationPath := "schema/migrate_add_city_country_verification.sql"
+	log.Printf("Attempting to read enhanced geolocation verification migration from: %s", geoVerificationMigrationPath)
+
+	geoVerificationMigration, err := os.ReadFile(geoVerificationMigrationPath)
+	if err != nil {
+		log.Printf("Error reading enhanced geolocation verification migration from %s: %v", geoVerificationMigrationPath, err)
+		log.Printf("Attempting to read enhanced geolocation verification migration from absolute path...")
+		absGeoVerificationPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_city_country_verification.sql")
+		log.Printf("Trying absolute path: %s", absGeoVerificationPath)
+		geoVerificationMigration, err = os.ReadFile(absGeoVerificationPath)
+		if err != nil {
+			log.Printf("Error reading enhanced geolocation verification migration from absolute path: %v", err)
+		} else {
+			log.Printf("Enhanced geolocation verification migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(geoVerificationMigration)); err != nil {
+				log.Printf("Error applying enhanced geolocation verification migration: %v", err)
+				log.Printf("Enhanced geolocation verification migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("Enhanced geolocation verification migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Enhanced geolocation verification migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(geoVerificationMigration)); err != nil {
+			log.Printf("Error applying enhanced geolocation verification migration: %v", err)
+			log.Printf("Enhanced geolocation verification migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("Enhanced geolocation verification migration applied successfully")
+		}
+	}
+
+	// Apply notification system migration (Micro-Iteration 4.17)
+	log.Printf("Loading notification system migration...")
+	notificationMigrationPath := "schema/migrate_add_notification_system.sql"
+	log.Printf("Attempting to read notification system migration from: %s", notificationMigrationPath)
+
+	notificationMigration, err := os.ReadFile(notificationMigrationPath)
+	if err != nil {
+		log.Printf("Error reading notification system migration from %s: %v", notificationMigrationPath, err)
+		log.Printf("Attempting to read notification system migration from absolute path...")
+		absNotificationPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_notification_system.sql")
+		log.Printf("Trying absolute path: %s", absNotificationPath)
+		notificationMigration, err = os.ReadFile(absNotificationPath)
+		if err != nil {
+			log.Printf("Error reading notification system migration from absolute path: %v", err)
+		} else {
+			log.Printf("Notification system migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(notificationMigration)); err != nil {
+				log.Printf("Error applying notification system migration: %v", err)
+				log.Printf("Notification system migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("Notification system migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Notification system migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(notificationMigration)); err != nil {
+			log.Printf("Error applying notification system migration: %v", err)
+			log.Printf("Notification system migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("Notification system migration applied successfully")
+		}
+	}
+
 	// Initialize per-IP rate limiter for signup and login
 	signupLoginLimiter := NewIPRateLimitMiddleware(5, time.Minute)
 
@@ -314,6 +587,21 @@ func main() {
 	r.Handle("/api/email/view/{id}", jwtMiddleware(http.HandlerFunc(srv.viewEmailHandler))).Methods("GET")
 	log.Printf("Registering /api/email/{id} endpoint")
 	r.Handle("/api/email/{id}", jwtMiddleware(http.HandlerFunc(srv.deleteEmailHandler))).Methods("DELETE")
+
+	// Register MFA endpoints (require JWT authentication)
+	log.Printf("Registering /api/mfa/validate endpoint")
+	r.Handle("/api/mfa/validate", jwtMiddleware(http.HandlerFunc(srv.validateMFAHandler))).Methods("POST")
+	log.Printf("Registering /api/mfa/email-code endpoint")
+	r.Handle("/api/mfa/email-code", jwtMiddleware(http.HandlerFunc(srv.generateEmailCodeHandler))).Methods("POST")
+	log.Printf("Registering /api/mfa/config/{emailID} endpoint")
+	r.Handle("/api/mfa/config/{emailID}", jwtMiddleware(http.HandlerFunc(srv.getMFAConfigHandler))).Methods("GET")
+
+	// Register notification endpoints (require JWT authentication)
+	log.Printf("Registering /api/notifications/preferences endpoint")
+	r.Handle("/api/notifications/preferences", jwtMiddleware(http.HandlerFunc(srv.getNotificationPreferencesHandler))).Methods("GET")
+	r.Handle("/api/notifications/preferences", jwtMiddleware(http.HandlerFunc(srv.updateNotificationPreferencesHandler))).Methods("PUT")
+	log.Printf("Registering /api/notifications/history endpoint")
+	r.Handle("/api/notifications/history", jwtMiddleware(http.HandlerFunc(srv.getAccessEventHistoryHandler))).Methods("GET")
 
 	// Register admin endpoints (require JWT authentication)
 	log.Printf("Registering /admin/email-retention-stats endpoint")

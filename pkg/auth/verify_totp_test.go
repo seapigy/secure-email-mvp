@@ -24,40 +24,48 @@ func TestVerifyTotpHandler(t *testing.T) {
 	tempID := "test-uuid"
 	secret := "JBSWY3DPEHPK3PXP"
 	totpCode, _ := totp.GenerateCode(secret, time.Now())
-	tempStore.Store(tempID, TempState{
-		Email:        "test@securesystem.email",
-		PasswordHash: []byte("hashed"),
-		TotpSecret:   secret,
-		ExpiresAt:    time.Now().Add(5 * time.Minute),
-	})
 
 	tests := []struct {
-		name     string
-		body     string
-		status   int
-		errorMsg string
+		name           string
+		body           string
+		status         int
+		errorMsg       string
+		setupTempState bool
 	}{
 		{
-			name:   "Valid TOTP",
-			body:   `{"temp_id":"test-uuid","totp_code":"` + totpCode + `"}`,
-			status: http.StatusOK,
+			name:           "Valid TOTP",
+			body:           `{"temp_id":"test-uuid","totp_code":"` + totpCode + `"}`,
+			status:         http.StatusOK,
+			setupTempState: true,
 		},
 		{
-			name:     "Invalid TOTP",
-			body:     `{"temp_id":"test-uuid","totp_code":"123456"}`,
-			status:   http.StatusBadRequest,
-			errorMsg: "Invalid TOTP code",
+			name:           "Invalid TOTP",
+			body:           `{"temp_id":"test-uuid","totp_code":"123456"}`,
+			status:         http.StatusBadRequest,
+			errorMsg:       "Invalid TOTP code",
+			setupTempState: true,
 		},
 		{
-			name:     "Invalid temp ID",
-			body:     `{"temp_id":"wrong-uuid","totp_code":"123456"}`,
-			status:   http.StatusBadRequest,
-			errorMsg: "Invalid or expired temp ID",
+			name:           "Invalid temp ID",
+			body:           `{"temp_id":"wrong-uuid","totp_code":"123456"}`,
+			status:         http.StatusBadRequest,
+			errorMsg:       "Invalid or expired temp ID",
+			setupTempState: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Setup temp state for each test that needs it
+			if tt.setupTempState {
+				tempStore.Store(tempID, TempState{
+					Email:        "test@securesystem.email",
+					PasswordHash: []byte("hashed"),
+					TotpSecret:   secret,
+					ExpiresAt:    time.Now().Add(5 * time.Minute),
+				})
+			}
+
 			req, _ := http.NewRequest("POST", "/api/auth/verify-totp", bytes.NewBufferString(tt.body))
 			rr := httptest.NewRecorder()
 			handler.ServeHTTP(rr, req)

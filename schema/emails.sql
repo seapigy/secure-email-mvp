@@ -20,6 +20,12 @@ CREATE TABLE IF NOT EXISTS emails (
     -- Encrypted data key used to decrypt the blob
     encrypted_key TEXT NOT NULL,
 
+    -- Encryption nonce for AES-256-GCM
+    encryption_nonce TEXT NOT NULL,
+
+    -- Encryption auth tag for AES-256-GCM
+    encryption_auth_tag TEXT NOT NULL,
+
     -- Compression algorithm used before encryption
     compression_algo TEXT DEFAULT 'gzip',
 
@@ -94,6 +100,38 @@ CREATE TABLE IF NOT EXISTS emails (
     -- Optional timestamp of last update to this record
     updated_at DATETIME,
 
+    -- Self-destruct flag
+    self_destructed INTEGER DEFAULT 0,
+
+    -- 🔒 Enhanced Security Features (Micro-Iterations) --
+
+    -- Simple geolocation restrictions (Micro-Iteration 4.10)
+    allowed_city TEXT,
+    allowed_country TEXT,
+
+    -- Enhanced geolocation verification (Micro-Iteration 4.15)
+    geo_verification_type TEXT CHECK (geo_verification_type IN ('none', 'country', 'city', 'city_country')) DEFAULT 'none',
+    geo_city TEXT,
+    geo_country TEXT,
+
+    -- MFA settings (Micro-Iteration 4.12)
+    require_mfa INTEGER DEFAULT 0,
+    mfa_type TEXT CHECK (mfa_type IN ('TOTP', 'EMAIL_CODE')),
+    encrypted_totp_secret TEXT,
+    mfa_failed_attempts INTEGER DEFAULT 0,
+    mfa_locked_until DATETIME,
+
+    -- Brute-force protection (Micro-Iteration 4.12)
+    brute_force_failed_attempts INTEGER DEFAULT 0,
+    brute_force_last_failed_attempt DATETIME,
+    brute_force_lockout_until DATETIME,
+    brute_force_max_attempts INTEGER DEFAULT 3,
+    brute_force_lockout_duration_minutes INTEGER DEFAULT 15,
+
+    -- Password protection (Micro-Iteration 4.14)
+    is_password_protected BOOLEAN DEFAULT FALSE,
+    password_salt TEXT,
+
     -- Enforce foreign key relationship with users table
     FOREIGN KEY (sender_id) REFERENCES users(id)
 );
@@ -106,6 +144,13 @@ CREATE INDEX IF NOT EXISTS idx_emails_created_at ON emails(created_at);
 CREATE INDEX IF NOT EXISTS idx_emails_expires_at ON emails(expires_at);
 CREATE INDEX IF NOT EXISTS idx_emails_burn_after_read ON emails(burn_after_read);
 CREATE INDEX IF NOT EXISTS idx_emails_self_destruct ON emails(self_destruct_after_attempts);
+
+-- Enhanced security indexes
+CREATE INDEX IF NOT EXISTS idx_emails_simple_geolocation ON emails(allowed_city, allowed_country);
+CREATE INDEX IF NOT EXISTS idx_emails_geo_verification ON emails(geo_verification_type, geo_city, geo_country);
+CREATE INDEX IF NOT EXISTS idx_emails_mfa ON emails(require_mfa, mfa_type);
+CREATE INDEX IF NOT EXISTS idx_emails_brute_force ON emails(brute_force_failed_attempts, brute_force_lockout_until);
+CREATE INDEX IF NOT EXISTS idx_emails_password_protection ON emails(is_password_protected);
 
 -- Trigger to update updated_at timestamp
 CREATE TRIGGER IF NOT EXISTS update_emails_updated_at 
