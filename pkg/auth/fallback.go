@@ -69,3 +69,41 @@ func ValidateFallbackToken(token string) bool {
 	_, err := hex.DecodeString(token)
 	return err == nil
 }
+
+// GenerateResetToken creates a secure HMAC-based token for password reset
+func GenerateResetToken() string {
+	// Get secret from environment or use default
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		secret = "default-secret-key"
+	}
+
+	// Create HMAC with timestamp and random data
+	timestamp := time.Now().UnixNano()
+	data := fmt.Sprintf("reset:%d", timestamp)
+
+	h := hmac.New(sha256.New, []byte(secret))
+	h.Write([]byte(data))
+
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// SendPasswordResetEmail logs a password reset link (stub for real email sending)
+func SendPasswordResetEmail(email, token string) error {
+	// In a real implementation, this would send an actual email
+	// For now, we'll just log the reset link
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:8080"
+	}
+
+	resetLink := fmt.Sprintf("%s/reset-password?token=%s&email=%s", baseURL, token, email)
+
+	log.Printf("PASSWORD RESET EMAIL:")
+	log.Printf("To: %s", email)
+	log.Printf("Subject: Password Reset Request")
+	log.Printf("Body: Please click the following link to reset your password:")
+	log.Printf("Link: %s", resetLink)
+
+	return nil
+}

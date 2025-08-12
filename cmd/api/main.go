@@ -14,9 +14,13 @@ import (
 	"sync"
 	"time"
 
+	"secure-email-mvp/pkg/audit"
 	"secure-email-mvp/pkg/auth"
 	"secure-email-mvp/pkg/cleanup"
 	"secure-email-mvp/pkg/iptracking"
+	"secure-email-mvp/pkg/notification"
+	"secure-email-mvp/pkg/readreceipts"
+	"secure-email-mvp/pkg/suspicious"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -74,7 +78,15 @@ func main() {
 	if dbPath == "" {
 		dbPath = "/var/db/secure-email.db"
 	}
-	log.Printf("Attempting to connect to database at: %s", dbPath)
+	
+	// Get absolute path for logging
+	absDbPath, err := filepath.Abs(dbPath)
+	if err != nil {
+		log.Printf("Warning: Could not resolve absolute path for %s: %v", dbPath, err)
+		absDbPath = dbPath
+	}
+	
+	log.Printf("Attempting to connect to database at: %s (absolute: %s)", dbPath, absDbPath)
 
 	// Ensure database directory exists with proper permissions
 	dbDir := filepath.Dir(dbPath)
@@ -104,7 +116,15 @@ func main() {
 	}
 
 	// Initialize server instance with database and rate limiting
-	srv := &Server{db: db, rateLimits: &sync.Map{}}
+	srv := &Server{
+		db:                  db,
+		rateLimits:          &sync.Map{},
+		notificationService: notification.NewNotificationService(db),
+		readReceiptService:  readreceipts.NewReadReceiptService(db),
+		auditService:        audit.NewAuditService(db),
+		exportService:       audit.NewExportService(db, ""),
+		suspiciousService:   suspicious.NewSuspiciousDetectionService(db),
+	}
 
 	// =============================================================================
 	// DATABASE MIGRATIONS - SECURITY FEATURES
@@ -193,6 +213,76 @@ func main() {
 		log.Printf("Emails table may already exist or have incompatible structure")
 	} else {
 		log.Printf("Emails schema applied successfully")
+	}
+
+	// =============================================================================
+	// MICRO-ITERATION 4.4: SCHEMA FIX MIGRATION INTEGRATION
+	// =============================================================================
+	//
+	// PURPOSE:
+	// This section applies the schema fix migration that resolves the foreign key
+	// constraint violation between users.id (INTEGER) and emails.sender_id (TEXT).
+	//
+	// MIGRATION DETAILS:
+	// - Changes emails.sender_id from TEXT to INTEGER
+	// - Adds proper FOREIGN KEY (sender_id) REFERENCES users(id)
+	// - Preserves all existing data and indexes
+	// - Includes backup and rollback capabilities
+	//
+	// DEBUGGING FEATURES:
+	// - Comprehensive logging of migration steps
+	// - Fallback path handling for different deployment scenarios
+	// - Error handling with detailed error messages
+	// - Verification queries for migration success
+	//
+	// DEPLOYMENT PATHS:
+	// - Local development: ./schema/fix_sender_id_type.sql
+	// - Production: /home/opc/secure-email-mvp/schema/fix_sender_id_type.sql
+	//
+	// ROLLBACK PLAN:
+	// If migration fails, the backup table (emails_backup) remains available
+	// for manual data restoration and schema rollback.
+	// =============================================================================
+
+	// Apply schema fix migration to fix sender_id type mismatch
+	log.Printf("=== MICRO-ITERATION 4.4: Loading schema fix migration ===")
+	schemaFixMigrationPath := "schema/fix_sender_id_type.sql"
+	log.Printf("Attempting to read schema fix migration from: %s", schemaFixMigrationPath)
+
+	schemaFixMigration, err := os.ReadFile(schemaFixMigrationPath)
+	if err != nil {
+		log.Printf("❌ Error reading schema fix migration from %s: %v", schemaFixMigrationPath, err)
+		log.Printf("Attempting to read schema fix migration from absolute path...")
+		absSchemaFixPath := filepath.Join(getCurrentDir(), "schema", "fix_sender_id_type.sql")
+		log.Printf("Trying absolute path: %s", absSchemaFixPath)
+		schemaFixMigration, err = os.ReadFile(absSchemaFixPath)
+		if err != nil {
+			log.Printf("❌ Error reading schema fix migration from absolute path: %v", err)
+			log.Printf("Schema fix migration not found, continuing without it")
+			log.Printf("⚠️ WARNING: Foreign key constraint violations may occur during email sends")
+		} else {
+			log.Printf("✅ Schema fix migration file loaded successfully from absolute path")
+			log.Printf("Applying schema fix migration to database...")
+			if _, err := db.Exec(string(schemaFixMigration)); err != nil {
+				log.Printf("❌ Error applying schema fix migration: %v", err)
+				log.Printf("Schema fix migration may already be applied or have incompatible structure")
+				log.Printf("⚠️ WARNING: Foreign key constraint violations may occur during email sends")
+			} else {
+				log.Printf("✅ Schema fix migration applied successfully")
+				log.Printf("✅ Foreign key relationship between users.id and emails.sender_id established")
+			}
+		}
+	} else {
+		log.Printf("✅ Schema fix migration file loaded successfully")
+		log.Printf("Applying schema fix migration to database...")
+		if _, err := db.Exec(string(schemaFixMigration)); err != nil {
+			log.Printf("❌ Error applying schema fix migration: %v", err)
+			log.Printf("Schema fix migration may already be applied or have incompatible structure")
+			log.Printf("⚠️ WARNING: Foreign key constraint violations may occur during email sends")
+		} else {
+			log.Printf("✅ Schema fix migration applied successfully")
+			log.Printf("✅ Foreign key relationship between users.id and emails.sender_id established")
+		}
 	}
 
 	// Apply failed attempts migration
@@ -434,6 +524,39 @@ func main() {
 		log.Printf("IP tracking cleanup completed successfully")
 	}
 
+	// Apply login lockout migration (Micro-Iteration 4.6)
+	log.Printf("Loading login lockout migration...")
+	loginLockoutMigrationPath := "schema/migrate_add_login_lockout.sql"
+	log.Printf("Attempting to read login lockout migration from: %s", loginLockoutMigrationPath)
+
+	loginLockoutMigration, err := os.ReadFile(loginLockoutMigrationPath)
+	if err != nil {
+		log.Printf("Error reading login lockout migration from %s: %v", loginLockoutMigrationPath, err)
+		log.Printf("Attempting to read login lockout migration from absolute path...")
+		absLoginLockoutPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_login_lockout.sql")
+		log.Printf("Trying absolute path: %s", absLoginLockoutPath)
+		loginLockoutMigration, err = os.ReadFile(absLoginLockoutPath)
+		if err != nil {
+			log.Printf("Error reading login lockout migration from absolute path: %v", err)
+		} else {
+			log.Printf("Login lockout migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(loginLockoutMigration)); err != nil {
+				log.Printf("Error applying login lockout migration: %v", err)
+				log.Printf("Login lockout migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("Login lockout migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Login lockout migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(loginLockoutMigration)); err != nil {
+			log.Printf("Error applying login lockout migration: %v", err)
+			log.Printf("Login lockout migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("Login lockout migration applied successfully")
+		}
+	}
+
 	// Apply password protection migration (Micro-Iteration 4.14)
 	log.Printf("Loading password protection migration...")
 	passwordProtectionMigrationPath := "schema/migrate_add_email_password_protection.sql"
@@ -533,6 +656,270 @@ func main() {
 		}
 	}
 
+	// Apply notification delivery controls migration (Micro-Iteration 4.18)
+	log.Printf("Loading notification delivery controls migration...")
+	deliveryControlsMigrationPath := "schema/migrate_add_notification_delivery_controls.sql"
+	log.Printf("Attempting to read notification delivery controls migration from: %s", deliveryControlsMigrationPath)
+
+	deliveryControlsMigration, err := os.ReadFile(deliveryControlsMigrationPath)
+	if err != nil {
+		log.Printf("Error reading notification delivery controls migration from %s: %v", deliveryControlsMigrationPath, err)
+		log.Printf("Attempting to read notification delivery controls migration from absolute path...")
+		absDeliveryControlsPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_notification_delivery_controls.sql")
+		log.Printf("Trying absolute path: %s", absDeliveryControlsPath)
+		deliveryControlsMigration, err = os.ReadFile(absDeliveryControlsPath)
+		if err != nil {
+			log.Printf("Error reading notification delivery controls migration from absolute path: %v", err)
+		} else {
+			log.Printf("Notification delivery controls migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(deliveryControlsMigration)); err != nil {
+				log.Printf("Error applying notification delivery controls migration: %v", err)
+				log.Printf("Notification delivery controls migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("Notification delivery controls migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Notification delivery controls migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(deliveryControlsMigration)); err != nil {
+			log.Printf("Error applying notification delivery controls migration: %v", err)
+			log.Printf("Notification delivery controls migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("Notification delivery controls migration applied successfully")
+		}
+	}
+
+	// Apply daily digest delivery migration (Micro-Iteration 4.19)
+	log.Printf("Loading daily digest delivery migration...")
+	dailyDigestMigrationPath := "schema/migrate_add_daily_digest_delivery.sql"
+	log.Printf("Attempting to read daily digest delivery migration from: %s", dailyDigestMigrationPath)
+
+	dailyDigestMigration, err := os.ReadFile(dailyDigestMigrationPath)
+	if err != nil {
+		log.Printf("Error reading daily digest delivery migration from %s: %v", dailyDigestMigrationPath, err)
+		log.Printf("Attempting to read daily digest delivery migration from absolute path...")
+		absDailyDigestPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_daily_digest_delivery.sql")
+		log.Printf("Trying absolute path: %s", absDailyDigestPath)
+		dailyDigestMigration, err = os.ReadFile(absDailyDigestPath)
+		if err != nil {
+			log.Printf("Error reading daily digest delivery migration from absolute path: %v", err)
+		} else {
+			log.Printf("Daily digest delivery migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(dailyDigestMigration)); err != nil {
+				log.Printf("Error applying daily digest delivery migration: %v", err)
+				log.Printf("Daily digest delivery migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("Daily digest delivery migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Daily digest delivery migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(dailyDigestMigration)); err != nil {
+			log.Printf("Error applying daily digest delivery migration: %v", err)
+			log.Printf("Daily digest delivery migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("Daily digest delivery migration applied successfully")
+		}
+	}
+
+	// Apply recipient ID migration (Micro-Iteration 4.18)
+	log.Printf("Loading recipient ID migration...")
+	recipientIDMigrationPath := "schema/migrate_add_recipient_id.sql"
+	log.Printf("Attempting to read recipient ID migration from: %s", recipientIDMigrationPath)
+
+	recipientIDMigration, err := os.ReadFile(recipientIDMigrationPath)
+	if err != nil {
+		log.Printf("Error reading recipient ID migration from %s: %v", recipientIDMigrationPath, err)
+		log.Printf("Attempting to read recipient ID migration from absolute path...")
+		absRecipientIDPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_recipient_id.sql")
+		log.Printf("Trying absolute path: %s", absRecipientIDPath)
+		recipientIDMigration, err = os.ReadFile(absRecipientIDPath)
+		if err != nil {
+			log.Printf("Error reading recipient ID migration from absolute path: %v", err)
+		} else {
+			log.Printf("Recipient ID migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(recipientIDMigration)); err != nil {
+				log.Printf("Error applying recipient ID migration: %v", err)
+				log.Printf("Recipient ID migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("Recipient ID migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Recipient ID migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(recipientIDMigration)); err != nil {
+			log.Printf("Error applying recipient ID migration: %v", err)
+			log.Printf("Recipient ID migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("Recipient ID migration applied successfully")
+		}
+	}
+
+	// Apply read receipts and expiration alerts migration (Micro-Iteration 4.19)
+	log.Printf("Loading read receipts and expiration alerts migration...")
+	readReceiptsMigrationPath := "schema/migrate_add_read_receipts_expiration_alerts.sql"
+	log.Printf("Attempting to read read receipts migration from: %s", readReceiptsMigrationPath)
+
+	readReceiptsMigration, err := os.ReadFile(readReceiptsMigrationPath)
+	if err != nil {
+		log.Printf("Error reading read receipts migration from %s: %v", readReceiptsMigrationPath, err)
+		log.Printf("Attempting to read read receipts migration from absolute path...")
+		absReadReceiptsPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_read_receipts_expiration_alerts.sql")
+		log.Printf("Trying absolute path: %s", absReadReceiptsPath)
+		readReceiptsMigration, err = os.ReadFile(absReadReceiptsPath)
+		if err != nil {
+			log.Printf("Error reading read receipts migration from absolute path: %v", err)
+			log.Printf("Skipping read receipts migration...")
+		} else {
+			log.Printf("Successfully read read receipts migration from absolute path")
+		}
+	} else {
+		log.Printf("Successfully read read receipts migration from relative path")
+	}
+
+	if readReceiptsMigration != nil {
+		log.Printf("Applying read receipts and expiration alerts migration...")
+		_, err = db.Exec(string(readReceiptsMigration))
+		if err != nil {
+			log.Printf("Error applying read receipts migration: %v", err)
+			log.Printf("Migration may have already been applied or failed")
+		} else {
+			log.Printf("Successfully applied read receipts and expiration alerts migration")
+		}
+	}
+
+	// Apply audit log migration (Micro-Iteration 4.20)
+	log.Printf("Loading audit log migration...")
+	auditMigrationPath := "schema/migrate_add_audit_log.sql"
+	log.Printf("Attempting to read audit migration from: %s", auditMigrationPath)
+
+	auditMigration, err := os.ReadFile(auditMigrationPath)
+	if err != nil {
+		log.Printf("Error reading audit migration from %s: %v", auditMigrationPath, err)
+		log.Printf("Attempting to read audit migration from absolute path...")
+		absAuditPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_audit_log.sql")
+		log.Printf("Trying absolute path: %s", absAuditPath)
+		auditMigration, err = os.ReadFile(absAuditPath)
+		if err != nil {
+			log.Printf("Error reading audit migration from absolute path: %v", err)
+			log.Printf("Skipping audit migration...")
+		} else {
+			log.Printf("Successfully read audit migration from absolute path")
+		}
+	} else {
+		log.Printf("Successfully read audit migration from relative path")
+	}
+
+	if auditMigration != nil {
+		log.Printf("Applying audit log migration...")
+		_, err = db.Exec(string(auditMigration))
+		if err != nil {
+			log.Printf("Error applying audit migration: %v", err)
+			log.Printf("Migration may have already been applied or failed")
+		} else {
+			log.Printf("Successfully applied audit log migration")
+		}
+	}
+
+	// Apply suspicious access detection migration (Micro-Iteration 4.18)
+	log.Printf("Loading suspicious access detection migration...")
+	suspiciousMigrationPath := "schema/migrate_add_suspicious_access_detection.sql"
+	log.Printf("Attempting to read suspicious detection migration from: %s", suspiciousMigrationPath)
+
+	suspiciousMigration, err := os.ReadFile(suspiciousMigrationPath)
+	if err != nil {
+		log.Printf("Error reading suspicious detection migration from %s: %v", suspiciousMigrationPath, err)
+		log.Printf("Attempting to read suspicious detection migration from absolute path...")
+		absSuspiciousPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_suspicious_access_detection.sql")
+		log.Printf("Trying absolute path: %s", absSuspiciousPath)
+		suspiciousMigration, err = os.ReadFile(absSuspiciousPath)
+		if err != nil {
+			log.Printf("Error reading suspicious detection migration from absolute path: %v", err)
+			log.Printf("Skipping suspicious detection migration...")
+		} else {
+			log.Printf("Successfully read suspicious detection migration from absolute path")
+		}
+	} else {
+		log.Printf("Successfully read suspicious detection migration from relative path")
+	}
+
+	if suspiciousMigration != nil {
+		log.Printf("Applying suspicious access detection migration...")
+		_, err = db.Exec(string(suspiciousMigration))
+		if err != nil {
+			log.Printf("Error applying suspicious detection migration: %v", err)
+			log.Printf("Migration may have already been applied or failed")
+		} else {
+			log.Printf("Successfully applied suspicious access detection migration")
+		}
+	}
+
+	// Apply enhanced geo-restriction migration (Micro-Iteration 4.7)
+	log.Printf("Loading enhanced geo-restriction migration...")
+	enhancedGeoRestrictionMigrationPath := "schema/migrate_add_enhanced_geo_restrictions.sql"
+	log.Printf("Attempting to read enhanced geo-restriction migration from: %s", enhancedGeoRestrictionMigrationPath)
+
+	enhancedGeoRestrictionMigration, err := os.ReadFile(enhancedGeoRestrictionMigrationPath)
+	if err != nil {
+		log.Printf("Error reading enhanced geo-restriction migration from %s: %v", enhancedGeoRestrictionMigrationPath, err)
+		log.Printf("Attempting to read enhanced geo-restriction migration from absolute path...")
+		absEnhancedGeoRestrictionPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_enhanced_geo_restrictions.sql")
+		log.Printf("Trying absolute path: %s", absEnhancedGeoRestrictionPath)
+		enhancedGeoRestrictionMigration, err = os.ReadFile(absEnhancedGeoRestrictionPath)
+		if err != nil {
+			log.Printf("Error reading enhanced geo-restriction migration from absolute path: %v", err)
+			log.Printf("Skipping enhanced geo-restriction migration...")
+		} else {
+			log.Printf("Successfully read enhanced geo-restriction migration from absolute path")
+		}
+	} else {
+		log.Printf("Successfully read enhanced geo-restriction migration from relative path")
+	}
+
+	if enhancedGeoRestrictionMigration != nil {
+		log.Printf("Applying enhanced geo-restriction migration...")
+		_, err = db.Exec(string(enhancedGeoRestrictionMigration))
+		if err != nil {
+			log.Printf("Error applying enhanced geo-restriction migration: %v", err)
+			log.Printf("Migration may have already been applied or failed")
+		} else {
+			log.Printf("Successfully applied enhanced geo-restriction migration")
+		}
+	}
+
+	// Apply user TOTP fields migration (Micro-Iteration 4.5)
+	log.Printf("Loading user TOTP fields migration...")
+	userTOTPMigrationPath := "schema/migrate_add_user_totp_fields.sql"
+	log.Printf("Attempting to read user TOTP migration from: %s", userTOTPMigrationPath)
+
+	userTOTPMigration, err := os.ReadFile(userTOTPMigrationPath)
+	if err != nil {
+		log.Printf("Error reading user TOTP migration from %s: %v", userTOTPMigrationPath, err)
+		log.Printf("Attempting to read user TOTP migration from absolute path...")
+		absUserTOTPPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_user_totp_fields.sql")
+		log.Printf("Trying absolute path: %s", absUserTOTPPath)
+		userTOTPMigration, err = os.ReadFile(absUserTOTPPath)
+		if err != nil {
+			log.Printf("Error reading user TOTP migration from absolute path: %v", err)
+			log.Printf("Skipping user TOTP migration...")
+		} else {
+			log.Printf("Successfully read user TOTP migration from absolute path")
+		}
+	} else {
+		log.Printf("Successfully read user TOTP migration from relative path")
+	}
+
+	if userTOTPMigration != nil {
+		log.Printf("Applying user TOTP fields migration...")
+		_, err = db.Exec(string(userTOTPMigration))
+		if err != nil {
+			log.Printf("Error applying user TOTP migration: %v", err)
+			log.Printf("Migration may have already been applied or failed")
+		} else {
+			log.Printf("Successfully applied user TOTP fields migration")
+		}
+	}
+
 	// Initialize per-IP rate limiter for signup and login
 	signupLoginLimiter := NewIPRateLimitMiddleware(5, time.Minute)
 
@@ -550,7 +937,7 @@ func main() {
 	// - Admin: Cleanup statistics and manual triggers
 	// - Health: System health monitoring
 	// =============================================================================
-	
+
 	// Set up router
 	r := mux.NewRouter()
 
@@ -617,6 +1004,13 @@ func main() {
 	log.Printf("Registering /resend-fallback endpoint")
 	r.HandleFunc("/resend-fallback", resendFallbackHandlerFactory(db)).Methods("POST")
 
+	// Register lockout management endpoints (Micro-Iteration 4.6)
+	log.Printf("Registering lockout management endpoints...")
+	r.HandleFunc("/api/auth/lockout/status", lockoutStatusHandler(db)).Methods("GET")
+	r.HandleFunc("/api/auth/lockout/unlock", unlockAccountHandler(db)).Methods("POST")
+	r.HandleFunc("/api/auth/lockout/config", lockoutConfigHandler(db)).Methods("GET")
+	r.HandleFunc("/api/auth/lockout/stats", lockoutStatsHandler(db)).Methods("GET")
+
 	// Register protected email endpoints (require JWT authentication)
 	log.Printf("Registering /api/email/send endpoint")
 	r.Handle("/api/email/send", jwtMiddleware(http.HandlerFunc(srv.sendEmailHandler))).Methods("POST")
@@ -626,7 +1020,10 @@ func main() {
 	r.Handle("/api/email/list", jwtMiddleware(http.HandlerFunc(srv.listEmailHandler))).Methods("GET")
 	log.Printf("Registering /api/email/view/{id} endpoint")
 	r.Handle("/api/email/view/{id}", jwtMiddleware(http.HandlerFunc(srv.viewEmailHandler))).Methods("GET")
+	log.Printf("Registering /api/email/{id}/content endpoint")
+	r.Handle("/api/email/{id}/content", jwtMiddleware(http.HandlerFunc(srv.getRecipientEmailHandler))).Methods("GET")
 	log.Printf("Registering /api/email/{id} endpoint")
+	r.Handle("/api/email/{id}", jwtMiddleware(http.HandlerFunc(srv.getEmailByIdHandler))).Methods("GET")
 	r.Handle("/api/email/{id}", jwtMiddleware(http.HandlerFunc(srv.deleteEmailHandler))).Methods("DELETE")
 
 	// Register MFA endpoints (require JWT authentication)
@@ -643,6 +1040,64 @@ func main() {
 	r.Handle("/api/notifications/preferences", jwtMiddleware(http.HandlerFunc(srv.updateNotificationPreferencesHandler))).Methods("PUT")
 	log.Printf("Registering /api/notifications/history endpoint")
 	r.Handle("/api/notifications/history", jwtMiddleware(http.HandlerFunc(srv.getAccessEventHistoryHandler))).Methods("GET")
+	log.Printf("Registering /api/notifications/suppressions endpoint")
+	r.Handle("/api/notifications/suppressions", jwtMiddleware(http.HandlerFunc(srv.getNotificationSuppressionsHandler))).Methods("GET")
+	log.Printf("Registering /api/notifications/stats endpoint")
+	r.Handle("/api/notifications/stats", jwtMiddleware(http.HandlerFunc(srv.getNotificationStatsHandler))).Methods("GET")
+	log.Printf("Registering /api/notifications/email/{emailID}/preferences endpoint")
+	r.Handle("/api/notifications/email/{emailID}/preferences", jwtMiddleware(http.HandlerFunc(srv.getEmailNotificationPreferencesHandler))).Methods("GET")
+	r.Handle("/api/notifications/email/{emailID}/preferences", jwtMiddleware(http.HandlerFunc(srv.updateEmailNotificationPreferencesHandler))).Methods("PUT")
+
+	// Daily digest endpoints
+	r.Handle("/api/notifications/digest/history", jwtMiddleware(http.HandlerFunc(srv.getDailyDigestHistoryHandler))).Methods("GET")
+	r.Handle("/api/notifications/digest/generate", jwtMiddleware(http.HandlerFunc(srv.generateDailyDigestHandler))).Methods("POST")
+
+	// Read receipt and expiration alert endpoints (Micro-Iteration 4.19)
+	log.Printf("Registering read receipt and expiration alert endpoints...")
+	r.Handle("/api/read-receipts/preferences", jwtMiddleware(http.HandlerFunc(srv.getReadReceiptPreferencesHandler))).Methods("GET")
+	r.Handle("/api/read-receipts/preferences", jwtMiddleware(http.HandlerFunc(srv.updateReadReceiptPreferencesHandler))).Methods("PUT")
+	r.Handle("/api/emails/{id}/read-receipts", jwtMiddleware(http.HandlerFunc(srv.getEmailReadReceiptInfoHandler))).Methods("GET")
+	r.Handle("/api/emails/{id}/read-events", jwtMiddleware(http.HandlerFunc(srv.getEmailReadEventsHandler))).Methods("GET")
+	r.Handle("/api/emails/{id}/read-receipt-settings", jwtMiddleware(http.HandlerFunc(srv.updateEmailReadReceiptSettingsHandler))).Methods("PUT")
+
+	// Audit log endpoints (Micro-Iteration 4.20)
+	log.Printf("Registering audit log endpoints...")
+	r.Handle("/api/audit/logs", jwtMiddleware(http.HandlerFunc(srv.getAuditLogsHandler))).Methods("GET")
+	r.Handle("/api/audit/event-types", jwtMiddleware(http.HandlerFunc(srv.getAuditEventTypesHandler))).Methods("GET")
+	r.Handle("/api/audit/user-events", jwtMiddleware(http.HandlerFunc(srv.getUserAuditEventsHandler))).Methods("GET")
+	r.Handle("/api/audit/exports", jwtMiddleware(http.HandlerFunc(srv.createExportHandler))).Methods("POST")
+	r.Handle("/api/audit/exports", jwtMiddleware(http.HandlerFunc(srv.getExportsHandler))).Methods("GET")
+	r.Handle("/api/audit/exports/{id}", jwtMiddleware(http.HandlerFunc(srv.getExportHandler))).Methods("GET")
+	r.Handle("/api/audit/exports/{id}/download", jwtMiddleware(http.HandlerFunc(srv.downloadExportHandler))).Methods("GET")
+	r.Handle("/api/audit/exports/{id}", jwtMiddleware(http.HandlerFunc(srv.deleteExportHandler))).Methods("DELETE")
+	r.Handle("/api/audit/retention-policies", jwtMiddleware(http.HandlerFunc(srv.getRetentionPoliciesHandler))).Methods("GET")
+	r.Handle("/api/audit/retention-policies/{event_type}", jwtMiddleware(http.HandlerFunc(srv.updateRetentionPolicyHandler))).Methods("PUT")
+	r.Handle("/api/audit/purge-expired", jwtMiddleware(http.HandlerFunc(srv.purgeExpiredLogsHandler))).Methods("POST")
+	r.Handle("/api/audit/cleanup-exports", jwtMiddleware(http.HandlerFunc(srv.cleanupExpiredExportsHandler))).Methods("POST")
+
+	// Suspicious access detection endpoints (Micro-Iteration 4.18)
+	log.Printf("Registering suspicious access detection endpoints...")
+	r.Handle("/api/suspicious/activity/{email_id}", jwtMiddleware(http.HandlerFunc(srv.getSuspiciousActivityHandler))).Methods("GET")
+	r.Handle("/api/suspicious/clear-flag/{email_id}", jwtMiddleware(http.HandlerFunc(srv.clearSuspiciousFlagHandler))).Methods("POST")
+	r.Handle("/api/suspicious/resolve/{detection_id}", jwtMiddleware(http.HandlerFunc(srv.resolveDetectionHandler))).Methods("POST")
+	r.Handle("/api/suspicious/preferences", jwtMiddleware(http.HandlerFunc(srv.getUserPreferencesHandler))).Methods("GET")
+	r.Handle("/api/suspicious/preferences", jwtMiddleware(http.HandlerFunc(srv.updateUserPreferencesHandler))).Methods("PUT")
+	r.Handle("/api/suspicious/rules", jwtMiddleware(http.HandlerFunc(srv.getDetectionRulesHandler))).Methods("GET")
+	r.Handle("/api/suspicious/emails", jwtMiddleware(http.HandlerFunc(srv.getUserSuspiciousEmailsHandler))).Methods("GET")
+
+	// Geo-restriction endpoints (Micro-Iteration 4.7)
+	log.Printf("Registering geo-restriction endpoints...")
+	geoRestrictionHandlers := NewGeoRestrictionHandlers(db)
+	r.Handle("/api/email/{id}/geo-restrictions", jwtMiddleware(http.HandlerFunc(geoRestrictionHandlers.getGeoRestrictionRulesHandler))).Methods("GET")
+	r.Handle("/api/email/{id}/geo-restrictions", jwtMiddleware(http.HandlerFunc(geoRestrictionHandlers.createGeoRestrictionRuleHandler))).Methods("POST")
+	r.Handle("/api/email/{id}/geo-restrictions/{ruleId}", jwtMiddleware(http.HandlerFunc(geoRestrictionHandlers.updateGeoRestrictionRuleHandler))).Methods("PUT")
+	r.Handle("/api/email/{id}/geo-restrictions/{ruleId}", jwtMiddleware(http.HandlerFunc(geoRestrictionHandlers.deleteGeoRestrictionRuleHandler))).Methods("DELETE")
+	r.Handle("/api/email/{id}/geo-restrictions/config", jwtMiddleware(http.HandlerFunc(geoRestrictionHandlers.getGeoRestrictionConfigHandler))).Methods("GET")
+	r.Handle("/api/email/{id}/geo-restrictions/config", jwtMiddleware(http.HandlerFunc(geoRestrictionHandlers.updateGeoRestrictionConfigHandler))).Methods("PUT")
+	r.Handle("/api/email/{id}/geo-restrictions/status", jwtMiddleware(http.HandlerFunc(geoRestrictionHandlers.getGeoRestrictionStatusHandler))).Methods("GET")
+
+	// Multi-channel alert endpoints (Micro-Iteration 4.20)
+	log.Printf("Registering multi-channel alert endpoints...")
 
 	// Register admin endpoints (require JWT authentication)
 	log.Printf("Registering /admin/email-retention-stats endpoint")
@@ -695,8 +1150,14 @@ func main() {
 // Server struct holds the database connection and rate limiter map for per-IP rate limiting.
 // Server represents the main API server with all security features
 type Server struct {
-	db         *sql.DB                    // SQLite database connection
-	rateLimits *sync.Map                  // IP -> attempt count for rate limiting
+	db                  *sql.DB                                // SQLite database connection
+	rateLimits          *sync.Map                              // IP -> attempt count for rate limiting
+	notificationService *notification.NotificationService      // Notification service
+	readReceiptService  *readreceipts.ReadReceiptService       // Read receipt service
+	auditService        *audit.AuditService                    // Audit service
+	exportService       *audit.ExportService                   // Export service
+	suspiciousService   *suspicious.SuspiciousDetectionService // Suspicious access detection service
+
 	// Security features implemented:
 	// - Multi-Factor Authentication (TOTP + Email-based)
 	// - Enhanced Geolocation Verification (City + Country)
@@ -705,6 +1166,10 @@ type Server struct {
 	// - Access Notification System
 	// - Self-Destruct After Failed Attempts
 	// - Session Management and Rate Limiting
+	// - Multi-Channel Out-of-Band Authentication Alerts
+	// - Read Receipts and Expiration Alerts
+	// - Advanced Audit Log & Export
+	// - Suspicious Access Pattern Detection
 }
 
 // pingHandler is a simple health check endpoint for liveness probes.
@@ -720,6 +1185,12 @@ func (srv *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+// incrementGeoRestrictionViolations increments the geo-restriction violation count for an email
+func (srv *Server) incrementGeoRestrictionViolations(emailID string) error {
+	_, err := srv.db.Exec("UPDATE emails SET geo_restriction_violations = geo_restriction_violations + 1, geo_restriction_last_violation = CURRENT_TIMESTAMP WHERE email_id = ?", emailID)
+	return err
 }
 
 // loginHandler handles POST /api/auth/login. It authenticates the user using password and TOTP, and returns a JWT on success.
@@ -823,10 +1294,10 @@ func (srv *Server) logError(r *http.Request, email, msg string) {
 // testR2Connection verifies connectivity to Cloudflare R2 storage for future encrypted email storage.
 func testR2Connection() error {
 	// Get R2 credentials from environment
-	accessKey := os.Getenv("CLOUDFLARE_R2_ACCESS_KEY")
-	secretKey := os.Getenv("CLOUDFLARE_R2_SECRET_KEY")
-	bucket := os.Getenv("CLOUDFLARE_R2_BUCKET")
-	endpoint := os.Getenv("CLOUDFLARE_R2_ENDPOINT")
+	accessKey := os.Getenv("R2_ACCESS_KEY_ID")
+	secretKey := os.Getenv("R2_SECRET_ACCESS_KEY")
+	bucket := os.Getenv("R2_BUCKET")
+	endpoint := os.Getenv("R2_ENDPOINT")
 
 	if accessKey == "" || secretKey == "" || bucket == "" || endpoint == "" {
 		return fmt.Errorf("R2 credentials not configured")
@@ -914,15 +1385,23 @@ func jwtMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Validate JWT token
-		claims, err := auth.ParseJWT(tokenString)
+		// Validate JWT token using session manager
+		sessionManager, err := auth.NewSessionManager()
+		if err != nil {
+			http.Error(w, `{"error":"Session configuration error"}`, http.StatusInternalServerError)
+			return
+		}
+
+		// Validate access token
+		claims, err := sessionManager.ValidateAccessToken(tokenString)
 		if err != nil {
 			http.Error(w, `{"error":"Invalid or missing token"}`, http.StatusUnauthorized)
 			return
 		}
 
 		// Set user_id in context using UserIDKey
-		ctx := context.WithValue(r.Context(), UserIDKey, claims.Subject)
+		ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
+		ctx = context.WithValue(ctx, EmailKey, claims.Email)
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)

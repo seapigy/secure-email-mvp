@@ -19,6 +19,7 @@ import (
 	"secure-email-mvp/pkg/bruteforce"
 	"secure-email-mvp/pkg/emailpassword"
 	"secure-email-mvp/pkg/geolocation"
+	"secure-email-mvp/pkg/georestriction"
 	"secure-email-mvp/pkg/geoverify"
 	"secure-email-mvp/pkg/iptracking"
 	"secure-email-mvp/pkg/mfa"
@@ -45,7 +46,7 @@ type ViewEmailResponse struct {
 }
 
 // viewEmailHandler handles GET /api/email/view/{id}. It implements a comprehensive security flow:
-// 
+//
 // Security Flow Order:
 // 1. IP-based lockout check (prevents brute force from same IP)
 // 2. Enhanced geolocation verification (city/country restrictions)
@@ -120,6 +121,8 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 		mfaFailedAttempts                                              int
 		mfaLockedUntil                                                 *time.Time
 		isPasswordProtected                                            int
+		geoRestrictionEnabled                                          int
+		geoRestrictionRules, geoRestrictionConfig                      string
 	)
 
 	err := srv.db.QueryRow(`
@@ -129,7 +132,7 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 		       self_destructed, failed_access_attempts, allowed_city, allowed_country,
 		       geo_verification_type, geo_city, geo_country,
 		       require_mfa, mfa_type, encrypted_totp_secret, mfa_failed_attempts, mfa_locked_until,
-		       is_password_protected
+		       is_password_protected, geo_restriction_enabled, geo_restriction_rules, geo_restriction_config
 		FROM emails WHERE email_id = ?`,
 		emailID,
 	).Scan(&blobID, &encryptedKeyB64, &nonceB64, &authTagB64, &compressionAlgo,
@@ -137,7 +140,7 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 		&maxFailedAttempts, &burnAfterRead, &accessCount, &expiresAt, &selfDestructed, &failedAccessAttempts,
 		&allowedCity, &allowedCountry, &geoVerificationType, &geoCity, &geoCountry,
 		&requireMFA, &mfaType, &encryptedTOTPSecret, &mfaFailedAttempts, &mfaLockedUntil,
-		&isPasswordProtected)
+		&isPasswordProtected, &geoRestrictionEnabled, &geoRestrictionRules, &geoRestrictionConfig)
 
 	if err != nil {
 		log.Printf("Database query failed: %v", err)
@@ -176,7 +179,7 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("IP %s is locked out due to repeated failed attempts", clientIP)
 
 		// Record blocked access event
-		if err := srv.recordAccessEvent(r.Context(), emailID, senderID, notification.AccessEventTypeBlocked, r, "IP lockout"); err != nil {
+		if err := srv.recordAccessEvent(r.Context(), emailID, senderID, clientIP, r.UserAgent(), "", "", "", "IP lockout", notification.AccessEventTypeBlocked); err != nil {
 			log.Printf("Failed to record blocked access event: %v", err)
 		}
 
@@ -186,16 +189,21 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 6. Check geolocation restrictions (Micro-Iteration 4.10)
-	if allowedCity != "" || allowedCountry != "" {
+	// 6. Get geolocation for all geo-based checks
+	var location *geolocation.Location
+	var geoService *geolocation.GeolocationService
+	
+	// Only get geolocation if we need it for any geo-based checks
+	if allowedCity != "" || allowedCountry != "" || geoRestrictionEnabled == 1 {
 		// Get client IP address
 		clientIP := getClientIP(r)
 
 		// Get geolocation service
-		geoService := geolocation.NewGeolocationService()
+		geoService = geolocation.NewGeolocationService()
 
 		// Get location for the client IP
-		location, err := geoService.GetLocationByIP(clientIP)
+		var err error
+		location, err = geoService.GetLocationByIP(clientIP)
 		if err != nil {
 			log.Printf("Failed to get geolocation for IP %s: %v", clientIP, err)
 			// If geolocation fails, deny access for security
@@ -204,6 +212,10 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(`{"error":"Access denied"}`))
 			return
 		}
+	}
+
+	// 6a. Check geolocation restrictions (Micro-Iteration 4.10)
+	if allowedCity != "" || allowedCountry != "" {
 
 		// Check geolocation restrictions with exact matching
 		accessAllowed := true
@@ -240,7 +252,7 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Record blocked access event
-			if err := srv.recordAccessEvent(r.Context(), emailID, senderID, notification.AccessEventTypeBlocked, r, "Geolocation restriction"); err != nil {
+			if err := srv.recordAccessEvent(r.Context(), emailID, senderID, clientIP, r.UserAgent(), "", "", "", "Geolocation restriction", notification.AccessEventTypeBlocked); err != nil {
 				log.Printf("Failed to record blocked access event: %v", err)
 			}
 
@@ -253,7 +265,85 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Geolocation check passed for IP %s (%s, %s)", clientIP, location.City, strings.ToUpper(location.Country))
 	}
 
-	// 6. Check enhanced geolocation verification (Micro-Iteration 4.15)
+	// 6b. Check enhanced geo-restrictions (Micro-Iteration 4.7)
+	if geoRestrictionEnabled == 1 {
+		// Get enhanced geo-restriction rules and config
+		geoRestrictionService := georestriction.NewGeoRestrictionService()
+		
+		// Parse rules from JSON
+		var rules []georestriction.GeoRestrictionRule
+		if geoRestrictionRules != "" {
+			parsedRules, err := geoRestrictionService.ParseRulesFromJSON([]byte(geoRestrictionRules))
+			if err != nil {
+				log.Printf("Failed to parse geo-restriction rules for email %s: %v", emailID, err)
+				// Continue with empty rules rather than blocking access
+				rules = []georestriction.GeoRestrictionRule{}
+			} else {
+				rules = parsedRules
+			}
+		}
+
+		// Parse config from JSON
+		var config georestriction.GeoRestrictionConfig
+		if geoRestrictionConfig != "" {
+			if err := json.Unmarshal([]byte(geoRestrictionConfig), &config); err != nil {
+				log.Printf("Failed to parse geo-restriction config for email %s: %v", emailID, err)
+				// Use default config
+				config = geoRestrictionService.GetDefaultConfig()
+			}
+		} else {
+			config = geoRestrictionService.GetDefaultConfig()
+		}
+
+		// Create service with config
+		service := georestriction.NewGeoRestrictionServiceWithConfig(config)
+
+		// Check access using the location from the previous geolocation check
+		accessAllowed, accessReason, err := service.CheckAccess(location, rules)
+		if err != nil {
+			log.Printf("Failed to check enhanced geo-restrictions for email %s: %v", emailID, err)
+			// If check fails, deny access for security
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"error":"Access denied"}`))
+			return
+		}
+
+		if !accessAllowed {
+			log.Printf("Enhanced geo-restriction access blocked for IP %s (%s, %s): %s", 
+				clientIP, location.City, strings.ToUpper(location.Country), accessReason)
+
+			// Increment geo-restriction violations
+			if err := srv.incrementGeoRestrictionViolations(emailID); err != nil {
+				log.Printf("Failed to increment geo-restriction violations: %v", err)
+			}
+
+			// Increment brute-force protection failed attempts
+			if err := bfProtection.IncrementFailedAttempt(emailID); err != nil {
+				log.Printf("Failed to increment brute-force attempts for geo-restriction failure: %v", err)
+			}
+
+			// Increment IP tracking failed attempts
+			if err := ipTracking.IncrementFailedAttempt(clientIP); err != nil {
+				log.Printf("Failed to increment IP attempts for geo-restriction failure: %v", err)
+			}
+
+			// Record blocked access event
+			if err := srv.recordAccessEvent(r.Context(), emailID, senderID, clientIP, r.UserAgent(), "", "", "", "Enhanced geo-restriction", notification.AccessEventTypeBlocked); err != nil {
+				log.Printf("Failed to record blocked access event: %v", err)
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"error":"Access denied"}`))
+			return
+		}
+
+		log.Printf("Enhanced geo-restriction check passed for IP %s (%s, %s)", 
+			clientIP, location.City, strings.ToUpper(location.Country))
+	}
+
+	// 7. Check enhanced geolocation verification (Micro-Iteration 4.15)
 	if geoVerificationType != "" && geoVerificationType != "none" {
 		// Get geolocation service
 		geoService := geolocation.NewGeolocationService()
@@ -806,7 +896,7 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Record successful access event
-	if err := srv.recordAccessEvent(r.Context(), emailID, senderID, notification.AccessEventTypeSuccess, r, ""); err != nil {
+	if err := srv.recordAccessEvent(r.Context(), emailID, senderID, clientIP, r.UserAgent(), "", "", "", "", notification.AccessEventTypeSuccess); err != nil {
 		log.Printf("Failed to record successful access event: %v", err)
 		// Continue with response even if notification fails
 	}
