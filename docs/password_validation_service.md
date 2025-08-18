@@ -299,3 +299,9 @@ For issues or questions about the password validation service:
 - [K-Anonymity Explanation](https://www.troyhunt.com/ive-just-launched-pwned-passwords-version-2/)
 - [Password Security Best Practices](https://owasp.org/www-project-cheat-sheets/cheatsheets/Authentication_Cheat_Sheet.html)
 
+
+
+
+
+
+

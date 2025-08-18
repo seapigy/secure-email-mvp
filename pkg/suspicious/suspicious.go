@@ -140,7 +140,7 @@ func (s *SuspiciousDetectionService) ProcessAccessEvent(ctx context.Context, ema
 }
 
 // checkDetectionRule checks if a specific detection rule is triggered
-func (s *SuspiciousDetectionService) checkDetectionRule(ctx context.Context, emailID, userID, ipAddress, country, city, eventType, failureReason string, rule DetectionRule) error {
+func (s *SuspiciousDetectionService) checkDetectionRule(ctx context.Context, emailID, _, ipAddress, country, city, _, _ string, rule DetectionRule) error {
 	switch rule.RuleType {
 	case string(DetectionTypeMultipleFailedAttempts):
 		return s.checkMultipleFailedAttempts(ctx, emailID, rule)
@@ -266,7 +266,7 @@ func (s *SuspiciousDetectionService) checkUnusualGeolocation(ctx context.Context
 }
 
 // checkRapidMultipleIPs checks for rapid access from multiple IP addresses
-func (s *SuspiciousDetectionService) checkRapidMultipleIPs(ctx context.Context, emailID, ipAddress string, rule DetectionRule) error {
+func (s *SuspiciousDetectionService) checkRapidMultipleIPs(ctx context.Context, emailID, _ string, rule DetectionRule) error {
 	// Get unique IP addresses within the time window
 	query := `
 		SELECT COUNT(DISTINCT ip_address) FROM access_events 
@@ -539,4 +539,7 @@ func (s *SuspiciousDetectionService) ResolveDetectionEvent(ctx context.Context, 
 	}
 	return nil
 }
+
+
+
 

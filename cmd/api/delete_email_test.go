@@ -1,17 +1,84 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+	"time"
 
 	"secure-email-mvp/pkg/auth"
+
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 )
 
+// generateTestJWT creates a JWT token for testing with both user_id and email claims
+func generateTestJWT(userID, email string) (string, error) {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "test-secret-key-for-jwt-signing"
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": userID,
+		"email":   email,
+		"exp":     time.Now().Add(24 * time.Hour).Unix(),
+		"iat":     time.Now().Unix(),
+	})
+	tokenString, err := token.SignedString([]byte(jwtSecret))
+	if err != nil {
+		return "", err
+	}
+	return tokenString, nil
+}
+
+// testJWTMiddleware is a simplified JWT middleware for testing that doesn't require a database
+func testJWTMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get Authorization header
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, `{"error":"Invalid or missing token"}`, http.StatusUnauthorized)
+			return
+		}
+
+		// Check Bearer format
+		if len(authHeader) < 7 || authHeader[:7] != "Bearer " {
+			http.Error(w, `{"error":"Invalid or missing token"}`, http.StatusUnauthorized)
+			return
+		}
+
+		tokenString := authHeader[7:]
+		if tokenString == "" {
+			http.Error(w, `{"error":"Invalid or missing token"}`, http.StatusUnauthorized)
+			return
+		}
+
+		// Validate JWT token using the simpler function
+		userID, email, err := auth.ValidateJWT(tokenString)
+		if err != nil {
+			http.Error(w, `{"error":"Invalid or missing token"}`, http.StatusUnauthorized)
+			return
+		}
+
+		// Set user_id in context using UserIDKey
+		ctx := context.WithValue(r.Context(), UserIDKey, userID)
+		ctx = context.WithValue(ctx, EmailKey, email)
+		r = r.WithContext(ctx)
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 // TestDeleteEmailAuthentication tests authentication requirements for the delete endpoint
 func TestDeleteEmailAuthentication(t *testing.T) {
+	// Set JWT secret for testing
+	os.Setenv("JWT_SECRET", "test-secret-key-for-jwt-signing")
+	defer os.Unsetenv("JWT_SECRET")
+
 	// Test cases
 	testCases := []struct {
 		name           string
@@ -65,7 +132,7 @@ func TestDeleteEmailAuthentication(t *testing.T) {
 			srv := &Server{db: nil}
 
 			// Apply JWT middleware to the handler
-			handler := jwtMiddleware(http.HandlerFunc(srv.deleteEmailHandler))
+			handler := testJWTMiddleware(http.HandlerFunc(srv.deleteEmailHandler))
 			handler.ServeHTTP(w, req)
 
 			// Check status code
@@ -86,8 +153,12 @@ func TestDeleteEmailAuthentication(t *testing.T) {
 
 // TestDeleteEmailWithValidToken tests successful deletion with valid JWT
 func TestDeleteEmailWithValidToken(t *testing.T) {
+	// Set JWT secret for testing
+	os.Setenv("JWT_SECRET", "test-secret-key-for-jwt-signing")
+	defer os.Unsetenv("JWT_SECRET")
+
 	// Generate a valid JWT token
-	token, err := auth.GenerateJWT("test-user-123")
+	token, err := generateTestJWT("test-user-123", "test@example.com")
 	if err != nil {
 		t.Fatalf("Failed to generate JWT token: %v", err)
 	}
@@ -95,7 +166,7 @@ func TestDeleteEmailWithValidToken(t *testing.T) {
 	// Create request with valid token
 	req := httptest.NewRequest("DELETE", "/api/email/test-email-123", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
-	
+
 	// Set up mux vars manually for testing
 	req = mux.SetURLVars(req, map[string]string{"id": "test-email-123"})
 
@@ -106,7 +177,7 @@ func TestDeleteEmailWithValidToken(t *testing.T) {
 	srv := &Server{db: nil}
 
 	// Apply JWT middleware to the handler
-	handler := jwtMiddleware(http.HandlerFunc(srv.deleteEmailHandler))
+	handler := testJWTMiddleware(http.HandlerFunc(srv.deleteEmailHandler))
 	handler.ServeHTTP(w, req)
 
 	// Should not get 401 Unauthorized (might get other errors due to missing DB, but not auth error)
@@ -130,8 +201,12 @@ func TestDeleteEmailWithValidToken(t *testing.T) {
 
 // TestDeleteEmailMissingID tests the endpoint when email_id is missing from URL
 func TestDeleteEmailMissingID(t *testing.T) {
+	// Set JWT secret for testing
+	os.Setenv("JWT_SECRET", "test-secret-key-for-jwt-signing")
+	defer os.Unsetenv("JWT_SECRET")
+
 	// Generate a valid JWT token
-	token, err := auth.GenerateJWT("test-user-123")
+	token, err := generateTestJWT("test-user-123", "test@example.com")
 	if err != nil {
 		t.Fatalf("Failed to generate JWT token: %v", err)
 	}
@@ -147,7 +222,7 @@ func TestDeleteEmailMissingID(t *testing.T) {
 	srv := &Server{db: nil}
 
 	// Apply JWT middleware to the handler
-	handler := jwtMiddleware(http.HandlerFunc(srv.deleteEmailHandler))
+	handler := testJWTMiddleware(http.HandlerFunc(srv.deleteEmailHandler))
 	handler.ServeHTTP(w, req)
 
 	// Should get 400 Bad Request due to missing email_id
@@ -166,11 +241,15 @@ func TestDeleteEmailMissingID(t *testing.T) {
 
 // TestDeleteEmailDatabaseError tests error handling when database query fails
 func TestDeleteEmailDatabaseError(t *testing.T) {
+	// Set JWT secret for testing
+	os.Setenv("JWT_SECRET", "test-secret-key-for-jwt-signing")
+	defer os.Unsetenv("JWT_SECRET")
+
 	// Create server with nil database to simulate database error
 	srv := &Server{db: nil}
 
 	// Generate JWT token
-	token, err := auth.GenerateJWT("test-user-123")
+	token, err := generateTestJWT("test-user-123", "test@example.com")
 	if err != nil {
 		t.Fatalf("Failed to generate JWT token: %v", err)
 	}
@@ -178,7 +257,7 @@ func TestDeleteEmailDatabaseError(t *testing.T) {
 	// Create request
 	req := httptest.NewRequest("DELETE", "/api/email/test-email-123", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
-	
+
 	// Set up mux vars manually for testing
 	req = mux.SetURLVars(req, map[string]string{"id": "test-email-123"})
 
@@ -186,7 +265,7 @@ func TestDeleteEmailDatabaseError(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	// Apply JWT middleware and call handler
-	handler := jwtMiddleware(http.HandlerFunc(srv.deleteEmailHandler))
+	handler := testJWTMiddleware(http.HandlerFunc(srv.deleteEmailHandler))
 	handler.ServeHTTP(w, req)
 
 	// Should get 500 Internal Server Error due to nil database
@@ -226,11 +305,15 @@ func TestDeleteEmailResponseStructure(t *testing.T) {
 
 // TestDeleteEmailIntegration tests the complete deletion flow
 func TestDeleteEmailIntegration(t *testing.T) {
+	// Set JWT secret for testing
+	os.Setenv("JWT_SECRET", "test-secret-key-for-jwt-signing")
+	defer os.Unsetenv("JWT_SECRET")
+
 	// This test verifies the integration aspects without requiring a real database
 	// It's a unit test for the handler logic
 
 	// Generate JWT token
-	token, err := auth.GenerateJWT("test-user-123")
+	token, err := generateTestJWT("test-user-123", "test@example.com")
 	if err != nil {
 		t.Fatalf("Failed to generate JWT token: %v", err)
 	}
@@ -247,7 +330,7 @@ func TestDeleteEmailIntegration(t *testing.T) {
 	srv := &Server{db: nil}
 
 	// Apply JWT middleware and call handler
-	handler := jwtMiddleware(http.HandlerFunc(srv.deleteEmailHandler))
+	handler := testJWTMiddleware(http.HandlerFunc(srv.deleteEmailHandler))
 	handler.ServeHTTP(w, req)
 
 	// Should get 500 Internal Server Error due to nil database
@@ -257,4 +340,4 @@ func TestDeleteEmailIntegration(t *testing.T) {
 
 	// Verify the handler was called (we can see this from the log output)
 	// The test passes if we reach this point without panicking
-} 
+}

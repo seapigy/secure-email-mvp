@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -92,6 +91,11 @@ type SendEmailResponse struct {
 	BlobID string `json:"blob_id,omitempty"` // Cloudflare R2 blob ID for encrypted content
 	Status string `json:"status,omitempty"`  // Operation status ("success" or "error")
 	Error  string `json:"error,omitempty"`   // Error message if operation failed
+
+	// Sender-side tracking fields (Micro-Iteration 4.21)
+	BurnAfterRead *bool `json:"burn_after_read,omitempty"` // Whether email will self-destruct after first read
+	AccessCount   *int  `json:"access_count,omitempty"`    // Current number of successful accesses
+	MaxAttempts   *int  `json:"max_attempts,omitempty"`    // Maximum allowed failed attempts before self-destruct
 }
 
 // sendEmailHandler handles POST /api/email/send with comprehensive security features
@@ -142,33 +146,32 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// MICRO-ITERATION 4.4 FIX: Convert userID string to integer for foreign key constraint
-	// The users table uses INTEGER id, and emails table expects INTEGER sender_id
-	// This conversion ensures proper foreign key relationship
-	userIDInt, err := strconv.Atoi(userID)
-	if err != nil {
-		log.Printf("❌ Invalid user ID format: %s, error=%v", userID, err)
+	// User ID is already a string, which matches the TEXT type in the database
+	log.Printf("✅ Authenticated user ID: %s", userID)
+
+	// Step 3: Check if database is available
+	if srv.db == nil {
+		log.Printf("❌ Database connection is nil")
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error":"Invalid user ID format"}`))
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"Database connection unavailable"}`))
 		return
 	}
-	log.Printf("✅ Authenticated user ID: %s (converted to int: %d)", userID, userIDInt)
 
-	// Step 3: Verify that the user exists in the database before proceeding
+	// Step 4: Verify that the user exists in the database before proceeding
 	// This prevents foreign key constraint violations and ensures data integrity
-	var existingUserID int
-	userCheckErr := srv.db.QueryRow("SELECT id FROM users WHERE id = ?", userIDInt).Scan(&existingUserID)
+	var existingUserID string
+	userCheckErr := srv.db.QueryRow("SELECT id FROM users WHERE id = ?", userID).Scan(&existingUserID)
 	if userCheckErr != nil {
-		log.Printf("❌ User not found in database: userID=%d, error=%v", userIDInt, userCheckErr)
+		log.Printf("❌ User not found in database: userID=%s, error=%v", userID, userCheckErr)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"error":"User not found in database"}`))
 		return
 	}
-	log.Printf("✅ Verified user exists in database: userID=%d", existingUserID)
+	log.Printf("✅ Verified user exists in database: userID=%s", existingUserID)
 
-	// Step 4: Validate required email fields
+	// Step 5: Validate required email fields
 	if req.Recipient == "" || req.Subject == "" || req.Body == "" {
 		log.Printf("❌ Missing required fields: recipient=%q subject=%q body=%q", req.Recipient, req.Subject, req.Body)
 		w.Header().Set("Content-Type", "application/json")
@@ -177,7 +180,7 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Step 5: Validate recipient email format using regex
+	// Step 6: Validate recipient email format using regex
 	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 	if !emailRegex.MatchString(req.Recipient) {
 		log.Printf("❌ Invalid recipient email format: %q", req.Recipient)
@@ -187,7 +190,7 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Step 6: Validate self-destruct settings (Micro-Iteration 4.12)
+	// Step 7: Validate self-destruct settings (Micro-Iteration 4.12)
 	if req.SelfDestructAfterAttempts {
 		if req.MaxFailedAttempts < 1 || req.MaxFailedAttempts > 10 {
 			log.Printf("❌ Invalid maxFailedAttempts: %d (must be between 1-10)", req.MaxFailedAttempts)
@@ -201,7 +204,7 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 		req.MaxFailedAttempts = 0
 	}
 
-	// Step 7: Validate expiration timestamp if provided
+	// Step 8: Validate expiration timestamp if provided
 	var expiresAtValue interface{} = nil
 	if req.ExpiresAt != "" {
 		// Parse the ISO 8601 UTC timestamp
@@ -226,7 +229,7 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 		expiresAtValue = expiresAt
 	}
 
-	// Step 8: Validate geolocation restrictions (Micro-Iteration 4.10)
+	// Step 9: Validate geolocation restrictions (Micro-Iteration 4.10)
 	allowedCityValue := req.AllowedCity
 	allowedCountryValue := req.AllowedCountry
 
@@ -476,8 +479,8 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Step 23: Log all parameters for debugging (MICRO-ITERATION 4.4 ENHANCEMENT)
 	log.Printf("=== DATABASE INSERT PARAMETERS ===")
-	log.Printf("emailID=%s, userID=%d, recipient=%s, subject=%s, blobID=%s",
-		emailID, userIDInt, req.Recipient, req.Subject, blobID)
+	log.Printf("emailID=%s, userID=%s, recipient=%s, subject=%s, blobID=%s",
+		emailID, userID, req.Recipient, req.Subject, blobID)
 	log.Printf("recipientID=%v, expiresAtValue=%v, allowedCityValue=%v, allowedCountryValue=%v",
 		recipientID, expiresAtValue, allowedCityValue, allowedCountryValue)
 	log.Printf("encryptedKeyB64=%s, nonceB64=%s, authTagB64=%s, hashB64=%s",
@@ -497,14 +500,14 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 	// Step 25: Log SQL query and parameters for debugging (MICRO-ITERATION 4.4 ENHANCEMENT)
 	log.Printf("=== SQL EXECUTION ===")
 	log.Printf("SQL Query: %s", insertQuery)
-	log.Printf("Parameters: emailID=%s, userID=%d, recipient=%s, subject=%s, blobID=%s",
-		emailID, userIDInt, req.Recipient, req.Subject, blobID)
+	log.Printf("Parameters: emailID=%s, userID=%s, recipient=%s, subject=%s, blobID=%s",
+		emailID, userID, req.Recipient, req.Subject, blobID)
 	log.Printf("Security params: selfDestructInt=%d, burnAfterReadInt=%d, requireMFAInt=%d, isPasswordProtectedInt=%d",
 		selfDestructInt, burnAfterReadInt, requireMFAInt, isPasswordProtectedInt)
 
 	// Step 26: Execute database insert with comprehensive error handling (MICRO-ITERATION 4.4 FIX)
 	_, insertErr := srv.db.Exec(insertQuery,
-		emailID, userIDInt, req.Recipient, req.Subject, blobID, encryptedKeyB64,
+		emailID, userID, req.Recipient, req.Subject, blobID, encryptedKeyB64,
 		nonceB64, authTagB64, hashB64, selfDestructInt, burnAfterReadInt, expiresAtValue,
 		allowedCityValue, allowedCountryValue, geoVerificationType,
 		normalizedGeoCity, normalizedGeoCountry, requireMFAInt, mfaTypeValue, encryptedTOTPSecretValue,
@@ -515,8 +518,8 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 	if insertErr != nil {
 		log.Printf("❌ DATABASE INSERT FAILED")
 		log.Printf("Error: %v", insertErr)
-		log.Printf("Failed INSERT parameters: emailID=%s, userID=%d, recipient=%s, subject=%s, blobID=%s",
-			emailID, userIDInt, req.Recipient, req.Subject, blobID)
+		log.Printf("Failed INSERT parameters: emailID=%s, userID=%s, recipient=%s, subject=%s, blobID=%s",
+			emailID, userID, req.Recipient, req.Subject, blobID)
 		log.Printf("Security parameters: selfDestructInt=%d, burnAfterReadInt=%d, requireMFAInt=%d, isPasswordProtectedInt=%d",
 			selfDestructInt, burnAfterReadInt, requireMFAInt, isPasswordProtectedInt)
 		log.Printf("Geolocation params: allowedCityValue=%q, allowedCountryValue=%q, geoVerificationType=%q",
@@ -549,12 +552,35 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("✅ Email password set successfully")
 	}
 
-	// Step 29: Return success response
+	// Step 29: Return success response with tracking fields (Micro-Iteration 4.21)
 	log.Printf("✅ Email send operation completed successfully")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+
+	// Prepare tracking fields for response
+	var burnAfterReadBool *bool
+	var accessCountInt *int
+	var maxAttemptsInt *int
+
+	// Only include burn_after_read if it's enabled
+	if req.BurnAfterRead {
+		burnAfterReadBool = &req.BurnAfterRead
+	}
+
+	// Always include access_count (starts at 0)
+	zero := 0
+	accessCountInt = &zero
+
+	// Only include max_attempts if self-destruct is enabled
+	if req.SelfDestructAfterAttempts {
+		maxAttemptsInt = &req.MaxFailedAttempts
+	}
+
 	json.NewEncoder(w).Encode(SendEmailResponse{
-		BlobID: blobID,
-		Status: "success",
+		BlobID:        blobID,
+		Status:        "success",
+		BurnAfterRead: burnAfterReadBool,
+		AccessCount:   accessCountInt,
+		MaxAttempts:   maxAttemptsInt,
 	})
 }

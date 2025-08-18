@@ -28,11 +28,11 @@ func TestNewGeoRestrictionService(t *testing.T) {
 
 func TestNewGeoRestrictionServiceWithConfig(t *testing.T) {
 	customConfig := GeoRestrictionConfig{
-		Enabled:                    false,
-		DefaultAction:              RestrictionTypeBlock,
-		StrictMode:                 true,
-		LogViolations:              false,
-		BlockOnGeolocationFailure:  false,
+		Enabled:                   false,
+		DefaultAction:             RestrictionTypeBlock,
+		StrictMode:                true,
+		LogViolations:             false,
+		BlockOnGeolocationFailure: false,
 	}
 
 	service := NewGeoRestrictionServiceWithConfig(customConfig)
@@ -116,7 +116,7 @@ func TestCheckAccess_NoRules_DefaultBlock(t *testing.T) {
 
 func TestCheckAccess_AllowRule_Match(t *testing.T) {
 	service := NewGeoRestrictionService()
-	
+
 	location := &geolocation.Location{Country: "us", City: "new york"}
 	rules := []GeoRestrictionRule{
 		{
@@ -142,7 +142,7 @@ func TestCheckAccess_AllowRule_Match(t *testing.T) {
 
 func TestCheckAccess_AllowRule_NoMatch(t *testing.T) {
 	service := NewGeoRestrictionService()
-	
+
 	location := &geolocation.Location{Country: "ca", City: "toronto"}
 	rules := []GeoRestrictionRule{
 		{
@@ -168,7 +168,7 @@ func TestCheckAccess_AllowRule_NoMatch(t *testing.T) {
 
 func TestCheckAccess_BlockRule_Match(t *testing.T) {
 	service := NewGeoRestrictionService()
-	
+
 	location := &geolocation.Location{Country: "us", City: "new york"}
 	rules := []GeoRestrictionRule{
 		{
@@ -194,7 +194,7 @@ func TestCheckAccess_BlockRule_Match(t *testing.T) {
 
 func TestCheckAccess_BlockRule_NoMatch(t *testing.T) {
 	service := NewGeoRestrictionService()
-	
+
 	location := &geolocation.Location{Country: "ca", City: "toronto"}
 	rules := []GeoRestrictionRule{
 		{
@@ -223,7 +223,7 @@ func TestCheckAccess_StrictMode_BothMatch(t *testing.T) {
 		Enabled:    true,
 		StrictMode: true,
 	})
-	
+
 	location := &geolocation.Location{Country: "us", City: "new york"}
 	rules := []GeoRestrictionRule{
 		{
@@ -252,7 +252,7 @@ func TestCheckAccess_StrictMode_OnlyCountryMatch(t *testing.T) {
 		Enabled:    true,
 		StrictMode: true,
 	})
-	
+
 	location := &geolocation.Location{Country: "us", City: "los angeles"}
 	rules := []GeoRestrictionRule{
 		{
@@ -281,7 +281,7 @@ func TestCheckAccess_StrictMode_OnlyCityMatch(t *testing.T) {
 		Enabled:    true,
 		StrictMode: true,
 	})
-	
+
 	location := &geolocation.Location{Country: "ca", City: "new york"}
 	rules := []GeoRestrictionRule{
 		{
@@ -310,7 +310,7 @@ func TestCheckAccess_NonStrictMode_EitherMatch(t *testing.T) {
 		Enabled:    true,
 		StrictMode: false,
 	})
-	
+
 	location := &geolocation.Location{Country: "ca", City: "new york"}
 	rules := []GeoRestrictionRule{
 		{
@@ -336,8 +336,8 @@ func TestCheckAccess_NonStrictMode_EitherMatch(t *testing.T) {
 
 func TestCheckAccess_NilLocation_BlockOnFailure(t *testing.T) {
 	service := NewGeoRestrictionServiceWithConfig(GeoRestrictionConfig{
-		Enabled:                    true,
-		BlockOnGeolocationFailure:  true,
+		Enabled:                   true,
+		BlockOnGeolocationFailure: true,
 	})
 
 	rules := []GeoRestrictionRule{}
@@ -356,8 +356,8 @@ func TestCheckAccess_NilLocation_BlockOnFailure(t *testing.T) {
 
 func TestCheckAccess_NilLocation_AllowOnFailure(t *testing.T) {
 	service := NewGeoRestrictionServiceWithConfig(GeoRestrictionConfig{
-		Enabled:                    true,
-		BlockOnGeolocationFailure:  false,
+		Enabled:                   true,
+		BlockOnGeolocationFailure: false,
 	})
 
 	rules := []GeoRestrictionRule{}
@@ -376,12 +376,12 @@ func TestCheckAccess_NilLocation_AllowOnFailure(t *testing.T) {
 
 func TestValidateRule_ValidAllowRule(t *testing.T) {
 	service := NewGeoRestrictionService()
-	
+
 	rule := GeoRestrictionRule{
 		ID:        "rule1",
 		EmailID:   "email1",
 		Type:      RestrictionTypeAllow,
-		Countries: []string{"us"},
+		Countries: []string{"US"},
 		Cities:    []string{"new york"},
 	}
 
@@ -393,12 +393,12 @@ func TestValidateRule_ValidAllowRule(t *testing.T) {
 
 func TestValidateRule_ValidBlockRule(t *testing.T) {
 	service := NewGeoRestrictionService()
-	
+
 	rule := GeoRestrictionRule{
 		ID:        "rule1",
 		EmailID:   "email1",
 		Type:      RestrictionTypeBlock,
-		Countries: []string{"us"},
+		Countries: []string{"US"},
 		Cities:    []string{"new york"},
 	}
 
@@ -410,7 +410,7 @@ func TestValidateRule_ValidBlockRule(t *testing.T) {
 
 func TestValidateRule_InvalidType(t *testing.T) {
 	service := NewGeoRestrictionService()
-	
+
 	rule := GeoRestrictionRule{
 		ID:        "rule1",
 		EmailID:   "email1",
@@ -427,7 +427,7 @@ func TestValidateRule_InvalidType(t *testing.T) {
 
 func TestValidateRule_NoRestrictions(t *testing.T) {
 	service := NewGeoRestrictionService()
-	
+
 	rule := GeoRestrictionRule{
 		ID:      "rule1",
 		EmailID: "email1",
@@ -442,7 +442,7 @@ func TestValidateRule_NoRestrictions(t *testing.T) {
 
 func TestValidateRule_InvalidCountry(t *testing.T) {
 	service := NewGeoRestrictionService()
-	
+
 	rule := GeoRestrictionRule{
 		ID:        "rule1",
 		EmailID:   "email1",
@@ -459,7 +459,7 @@ func TestValidateRule_InvalidCountry(t *testing.T) {
 
 func TestValidateRule_InvalidCity(t *testing.T) {
 	service := NewGeoRestrictionService()
-	
+
 	rule := GeoRestrictionRule{
 		ID:        "rule1",
 		EmailID:   "email1",
@@ -476,7 +476,7 @@ func TestValidateRule_InvalidCity(t *testing.T) {
 
 func TestNormalizeRule(t *testing.T) {
 	service := NewGeoRestrictionService()
-	
+
 	rule := GeoRestrictionRule{
 		ID:        "rule1",
 		EmailID:   "email1",
@@ -486,14 +486,14 @@ func TestNormalizeRule(t *testing.T) {
 	}
 
 	normalized := service.NormalizeRule(rule)
-	
+
 	expectedCountries := []string{"us", "ca"}
 	for i, country := range normalized.Countries {
 		if country != expectedCountries[i] {
 			t.Errorf("Expected country %s, got %s", expectedCountries[i], country)
 		}
 	}
-	
+
 	expectedCities := []string{"new york", "los angeles"}
 	for i, city := range normalized.Cities {
 		if city != expectedCities[i] {
@@ -504,13 +504,13 @@ func TestNormalizeRule(t *testing.T) {
 
 func TestParseRulesFromJSON_Valid(t *testing.T) {
 	service := NewGeoRestrictionService()
-	
+
 	jsonData := `[
 		{
 			"id": "rule1",
 			"email_id": "email1",
 			"type": "allow",
-			"countries": ["us", "ca"],
+			"countries": ["US", "CA"],
 			"cities": ["new york", "toronto"],
 			"description": "Test rule"
 		}
@@ -520,11 +520,11 @@ func TestParseRulesFromJSON_Valid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseRulesFromJSON should not return error: %v", err)
 	}
-	
+
 	if len(rules) != 1 {
 		t.Fatalf("Expected 1 rule, got %d", len(rules))
 	}
-	
+
 	rule := rules[0]
 	if rule.ID != "rule1" {
 		t.Errorf("Expected ID rule1, got %s", rule.ID)
@@ -542,7 +542,7 @@ func TestParseRulesFromJSON_Valid(t *testing.T) {
 
 func TestParseRulesFromJSON_Invalid(t *testing.T) {
 	service := NewGeoRestrictionService()
-	
+
 	jsonData := `[
 		{
 			"id": "rule1",
@@ -561,13 +561,13 @@ func TestParseRulesFromJSON_Invalid(t *testing.T) {
 
 func TestSerializeRulesToJSON(t *testing.T) {
 	service := NewGeoRestrictionService()
-	
+
 	rules := []GeoRestrictionRule{
 		{
 			ID:          "rule1",
 			EmailID:     "email1",
 			Type:        RestrictionTypeAllow,
-			Countries:   []string{"us"},
+			Countries:   []string{"US"},
 			Cities:      []string{"new york"},
 			Description: "Test rule",
 			CreatedAt:   time.Now(),
@@ -579,17 +579,17 @@ func TestSerializeRulesToJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SerializeRulesToJSON should not return error: %v", err)
 	}
-	
+
 	// Verify the JSON can be parsed back
 	var parsedRules []GeoRestrictionRule
 	if err := json.Unmarshal(jsonData, &parsedRules); err != nil {
 		t.Fatalf("Failed to parse serialized JSON: %v", err)
 	}
-	
+
 	if len(parsedRules) != 1 {
 		t.Fatalf("Expected 1 rule after parsing, got %d", len(parsedRules))
 	}
-	
+
 	rule := parsedRules[0]
 	if rule.ID != "rule1" {
 		t.Errorf("Expected ID rule1, got %s", rule.ID)
@@ -601,7 +601,7 @@ func TestSerializeRulesToJSON(t *testing.T) {
 
 func TestGetDefaultConfig(t *testing.T) {
 	service := NewGeoRestrictionService()
-	
+
 	config := service.GetDefaultConfig()
 	if !config.Enabled {
 		t.Error("Default config should be enabled")
@@ -619,4 +619,3 @@ func TestGetDefaultConfig(t *testing.T) {
 		t.Error("Default block on geolocation failure should be true")
 	}
 }
-

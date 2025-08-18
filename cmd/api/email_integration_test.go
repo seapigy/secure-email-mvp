@@ -209,17 +209,6 @@ func createTestServer(t *testing.T) *Server {
 		t.Fatalf("Failed to apply schema: %v", err)
 	}
 
-	// Apply migration for encryption fields
-	migration, err := os.ReadFile("../../schema/migrate_add_encryption_fields.sql")
-	if err != nil {
-		t.Fatalf("Failed to read migration: %v", err)
-	}
-
-	_, err = db.Exec(string(migration))
-	if err != nil {
-		t.Fatalf("Failed to apply migration: %v", err)
-	}
-
 	return &Server{db: db}
 }
 

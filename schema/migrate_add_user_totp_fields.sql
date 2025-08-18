@@ -17,3 +17,9 @@ CREATE INDEX IF NOT EXISTS idx_users_totp ON users(email, totp_secret);
 -- Note: Existing users will need to have their passwords rehashed and TOTP secrets generated
 -- This migration should be run after user data migration
 
+
+
+
+
+
+

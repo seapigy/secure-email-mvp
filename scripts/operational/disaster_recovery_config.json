@@ -1,0 +1,14 @@
+{
+  "backup_dir": "./backups",
+  "encryption_key": "your-secure-encryption-key-here-change-in-production",
+  "retention_days": 30,
+  "max_backup_size": 1073741824,
+  "compression_enabled": true,
+  "verify_backups": true,
+  "auto_backup_interval": "24h",
+  "recovery_timeout": "30m",
+  "parallel_restore": false,
+  "backup_encryption": true,
+  "integrity_checks": true,
+  "notification_enabled": true
+}

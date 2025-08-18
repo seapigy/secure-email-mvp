@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	_ "modernc.org/sqlite"
 )
 
 func TestReadReceiptService_RecordReadEvent(t *testing.T) {
@@ -420,4 +421,3 @@ func createTestTables(db *sql.DB) error {
 	`)
 	return err
 }
-

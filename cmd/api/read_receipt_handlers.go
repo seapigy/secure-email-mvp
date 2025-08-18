@@ -364,3 +364,9 @@ func (srv *Server) updateEmailReadReceiptSettingsHandler(w http.ResponseWriter, 
 	log.Printf("Updated read receipt settings for email %s by user %s", emailID, userID)
 }
 
+
+
+
+
+
+

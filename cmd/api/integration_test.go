@@ -10,12 +10,15 @@ import (
 	"testing"
 	"time"
 
+	"secure-email-mvp/pkg/auth"
+
 	_ "modernc.org/sqlite"
 )
 
 func TestSignupLoginIntegration(t *testing.T) {
-	// Set JWT_SECRET for testing
+	// Set JWT secrets for testing
 	os.Setenv("JWT_SECRET", "test-secret-key")
+	os.Setenv("JWT_ACCESS_SECRET", "test-access-secret-key")
 
 	// Setup in-memory database for testing
 	db, err := sql.Open("sqlite", ":memory:")
@@ -24,19 +27,38 @@ func TestSignupLoginIntegration(t *testing.T) {
 	}
 	defer db.Close()
 
-	// Create users table
+	// Create users table with all required fields for signup handler
 	_, err = db.Exec(`CREATE TABLE users (
 		id INTEGER PRIMARY KEY,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
+		password_hash TEXT NOT NULL,
+		totp_secret TEXT NOT NULL,
 		fallback_email TEXT,
 		fallback_token TEXT,
 		fallback_confirmed BOOLEAN DEFAULT FALSE,
 		fallback_token_expiration TIMESTAMP,
+		failed_login_attempts INTEGER DEFAULT 0,
+		last_failed_login TIMESTAMP,
+		account_locked_until TIMESTAMP,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	)`)
 	if err != nil {
-		t.Fatal("Failed to create test table:", err)
+		t.Fatal("Failed to create users table:", err)
+	}
+
+	// Create refresh_tokens table for session management
+	_, err = db.Exec(`CREATE TABLE refresh_tokens (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		token_hash TEXT NOT NULL,
+		expires_at TIMESTAMP NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		last_used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		is_revoked BOOLEAN DEFAULT FALSE
+	)`)
+	if err != nil {
+		t.Fatal("Failed to create refresh_tokens table:", err)
 	}
 
 	// Create handlers
@@ -46,7 +68,7 @@ func TestSignupLoginIntegration(t *testing.T) {
 
 	// Test data
 	testEmail := "integration@example.com"
-	testPassword := "securepassword123"
+	testPassword := "SecurePassword123!"
 
 	// Step 1: Sign up a new user
 	t.Run("Signup", func(t *testing.T) {
@@ -116,10 +138,23 @@ func TestSignupLoginIntegration(t *testing.T) {
 
 	// Step 3: Login with the created user
 	t.Run("Login", func(t *testing.T) {
+		// Get the TOTP secret from the database to generate the correct code
+		var totpSecret string
+		err := db.QueryRow("SELECT totp_secret FROM users WHERE email = ?", testEmail).Scan(&totpSecret)
+		if err != nil {
+			t.Fatalf("Failed to get TOTP secret: %v", err)
+		}
+
+		// Generate the correct TOTP code for the current time
+		totpCode, err := auth.GenerateTOTPCode(totpSecret)
+		if err != nil {
+			t.Fatalf("Failed to generate TOTP code: %v", err)
+		}
+
 		loginReq := LoginRequest{
 			Email:    testEmail,
 			Password: testPassword,
-			TOTPCode: "123456",
+			TOTPCode: totpCode,
 		}
 
 		body, err := json.Marshal(loginReq)

@@ -1,0 +1,290 @@
+{
+  "test_duration": "10m",
+  "rollback_timeout": "5m",
+  "data_integrity_checks": true,
+  "backup_before_rollback": true,
+  "notifications": true,
+  "log_level": "info",
+  "features": [
+    {
+      "name": "ZKID Layer",
+      "environment_var": "ENABLE_ZKID_LAYER",
+      "default_value": "true",
+      "rollback_value": "false",
+      "description": "Zero-Knowledge Identity Layer for encrypted email mapping",
+      "critical": true,
+      "dependencies": [],
+      "data_impact": "full",
+      "rollback_time": "30s",
+      "validation_queries": [
+        "SELECT COUNT(*) FROM zkid_mappings WHERE is_active = 1",
+        "SELECT COUNT(*) FROM audit_logs WHERE action LIKE '%zkid%'"
+      ],
+      "health_checks": [
+        "zkid_mapping_creation",
+        "zkid_mapping_retrieval",
+        "recovery_code_generation"
+      ]
+    },
+    {
+      "name": "PQC Encryption",
+      "environment_var": "ENABLE_PQC_ENCRYPTION",
+      "default_value": "true",
+      "rollback_value": "false",
+      "description": "Post-Quantum Cryptography encryption for email content",
+      "critical": true,
+      "dependencies": [],
+      "data_impact": "write",
+      "rollback_time": "45s",
+      "validation_queries": [
+        "SELECT COUNT(*) FROM pqc_keys WHERE is_active = 1",
+        "SELECT COUNT(*) FROM audit_logs WHERE action LIKE '%pqc%'"
+      ],
+      "health_checks": [
+        "pqc_key_generation",
+        "pqc_encryption",
+        "pqc_decryption"
+      ]
+    },
+    {
+      "name": "Hybrid TLS",
+      "environment_var": "ENABLE_HYBRID_TLS",
+      "default_value": "true",
+      "rollback_value": "false",
+      "description": "Hybrid TLS with classical and PQC algorithms",
+      "critical": false,
+      "dependencies": ["PQC Encryption"],
+      "data_impact": "none",
+      "rollback_time": "20s",
+      "validation_queries": [
+        "SELECT COUNT(*) FROM audit_logs WHERE action LIKE '%tls%'"
+      ],
+      "health_checks": [
+        "tls_handshake",
+        "tls_encryption"
+      ]
+    }
+  ],
+  "rollback_strategies": [
+    {
+      "name": "ZKID Rollback Strategy",
+      "description": "Rollback ZKID layer to fallback email mapping",
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "disable_zkid",
+          "command": "SET ENABLE_ZKID_LAYER=false",
+          "description": "Disable ZKID layer functionality",
+          "timeout": "30s",
+          "retry_on_failure": true,
+          "validation": "verify_zkid_disabled",
+          "rollback": "enable_zkid"
+        },
+        {
+          "step_number": 2,
+          "action": "enable_fallback_encryption",
+          "command": "SET FALLBACK_ENCRYPTION=true",
+          "description": "Enable fallback AES-256-GCM encryption",
+          "timeout": "30s",
+          "retry_on_failure": true,
+          "validation": "verify_fallback_enabled",
+          "rollback": "disable_fallback"
+        },
+        {
+          "step_number": 3,
+          "action": "verify_data_integrity",
+          "command": "CHECK_DATA_INTEGRITY",
+          "description": "Verify data integrity after rollback",
+          "timeout": "60s",
+          "retry_on_failure": false,
+          "validation": "data_integrity_check",
+          "rollback": "restore_backup"
+        }
+      ],
+      "validation_steps": [
+        {
+          "step_number": 1,
+          "validation_type": "zkid_disabled",
+          "query": "SELECT COUNT(*) FROM zkid_mappings WHERE is_active = 1",
+          "expected_result": 0,
+          "description": "Verify ZKID mappings are disabled",
+          "critical": true,
+          "timeout": "10s"
+        },
+        {
+          "step_number": 2,
+          "validation_type": "fallback_enabled",
+          "query": "SELECT COUNT(*) FROM audit_logs WHERE action = 'fallback_encryption_enabled'",
+          "expected_result": 1,
+          "description": "Verify fallback encryption is enabled",
+          "critical": true,
+          "timeout": "10s"
+        }
+      ],
+      "recovery_steps": [
+        {
+          "step_number": 1,
+          "action": "restore_zkid",
+          "command": "RESTORE_ZKID_BACKUP",
+          "description": "Restore ZKID layer from backup",
+          "timeout": "60s",
+          "condition": "zkid_rollback_failed"
+        },
+        {
+          "step_number": 2,
+          "action": "notify_admin",
+          "command": "SEND_ADMIN_NOTIFICATION",
+          "description": "Notify administrators of rollback failure",
+          "timeout": "30s",
+          "condition": "critical_failure"
+        }
+      ],
+      "timeout": "5m",
+      "retry_count": 3,
+      "rollback_order": ["ZKID Layer", "PQC Encryption", "Hybrid TLS"]
+    },
+    {
+      "name": "PQC Rollback Strategy",
+      "description": "Rollback PQC encryption to classical encryption",
+      "steps": [
+        {
+          "step_number": 1,
+          "action": "disable_pqc",
+          "command": "SET ENABLE_PQC_ENCRYPTION=false",
+          "description": "Disable PQC encryption functionality",
+          "timeout": "30s",
+          "retry_on_failure": true,
+          "validation": "verify_pqc_disabled",
+          "rollback": "enable_pqc"
+        },
+        {
+          "step_number": 2,
+          "action": "enable_classical_encryption",
+          "command": "SET CLASSICAL_ENCRYPTION=true",
+          "description": "Enable classical AES-256-GCM encryption",
+          "timeout": "30s",
+          "retry_on_failure": true,
+          "validation": "verify_classical_enabled",
+          "rollback": "disable_classical"
+        },
+        {
+          "step_number": 3,
+          "action": "migrate_existing_data",
+          "command": "MIGRATE_PQC_TO_CLASSICAL",
+          "description": "Migrate existing PQC-encrypted data to classical encryption",
+          "timeout": "300s",
+          "retry_on_failure": true,
+          "validation": "verify_migration_complete",
+          "rollback": "restore_pqc_data"
+        }
+      ],
+      "validation_steps": [
+        {
+          "step_number": 1,
+          "validation_type": "pqc_disabled",
+          "query": "SELECT COUNT(*) FROM pqc_keys WHERE is_active = 1",
+          "expected_result": 0,
+          "description": "Verify PQC keys are disabled",
+          "critical": true,
+          "timeout": "10s"
+        },
+        {
+          "step_number": 2,
+          "validation_type": "classical_enabled",
+          "query": "SELECT COUNT(*) FROM audit_logs WHERE action = 'classical_encryption_enabled'",
+          "expected_result": 1,
+          "description": "Verify classical encryption is enabled",
+          "critical": true,
+          "timeout": "10s"
+        }
+      ],
+      "recovery_steps": [
+        {
+          "step_number": 1,
+          "action": "restore_pqc",
+          "command": "RESTORE_PQC_BACKUP",
+          "description": "Restore PQC encryption from backup",
+          "timeout": "60s",
+          "condition": "pqc_rollback_failed"
+        },
+        {
+          "step_number": 2,
+          "action": "notify_admin",
+          "command": "SEND_ADMIN_NOTIFICATION",
+          "description": "Notify administrators of rollback failure",
+          "timeout": "30s",
+          "condition": "critical_failure"
+        }
+      ],
+      "timeout": "10m",
+      "retry_count": 3,
+      "rollback_order": ["PQC Encryption", "Hybrid TLS"]
+    }
+  ],
+  "validation_rules": [
+    {
+      "name": "ZKID Mappings Integrity",
+      "description": "Verify ZKID mappings are preserved during rollback",
+      "query": "SELECT COUNT(*) FROM zkid_mappings",
+      "expected_result": ">0",
+      "severity": "critical",
+      "category": "data_integrity",
+      "auto_rollback": true
+    },
+    {
+      "name": "PQC Keys Integrity",
+      "description": "Verify PQC keys are preserved during rollback",
+      "query": "SELECT COUNT(*) FROM pqc_keys",
+      "expected_result": ">0",
+      "severity": "critical",
+      "category": "data_integrity",
+      "auto_rollback": true
+    },
+    {
+      "name": "Audit Log Continuity",
+      "description": "Verify audit logs are continuous during rollback",
+      "query": "SELECT COUNT(*) FROM audit_logs WHERE timestamp >= datetime('now', '-1 hour')",
+      "expected_result": ">0",
+      "severity": "high",
+      "category": "data_integrity",
+      "auto_rollback": false
+    },
+    {
+      "name": "Email Encryption Status",
+      "description": "Verify emails remain encrypted after rollback",
+      "query": "SELECT COUNT(*) FROM emails WHERE encrypted_content IS NOT NULL",
+      "expected_result": ">0",
+      "severity": "critical",
+      "category": "security",
+      "auto_rollback": true
+    },
+    {
+      "name": "Admin Sessions Integrity",
+      "description": "Verify admin sessions remain active after rollback",
+      "query": "SELECT COUNT(*) FROM admin_sessions WHERE expires_at > datetime('now')",
+      "expected_result": ">0",
+      "severity": "medium",
+      "category": "functionality",
+      "auto_rollback": false
+    },
+    {
+      "name": "User Authentication",
+      "description": "Verify user authentication still works after rollback",
+      "query": "SELECT COUNT(*) FROM users WHERE is_active = 1",
+      "expected_result": ">0",
+      "severity": "high",
+      "category": "functionality",
+      "auto_rollback": true
+    }
+  ],
+  "monitoring_enabled": true,
+  "auto_rollback": true,
+  "rollback_thresholds": {
+    "error_rate_threshold": 5.0,
+    "latency_threshold": 2000,
+    "data_loss_threshold": 0,
+    "performance_threshold": 80.0,
+    "security_violation_threshold": 0,
+    "timeout_threshold": 30
+  }
+}

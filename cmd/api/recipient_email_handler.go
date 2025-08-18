@@ -75,7 +75,7 @@ func (srv *Server) getRecipientEmailHandler(w http.ResponseWriter, r *http.Reque
 
 	err := srv.db.QueryRow(`
 		SELECT encrypted_blob_url, encrypted_key, encryption_nonce, encryption_auth_tag, 
-		       compression_algo, sender_id, recipient, recipient_id, subject, created_at, fail_count
+		       compression_algo, sender_id, recipient, recipient_id, subject, created_at, failed_attempts
 		FROM emails WHERE email_id = ?`,
 		emailID,
 	).Scan(&blobID, &encryptedKeyB64, &nonceB64, &authTagB64, &compressionAlgo,

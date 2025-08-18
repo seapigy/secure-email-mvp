@@ -22,3 +22,9 @@ CREATE INDEX IF NOT EXISTS idx_emails_recipient_id ON emails(recipient_id);
 --              NULL if recipient is not a registered user
 --              Used to prevent unauthorized access and forwarding
 
+
+
+
+
+
+

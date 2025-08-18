@@ -8,12 +8,11 @@ import (
 )
 
 type EmailListItem struct {
-	EmailID                   string    `json:"email_id"`
-	Recipient                 string    `json:"recipient"`
-	Subject                   string    `json:"subject"`
-	CreatedAt                 time.Time `json:"created_at"`
-	SelfDestructAfterAttempts bool      `json:"selfDestructAfterAttempts"`
-	MaxFailedAttempts         int       `json:"maxFailedAttempts"`
+	EmailID   string    `json:"email_id"`
+	Recipient string    `json:"recipient"`
+	Subject   string    `json:"subject"`
+	CreatedAt time.Time `json:"created_at"`
+	Status    string    `json:"status"`
 }
 
 type ListEmailResponse struct {
@@ -47,8 +46,13 @@ func (srv *Server) listEmailHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Query database for emails sent by this user
 	rows, err := srv.db.Query(`
-		SELECT email_id, recipient, subject, created_at, 
-		       self_destruct_after_attempts, max_attempts
+		SELECT email_id, recipient, subject, created_at,
+		       CASE 
+		           WHEN self_destructed = 1 THEN 'deleted'
+		           WHEN expires_at IS NOT NULL AND expires_at < CURRENT_TIMESTAMP THEN 'expired'
+		           WHEN access_count > 0 THEN 'read'
+		           ELSE 'delivered'
+		       END as status
 		FROM emails 
 		WHERE sender_id = ?
 		ORDER BY created_at DESC`,
@@ -67,14 +71,11 @@ func (srv *Server) listEmailHandler(w http.ResponseWriter, r *http.Request) {
 	var emails []EmailListItem
 	for rows.Next() {
 		var email EmailListItem
-		var selfDestructInt int
-		err := rows.Scan(&email.EmailID, &email.Recipient, &email.Subject, &email.CreatedAt, 
-			&selfDestructInt, &email.MaxFailedAttempts)
+		err := rows.Scan(&email.EmailID, &email.Recipient, &email.Subject, &email.CreatedAt, &email.Status)
 		if err != nil {
 			log.Printf("Failed to scan email row: %v", err)
 			continue // Skip this row and continue with others
 		}
-		email.SelfDestructAfterAttempts = selfDestructInt == 1
 		emails = append(emails, email)
 	}
 
@@ -96,4 +97,4 @@ func (srv *Server) listEmailHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
-} 
+}

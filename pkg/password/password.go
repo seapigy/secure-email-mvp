@@ -270,7 +270,7 @@ func (s *PasswordService) isCommonPassword(password string) bool {
 }
 
 // generateSuggestions generates password improvement suggestions
-func (s *PasswordService) generateSuggestions(password string, errors []string) []string {
+func (s *PasswordService) generateSuggestions(password string, _ []string) []string {
 	suggestions := []string{}
 
 	if len(password) < s.config.MinLength {

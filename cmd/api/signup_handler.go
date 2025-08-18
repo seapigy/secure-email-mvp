@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"regexp"
@@ -13,6 +14,7 @@ import (
 	"secure-email-mvp/pkg/auth"
 	"secure-email-mvp/pkg/password"
 	"secure-email-mvp/pkg/reputation"
+	"secure-email-mvp/pkg/zkid"
 )
 
 // SignupRequest represents the JSON request body for signup
@@ -138,6 +140,28 @@ func signupHandlerFactory(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		// ZKID: Create encrypted email mapping if enabled (feature-flagged)
+		zkCfg := zkid.ConfigFromEnv()
+		if zkCfg.Enabled {
+			// Get newly created user UUID
+			var userID string
+			err = db.QueryRow("SELECT id FROM users WHERE email = ?", req.Email).Scan(&userID)
+			if err == nil && userID != "" {
+				svc := zkid.NewService(db, zkCfg)
+				// Fallback email optional pointer
+				var fb *string
+				if req.FallbackEmail != "" {
+					fb = &req.FallbackEmail
+				}
+				_, zkErr := svc.CreateOrUpdateMapping(userID, req.Email, fb)
+				if zkErr != nil {
+					log.Printf("[ZKID] Failed to create mapping for user %s: %v", userID, zkErr)
+				}
+			} else if err != nil {
+				log.Printf("[ZKID] Could not lookup user id for %s: %v", req.Email, err)
+			}
+		}
+
 		// Send fallback confirmation email (stub)
 		if err := auth.SendFallbackConfirmationEmail(req.FallbackEmail, fallbackToken); err != nil {
 			// Log error but don't fail the signup
@@ -157,21 +181,35 @@ func signupHandlerFactory(db *sql.DB) http.HandlerFunc {
 
 // createUserWithTOTP inserts a new user with TOTP secret, fallback email and token into the database.
 func createUserWithTOTP(db *sql.DB, email, passwordHash, totpSecret, fallbackEmail, fallbackToken string, fallbackExpiration time.Time) error {
-	query := `INSERT INTO users (email, password, password_hash, totp_secret, fallback_email, fallback_token, fallback_confirmed, fallback_token_expiration, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	_, err := db.Exec(query, email, passwordHash, passwordHash, totpSecret, fallbackEmail, fallbackToken, false, fallbackExpiration, time.Now())
+	// Check which schema is being used by checking if password_hash column exists
+	var columnName string
+	err := db.QueryRow("SELECT name FROM pragma_table_info('users') WHERE name = 'password_hash'").Scan(&columnName)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Use simple schema (password column)
+			query := `INSERT INTO users (email, password, totp_secret, fallback_email, fallback_token, fallback_confirmed, fallback_token_expiration, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+			_, err = db.Exec(query, email, passwordHash, totpSecret, fallbackEmail, fallbackToken, false, fallbackExpiration, time.Now())
+		} else {
+			return fmt.Errorf("database schema check error: %v", err)
+		}
+	} else {
+		// Use full schema (password_hash column)
+		query := `INSERT INTO users (email, password_hash, totp_secret, fallback_email, fallback_token, fallback_confirmed, fallback_token_expiration, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+		_, err = db.Exec(query, email, passwordHash, totpSecret, fallbackEmail, fallbackToken, false, fallbackExpiration, time.Now())
+	}
 	return err
 }
 
 // createUserWithFallback inserts a new user with fallback email and token into the database. Used for account recovery security.
 func createUserWithFallback(db *sql.DB, email, hashedPassword, fallbackEmail, fallbackToken string, fallbackExpiration time.Time) error {
-	query := `INSERT INTO users (email, password, fallback_email, fallback_token, fallback_confirmed, fallback_token_expiration, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+	query := `INSERT INTO users (email, password_hash, fallback_email, fallback_token, fallback_confirmed, fallback_token_expiration, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
 	_, err := db.Exec(query, email, hashedPassword, fallbackEmail, fallbackToken, false, fallbackExpiration, time.Now())
 	return err
 }
 
 // createUser inserts a new user into the database (legacy function, not used in fallback flow).
 func createUser(db *sql.DB, email, hashedPassword string) error {
-	query := `INSERT INTO users (email, password, created_at) VALUES (?, ?, ?)`
+	query := `INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)`
 	_, err := db.Exec(query, email, hashedPassword, time.Now())
 	return err
 }

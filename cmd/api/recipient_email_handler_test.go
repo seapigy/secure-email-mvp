@@ -10,7 +10,6 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -19,18 +18,22 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
 	"secure-email-mvp/pkg/auth"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
+	_ "modernc.org/sqlite"
 )
 
 // TestGetRecipientEmailHandler_CorrectRecipient tests that the correct recipient can fetch and decrypt successfully
 func TestGetRecipientEmailHandler_CorrectRecipient(t *testing.T) {
 	// Setup test database
-	db, err := sql.Open("sqlite3", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("Failed to open test database: %v", err)
 	}
@@ -61,7 +64,7 @@ func TestGetRecipientEmailHandler_CorrectRecipient(t *testing.T) {
 
 	// Create test email content
 	originalContent := "This is a test email content"
-	compressed := compressContent(originalContent)
+	compressed := compressContentHelper(originalContent)
 	encryptedData := encryptContent(compressed)
 
 	// Upload to R2 (mock)
@@ -73,7 +76,7 @@ func TestGetRecipientEmailHandler_CorrectRecipient(t *testing.T) {
 		INSERT INTO emails (
 			email_id, sender_id, recipient, recipient_id, subject, encrypted_blob_url, 
 			encrypted_key, encryption_nonce, encryption_auth_tag, compression_algo, 
-			sha256_hash, created_at, fail_count
+			sha256_hash, created_at, failed_attempts
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		emailID, senderID, "recipient@test.com", recipientID, "Test Subject", blobID,
 		base64.StdEncoding.EncodeToString(encryptedData.Key),
@@ -85,16 +88,33 @@ func TestGetRecipientEmailHandler_CorrectRecipient(t *testing.T) {
 		t.Fatalf("Failed to insert test email: %v", err)
 	}
 
-	// Create request
+	// Set JWT secret for testing
+	os.Setenv("JWT_SECRET", "test-secret-key-for-jwt-signing")
+	defer os.Unsetenv("JWT_SECRET")
+
+	// Generate JWT token for recipient
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": recipientID,
+		"email":   "recipient@test.com",
+		"exp":     time.Now().Add(24 * time.Hour).Unix(),
+		"iat":     time.Now().Unix(),
+	})
+	tokenString, err := token.SignedString([]byte("test-secret-key-for-jwt-signing"))
+	if err != nil {
+		t.Fatalf("Failed to generate JWT token: %v", err)
+	}
+
+	// Create request with JWT token
 	req := httptest.NewRequest("GET", "/api/email/"+emailID+"/content", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenString)
 	w := httptest.NewRecorder()
 
-	// Add user context (simulating JWT middleware)
-	ctx := context.WithValue(req.Context(), "user_id", recipientID)
-	req = req.WithContext(ctx)
+	// Create router and add handler with JWT middleware
+	router := mux.NewRouter()
+	router.Handle("/api/email/{id}/content", jwtMiddleware(http.HandlerFunc(srv.getRecipientEmailHandler))).Methods("GET")
 
-	// Call handler
-	srv.getRecipientEmailHandler(w, req)
+	// Serve request
+	router.ServeHTTP(w, req)
 
 	// Check response
 	if w.Code != http.StatusOK {
@@ -122,7 +142,7 @@ func TestGetRecipientEmailHandler_CorrectRecipient(t *testing.T) {
 // TestGetRecipientEmailHandler_UnauthorizedUser tests that any other user_id gets blocked
 func TestGetRecipientEmailHandler_UnauthorizedUser(t *testing.T) {
 	// Setup test database
-	db, err := sql.Open("sqlite3", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("Failed to open test database: %v", err)
 	}
@@ -158,7 +178,7 @@ func TestGetRecipientEmailHandler_UnauthorizedUser(t *testing.T) {
 
 	// Create test email content
 	originalContent := "This is a test email content"
-	compressed := compressContent(originalContent)
+	compressed := compressContentHelper(originalContent)
 	encryptedData := encryptContent(compressed)
 
 	// Upload to R2 (mock)
@@ -169,7 +189,7 @@ func TestGetRecipientEmailHandler_UnauthorizedUser(t *testing.T) {
 		INSERT INTO emails (
 			email_id, sender_id, recipient, recipient_id, subject, encrypted_blob_url, 
 			encrypted_key, encryption_nonce, encryption_auth_tag, compression_algo, 
-			sha256_hash, created_at, fail_count
+			sha256_hash, created_at, failed_attempts
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		emailID, senderID, "recipient@test.com", recipientID, "Test Subject", blobID,
 		base64.StdEncoding.EncodeToString(encryptedData.Key),
@@ -181,16 +201,33 @@ func TestGetRecipientEmailHandler_UnauthorizedUser(t *testing.T) {
 		t.Fatalf("Failed to insert test email: %v", err)
 	}
 
-	// Create request with unauthorized user
+	// Set JWT secret for testing
+	os.Setenv("JWT_SECRET", "test-secret-key-for-jwt-signing")
+	defer os.Unsetenv("JWT_SECRET")
+
+	// Generate JWT token for unauthorized user
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": unauthorizedUserID,
+		"email":   "unauthorized@test.com",
+		"exp":     time.Now().Add(24 * time.Hour).Unix(),
+		"iat":     time.Now().Unix(),
+	})
+	tokenString, err := token.SignedString([]byte("test-secret-key-for-jwt-signing"))
+	if err != nil {
+		t.Fatalf("Failed to generate JWT token: %v", err)
+	}
+
+	// Create request with unauthorized user JWT token
 	req := httptest.NewRequest("GET", "/api/email/"+emailID+"/content", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenString)
 	w := httptest.NewRecorder()
 
-	// Add unauthorized user context
-	ctx := context.WithValue(req.Context(), "user_id", unauthorizedUserID)
-	req = req.WithContext(ctx)
+	// Create router and add handler with JWT middleware
+	router := mux.NewRouter()
+	router.Handle("/api/email/{id}/content", jwtMiddleware(http.HandlerFunc(srv.getRecipientEmailHandler))).Methods("GET")
 
-	// Call handler
-	srv.getRecipientEmailHandler(w, req)
+	// Serve request
+	router.ServeHTTP(w, req)
 
 	// Check response
 	if w.Code != http.StatusForbidden {
@@ -208,7 +245,7 @@ func TestGetRecipientEmailHandler_UnauthorizedUser(t *testing.T) {
 
 	// Check that fail count was incremented
 	var failCount int
-	err = db.QueryRow(`SELECT fail_count FROM emails WHERE email_id = ?`, emailID).Scan(&failCount)
+	err = db.QueryRow(`SELECT failed_attempts FROM emails WHERE email_id = ?`, emailID).Scan(&failCount)
 	if err != nil {
 		t.Fatalf("Failed to query fail count: %v", err)
 	}
@@ -221,7 +258,7 @@ func TestGetRecipientEmailHandler_UnauthorizedUser(t *testing.T) {
 // TestGetRecipientEmailHandler_FailureCountIncrement tests that failure count increments on each unauthorized attempt
 func TestGetRecipientEmailHandler_FailureCountIncrement(t *testing.T) {
 	// Setup test database
-	db, err := sql.Open("sqlite3", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("Failed to open test database: %v", err)
 	}
@@ -257,7 +294,7 @@ func TestGetRecipientEmailHandler_FailureCountIncrement(t *testing.T) {
 
 	// Create test email content
 	originalContent := "This is a test email content"
-	compressed := compressContent(originalContent)
+	compressed := compressContentHelper(originalContent)
 	encryptedData := encryptContent(compressed)
 
 	// Upload to R2 (mock)
@@ -268,7 +305,7 @@ func TestGetRecipientEmailHandler_FailureCountIncrement(t *testing.T) {
 		INSERT INTO emails (
 			email_id, sender_id, recipient, recipient_id, subject, encrypted_blob_url, 
 			encrypted_key, encryption_nonce, encryption_auth_tag, compression_algo, 
-			sha256_hash, created_at, fail_count
+			sha256_hash, created_at, failed_attempts
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		emailID, senderID, "recipient@test.com", recipientID, "Test Subject", blobID,
 		base64.StdEncoding.EncodeToString(encryptedData.Key),
@@ -280,17 +317,34 @@ func TestGetRecipientEmailHandler_FailureCountIncrement(t *testing.T) {
 		t.Fatalf("Failed to insert test email: %v", err)
 	}
 
+	// Set JWT secret for testing
+	os.Setenv("JWT_SECRET", "test-secret-key-for-jwt-signing")
+	defer os.Unsetenv("JWT_SECRET")
+
 	// Make multiple unauthorized attempts
 	for i := 1; i <= 3; i++ {
+		// Generate JWT token for unauthorized user
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"user_id": unauthorizedUserID,
+			"email":   "unauthorized@test.com",
+			"exp":     time.Now().Add(24 * time.Hour).Unix(),
+			"iat":     time.Now().Unix(),
+		})
+		tokenString, err := token.SignedString([]byte("test-secret-key-for-jwt-signing"))
+		if err != nil {
+			t.Fatalf("Failed to generate JWT token: %v", err)
+		}
+
 		req := httptest.NewRequest("GET", "/api/email/"+emailID+"/content", nil)
+		req.Header.Set("Authorization", "Bearer "+tokenString)
 		w := httptest.NewRecorder()
 
-		// Add unauthorized user context
-		ctx := context.WithValue(req.Context(), "user_id", unauthorizedUserID)
-		req = req.WithContext(ctx)
+		// Create router and add handler with JWT middleware
+		router := mux.NewRouter()
+		router.Handle("/api/email/{id}/content", jwtMiddleware(http.HandlerFunc(srv.getRecipientEmailHandler))).Methods("GET")
 
-		// Call handler
-		srv.getRecipientEmailHandler(w, req)
+		// Serve request
+		router.ServeHTTP(w, req)
 
 		// Check response
 		if w.Code != http.StatusForbidden {
@@ -299,7 +353,7 @@ func TestGetRecipientEmailHandler_FailureCountIncrement(t *testing.T) {
 
 		// Check that fail count was incremented
 		var failCount int
-		err = db.QueryRow(`SELECT fail_count FROM emails WHERE email_id = ?`, emailID).Scan(&failCount)
+		err = db.QueryRow(`SELECT failed_attempts FROM emails WHERE email_id = ?`, emailID).Scan(&failCount)
 		if err != nil {
 			t.Fatalf("Attempt %d: Failed to query fail count: %v", i, err)
 		}
@@ -313,7 +367,7 @@ func TestGetRecipientEmailHandler_FailureCountIncrement(t *testing.T) {
 // TestGetRecipientEmailHandler_AutoDeleteAfterThreeAttempts tests that email is auto-deleted after 3 failed attempts
 func TestGetRecipientEmailHandler_AutoDeleteAfterThreeAttempts(t *testing.T) {
 	// Setup test database
-	db, err := sql.Open("sqlite3", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("Failed to open test database: %v", err)
 	}
@@ -349,7 +403,7 @@ func TestGetRecipientEmailHandler_AutoDeleteAfterThreeAttempts(t *testing.T) {
 
 	// Create test email content
 	originalContent := "This is a test email content"
-	compressed := compressContent(originalContent)
+	compressed := compressContentHelper(originalContent)
 	encryptedData := encryptContent(compressed)
 
 	// Upload to R2 (mock)
@@ -360,7 +414,7 @@ func TestGetRecipientEmailHandler_AutoDeleteAfterThreeAttempts(t *testing.T) {
 		INSERT INTO emails (
 			email_id, sender_id, recipient, recipient_id, subject, encrypted_blob_url, 
 			encrypted_key, encryption_nonce, encryption_auth_tag, compression_algo, 
-			sha256_hash, created_at, fail_count
+			sha256_hash, created_at, failed_attempts
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		emailID, senderID, "recipient@test.com", recipientID, "Test Subject", blobID,
 		base64.StdEncoding.EncodeToString(encryptedData.Key),
@@ -372,17 +426,34 @@ func TestGetRecipientEmailHandler_AutoDeleteAfterThreeAttempts(t *testing.T) {
 		t.Fatalf("Failed to insert test email: %v", err)
 	}
 
+	// Set JWT secret for testing
+	os.Setenv("JWT_SECRET", "test-secret-key-for-jwt-signing")
+	defer os.Unsetenv("JWT_SECRET")
+
 	// Make 3 unauthorized attempts
 	for i := 1; i <= 3; i++ {
+		// Generate JWT token for unauthorized user
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"user_id": unauthorizedUserID,
+			"email":   "unauthorized@test.com",
+			"exp":     time.Now().Add(24 * time.Hour).Unix(),
+			"iat":     time.Now().Unix(),
+		})
+		tokenString, err := token.SignedString([]byte("test-secret-key-for-jwt-signing"))
+		if err != nil {
+			t.Fatalf("Failed to generate JWT token: %v", err)
+		}
+
 		req := httptest.NewRequest("GET", "/api/email/"+emailID+"/content", nil)
+		req.Header.Set("Authorization", "Bearer "+tokenString)
 		w := httptest.NewRecorder()
 
-		// Add unauthorized user context
-		ctx := context.WithValue(req.Context(), "user_id", unauthorizedUserID)
-		req = req.WithContext(ctx)
+		// Create router and add handler with JWT middleware
+		router := mux.NewRouter()
+		router.Handle("/api/email/{id}/content", jwtMiddleware(http.HandlerFunc(srv.getRecipientEmailHandler))).Methods("GET")
 
-		// Call handler
-		srv.getRecipientEmailHandler(w, req)
+		// Serve request
+		router.ServeHTTP(w, req)
 
 		// Check response for the 3rd attempt
 		if i == 3 {
@@ -416,7 +487,7 @@ func TestGetRecipientEmailHandler_AutoDeleteAfterThreeAttempts(t *testing.T) {
 // TestGetRecipientEmailHandler_NoRecipientID tests that emails without recipient_id are blocked
 func TestGetRecipientEmailHandler_NoRecipientID(t *testing.T) {
 	// Setup test database
-	db, err := sql.Open("sqlite3", ":memory:")
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("Failed to open test database: %v", err)
 	}
@@ -447,7 +518,7 @@ func TestGetRecipientEmailHandler_NoRecipientID(t *testing.T) {
 
 	// Create test email content
 	originalContent := "This is a test email content"
-	compressed := compressContent(originalContent)
+	compressed := compressContentHelper(originalContent)
 	encryptedData := encryptContent(compressed)
 
 	// Upload to R2 (mock)
@@ -458,7 +529,7 @@ func TestGetRecipientEmailHandler_NoRecipientID(t *testing.T) {
 		INSERT INTO emails (
 			email_id, sender_id, recipient, recipient_id, subject, encrypted_blob_url, 
 			encrypted_key, encryption_nonce, encryption_auth_tag, compression_algo, 
-			sha256_hash, created_at, fail_count
+			sha256_hash, created_at, failed_attempts
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		emailID, senderID, "recipient@test.com", nil, "Test Subject", blobID,
 		base64.StdEncoding.EncodeToString(encryptedData.Key),
@@ -470,16 +541,33 @@ func TestGetRecipientEmailHandler_NoRecipientID(t *testing.T) {
 		t.Fatalf("Failed to insert test email: %v", err)
 	}
 
-	// Create request
+	// Set JWT secret for testing
+	os.Setenv("JWT_SECRET", "test-secret-key-for-jwt-signing")
+	defer os.Unsetenv("JWT_SECRET")
+
+	// Generate JWT token for user
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": userID,
+		"email":   "user@test.com",
+		"exp":     time.Now().Add(24 * time.Hour).Unix(),
+		"iat":     time.Now().Unix(),
+	})
+	tokenString, err := token.SignedString([]byte("test-secret-key-for-jwt-signing"))
+	if err != nil {
+		t.Fatalf("Failed to generate JWT token: %v", err)
+	}
+
+	// Create request with JWT token
 	req := httptest.NewRequest("GET", "/api/email/"+emailID+"/content", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenString)
 	w := httptest.NewRecorder()
 
-	// Add user context
-	ctx := context.WithValue(req.Context(), "user_id", userID)
-	req = req.WithContext(ctx)
+	// Create router and add handler with JWT middleware
+	router := mux.NewRouter()
+	router.Handle("/api/email/{id}/content", jwtMiddleware(http.HandlerFunc(srv.getRecipientEmailHandler))).Methods("GET")
 
-	// Call handler
-	srv.getRecipientEmailHandler(w, req)
+	// Serve request
+	router.ServeHTTP(w, req)
 
 	// Check response
 	if w.Code != http.StatusForbidden {
@@ -497,7 +585,7 @@ func TestGetRecipientEmailHandler_NoRecipientID(t *testing.T) {
 
 	// Check that fail count was incremented
 	var failCount int
-	err = db.QueryRow(`SELECT fail_count FROM emails WHERE email_id = ?`, emailID).Scan(&failCount)
+	err = db.QueryRow(`SELECT failed_attempts FROM emails WHERE email_id = ?`, emailID).Scan(&failCount)
 	if err != nil {
 		t.Fatalf("Failed to query fail count: %v", err)
 	}
@@ -538,7 +626,7 @@ func createTestTables(db *sql.DB) error {
 			compression_algo TEXT DEFAULT 'gzip',
 			sha256_hash TEXT NOT NULL,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			fail_count INTEGER DEFAULT 0,
+			failed_attempts INTEGER DEFAULT 0,
 			access_count INTEGER DEFAULT 0,
 			last_access_at DATETIME
 		)

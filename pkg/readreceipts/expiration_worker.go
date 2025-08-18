@@ -165,7 +165,7 @@ func (ew *ExpirationWorker) sendExpirationReminder(ctx context.Context, email *E
 	}
 
 	// Calculate time until expiration
-	timeUntilExpiration := email.ExpiresAt.Sub(time.Now())
+	timeUntilExpiration := time.Until(email.ExpiresAt)
 	hoursUntilExpiration := int(timeUntilExpiration.Hours())
 
 	// Create metadata
@@ -380,4 +380,7 @@ func (ew *ExpirationWorker) getReadReceiptPreferences(ctx context.Context, userI
 
 	return &prefs, nil
 }
+
+
+
 

@@ -292,3 +292,9 @@ Write-ColorOutput "  - Password reset validation: $(if ($resetTest) { '[SUCCESS]
 Write-ColorOutput "`nNote: Breach checking requires a valid HIBP API key to be fully tested." $White
 Write-ColorOutput "Get your free API key at: https://haveibeenpwned.com/API/Key" $White
 
+
+
+
+
+
+

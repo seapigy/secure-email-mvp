@@ -228,6 +228,20 @@ func (ns *NotificationService) GetNotificationPreferences(ctx context.Context, u
 		&prefs.DigestDeliveryTime,
 		&prefs.DigestEmailEnabled,
 		&prefs.DigestSMSEnabled,
+		&prefs.PushNotificationsEnabled,
+		&prefs.SignalEnabled,
+		&prefs.MatrixEnabled,
+		&prefs.TelegramEnabled,
+		&prefs.DiscordEnabled,
+		&prefs.PushDeviceToken,
+		&prefs.SignalPhone,
+		&prefs.MatrixUserID,
+		&prefs.MatrixHomeserver,
+		&prefs.TelegramChatID,
+		&prefs.DiscordWebhookURL,
+		&prefs.HighRiskChannels,
+		&prefs.HighRiskThreshold,
+		&prefs.HighRiskTimeoutMinutes,
 		&prefs.CreatedAt,
 		&prefs.UpdatedAt,
 	)
@@ -275,7 +289,7 @@ func (ns *NotificationService) UpdateNotificationPreferences(ctx context.Context
 			push_device_token, signal_phone, matrix_user_id, matrix_homeserver, telegram_chat_id, discord_webhook_url,
 			high_risk_channels, high_risk_threshold, high_risk_timeout_minutes,
 			created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	now := time.Now()

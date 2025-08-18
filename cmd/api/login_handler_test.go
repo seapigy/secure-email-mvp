@@ -35,6 +35,9 @@ func TestLoginHandler(t *testing.T) {
 		email TEXT UNIQUE NOT NULL,
 		password_hash TEXT NOT NULL,
 		totp_secret TEXT,
+		failed_login_attempts INTEGER DEFAULT 0,
+		last_failed_login TIMESTAMP,
+		account_locked_until TIMESTAMP,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	)`)
@@ -139,7 +142,7 @@ func TestLoginHandler(t *testing.T) {
 				TOTPCode: "123456",
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "Email, password, and TOTP code are required",
+			expectedError:  "Email and password are required",
 			expectToken:    false,
 		},
 		{
@@ -151,7 +154,7 @@ func TestLoginHandler(t *testing.T) {
 				TOTPCode: "123456",
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "Email, password, and TOTP code are required",
+			expectedError:  "Email and password are required",
 			expectToken:    false,
 		},
 		{
@@ -162,8 +165,8 @@ func TestLoginHandler(t *testing.T) {
 				Password: testPassword,
 				TOTPCode: "",
 			},
-			expectedStatus: http.StatusBadRequest,
-			expectedError:  "Email, password, and TOTP code are required",
+			expectedStatus: http.StatusUnauthorized,
+			expectedError:  "Invalid credentials",
 			expectToken:    false,
 		},
 		{

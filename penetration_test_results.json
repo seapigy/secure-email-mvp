@@ -1,0 +1,828 @@
+﻿{
+    "base_url":  "http://localhost:8080",
+    "timestamp":  "2025-08-18 10:08:14",
+    "summary":  {
+                    "medium_findings":  1,
+                    "passed":  56,
+                    "critical_findings":  0,
+                    "low_findings":  0,
+                    "high_findings":  0,
+                    "total_tests":  57,
+                    "failed":  1
+                },
+    "tests":  [
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/auth/login",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/auth/login",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "\u0027 OR 1=1 --"
+                                  },
+                      "timestamp":  "2025-08-18 10:08:19",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/auth/login - \u0027 OR 1=1 --",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/auth/login",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/auth/login",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "\u0027; DROP TABLE users; --"
+                                  },
+                      "timestamp":  "2025-08-18 10:08:23",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/auth/login - \u0027; DROP TABLE users; --",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/auth/login",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/auth/login",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "\u0027 UNION SELECT * FROM users --"
+                                  },
+                      "timestamp":  "2025-08-18 10:08:27",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/auth/login - \u0027 UNION SELECT * FROM users --",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/auth/login",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/auth/login",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "admin\u0027--"
+                                  },
+                      "timestamp":  "2025-08-18 10:08:31",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/auth/login - admin\u0027--",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/auth/login",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/auth/login",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "1\u0027 OR \u00271\u0027=\u00271"
+                                  },
+                      "timestamp":  "2025-08-18 10:08:35",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/auth/login - 1\u0027 OR \u00271\u0027=\u00271",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/auth/login",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/auth/login",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "\u0027 AND (SELECT COUNT(*) FROM users) \u003e 0 --"
+                                  },
+                      "timestamp":  "2025-08-18 10:08:39",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/auth/login - \u0027 AND (SELECT COUNT(*) FROM users) \u003e 0 --",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/users/search",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/users/search",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "\u0027 OR 1=1 --"
+                                  },
+                      "timestamp":  "2025-08-18 10:08:43",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/users/search - \u0027 OR 1=1 --",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/users/search",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/users/search",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "\u0027; DROP TABLE users; --"
+                                  },
+                      "timestamp":  "2025-08-18 10:08:47",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/users/search - \u0027; DROP TABLE users; --",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/users/search",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/users/search",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "\u0027 UNION SELECT * FROM users --"
+                                  },
+                      "timestamp":  "2025-08-18 10:08:51",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/users/search - \u0027 UNION SELECT * FROM users --",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/users/search",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/users/search",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "admin\u0027--"
+                                  },
+                      "timestamp":  "2025-08-18 10:08:55",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/users/search - admin\u0027--",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/users/search",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/users/search",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "1\u0027 OR \u00271\u0027=\u00271"
+                                  },
+                      "timestamp":  "2025-08-18 10:08:59",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/users/search - 1\u0027 OR \u00271\u0027=\u00271",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/users/search",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/users/search",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "\u0027 AND (SELECT COUNT(*) FROM users) \u003e 0 --"
+                                  },
+                      "timestamp":  "2025-08-18 10:09:03",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/users/search - \u0027 AND (SELECT COUNT(*) FROM users) \u003e 0 --",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/organizations",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/organizations",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "\u0027 OR 1=1 --"
+                                  },
+                      "timestamp":  "2025-08-18 10:09:07",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/organizations - \u0027 OR 1=1 --",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/organizations",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/organizations",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "\u0027; DROP TABLE users; --"
+                                  },
+                      "timestamp":  "2025-08-18 10:09:11",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/organizations - \u0027; DROP TABLE users; --",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/organizations",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/organizations",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "\u0027 UNION SELECT * FROM users --"
+                                  },
+                      "timestamp":  "2025-08-18 10:09:15",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/organizations - \u0027 UNION SELECT * FROM users --",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/organizations",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/organizations",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "admin\u0027--"
+                                  },
+                      "timestamp":  "2025-08-18 10:09:20",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/organizations - admin\u0027--",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/organizations",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/organizations",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "1\u0027 OR \u00271\u0027=\u00271"
+                                  },
+                      "timestamp":  "2025-08-18 10:09:24",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/organizations - 1\u0027 OR \u00271\u0027=\u00271",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/organizations",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/organizations",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "\u0027 AND (SELECT COUNT(*) FROM users) \u003e 0 --"
+                                  },
+                      "timestamp":  "2025-08-18 10:09:28",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/organizations - \u0027 AND (SELECT COUNT(*) FROM users) \u003e 0 --",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/compliance/logs",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/compliance/logs",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "\u0027 OR 1=1 --"
+                                  },
+                      "timestamp":  "2025-08-18 10:09:32",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/compliance/logs - \u0027 OR 1=1 --",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/compliance/logs",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/compliance/logs",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "\u0027; DROP TABLE users; --"
+                                  },
+                      "timestamp":  "2025-08-18 10:09:36",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/compliance/logs - \u0027; DROP TABLE users; --",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/compliance/logs",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/compliance/logs",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "\u0027 UNION SELECT * FROM users --"
+                                  },
+                      "timestamp":  "2025-08-18 10:09:40",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/compliance/logs - \u0027 UNION SELECT * FROM users --",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/compliance/logs",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/compliance/logs",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "admin\u0027--"
+                                  },
+                      "timestamp":  "2025-08-18 10:09:44",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/compliance/logs - admin\u0027--",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/compliance/logs",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/compliance/logs",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "1\u0027 OR \u00271\u0027=\u00271"
+                                  },
+                      "timestamp":  "2025-08-18 10:09:48",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/compliance/logs - 1\u0027 OR \u00271\u0027=\u00271",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested SQL injection payload on /api/compliance/logs",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/compliance/logs",
+                                      "response_content":  null,
+                                      "has_sql_error":  false,
+                                      "payload":  "\u0027 AND (SELECT COUNT(*) FROM users) \u003e 0 --"
+                                  },
+                      "timestamp":  "2025-08-18 10:09:52",
+                      "severity":  "High",
+                      "test_name":  "SQL Injection - /api/compliance/logs - \u0027 AND (SELECT COUNT(*) FROM users) \u003e 0 --",
+                      "category":  "SQL Injection"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/organizations",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/organizations",
+                                      "is_reflected":  false,
+                                      "payload":  "\u003cscript\u003ealert(\u0027XSS\u0027)\u003c/script\u003e"
+                                  },
+                      "timestamp":  "2025-08-18 10:09:56",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/organizations - \u003cscript\u003ealert(\u0027XSS\u0027)\u003c/script\u003e",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/organizations",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/organizations",
+                                      "is_reflected":  false,
+                                      "payload":  "javascript:alert(\u0027XSS\u0027)"
+                                  },
+                      "timestamp":  "2025-08-18 10:10:00",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/organizations - javascript:alert(\u0027XSS\u0027)",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/organizations",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/organizations",
+                                      "is_reflected":  false,
+                                      "payload":  "\u003cimg src=x onerror=alert(\u0027XSS\u0027)\u003e"
+                                  },
+                      "timestamp":  "2025-08-18 10:10:04",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/organizations - \u003cimg src=x onerror=alert(\u0027XSS\u0027)\u003e",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/organizations",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/organizations",
+                                      "is_reflected":  false,
+                                      "payload":  "\u003csvg onload=alert(\u0027XSS\u0027)\u003e"
+                                  },
+                      "timestamp":  "2025-08-18 10:10:08",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/organizations - \u003csvg onload=alert(\u0027XSS\u0027)\u003e",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/organizations",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/organizations",
+                                      "is_reflected":  false,
+                                      "payload":  "\u0027;alert(\u0027XSS\u0027);//"
+                                  },
+                      "timestamp":  "2025-08-18 10:10:12",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/organizations - \u0027;alert(\u0027XSS\u0027);//",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/organizations",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/organizations",
+                                      "is_reflected":  false,
+                                      "payload":  "\u003ciframe src=javascript:alert(\u0027XSS\u0027)\u003e"
+                                  },
+                      "timestamp":  "2025-08-18 10:10:16",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/organizations - \u003ciframe src=javascript:alert(\u0027XSS\u0027)\u003e",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/users",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/users",
+                                      "is_reflected":  false,
+                                      "payload":  "\u003cscript\u003ealert(\u0027XSS\u0027)\u003c/script\u003e"
+                                  },
+                      "timestamp":  "2025-08-18 10:10:21",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/users - \u003cscript\u003ealert(\u0027XSS\u0027)\u003c/script\u003e",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/users",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/users",
+                                      "is_reflected":  false,
+                                      "payload":  "javascript:alert(\u0027XSS\u0027)"
+                                  },
+                      "timestamp":  "2025-08-18 10:10:25",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/users - javascript:alert(\u0027XSS\u0027)",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/users",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/users",
+                                      "is_reflected":  false,
+                                      "payload":  "\u003cimg src=x onerror=alert(\u0027XSS\u0027)\u003e"
+                                  },
+                      "timestamp":  "2025-08-18 10:10:29",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/users - \u003cimg src=x onerror=alert(\u0027XSS\u0027)\u003e",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/users",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/users",
+                                      "is_reflected":  false,
+                                      "payload":  "\u003csvg onload=alert(\u0027XSS\u0027)\u003e"
+                                  },
+                      "timestamp":  "2025-08-18 10:10:33",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/users - \u003csvg onload=alert(\u0027XSS\u0027)\u003e",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/users",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/users",
+                                      "is_reflected":  false,
+                                      "payload":  "\u0027;alert(\u0027XSS\u0027);//"
+                                  },
+                      "timestamp":  "2025-08-18 10:10:37",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/users - \u0027;alert(\u0027XSS\u0027);//",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/users",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/users",
+                                      "is_reflected":  false,
+                                      "payload":  "\u003ciframe src=javascript:alert(\u0027XSS\u0027)\u003e"
+                                  },
+                      "timestamp":  "2025-08-18 10:10:41",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/users - \u003ciframe src=javascript:alert(\u0027XSS\u0027)\u003e",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/compliance/logs",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/compliance/logs",
+                                      "is_reflected":  false,
+                                      "payload":  "\u003cscript\u003ealert(\u0027XSS\u0027)\u003c/script\u003e"
+                                  },
+                      "timestamp":  "2025-08-18 10:10:45",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/compliance/logs - \u003cscript\u003ealert(\u0027XSS\u0027)\u003c/script\u003e",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/compliance/logs",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/compliance/logs",
+                                      "is_reflected":  false,
+                                      "payload":  "javascript:alert(\u0027XSS\u0027)"
+                                  },
+                      "timestamp":  "2025-08-18 10:10:49",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/compliance/logs - javascript:alert(\u0027XSS\u0027)",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/compliance/logs",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/compliance/logs",
+                                      "is_reflected":  false,
+                                      "payload":  "\u003cimg src=x onerror=alert(\u0027XSS\u0027)\u003e"
+                                  },
+                      "timestamp":  "2025-08-18 10:10:53",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/compliance/logs - \u003cimg src=x onerror=alert(\u0027XSS\u0027)\u003e",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/compliance/logs",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/compliance/logs",
+                                      "is_reflected":  false,
+                                      "payload":  "\u003csvg onload=alert(\u0027XSS\u0027)\u003e"
+                                  },
+                      "timestamp":  "2025-08-18 10:10:57",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/compliance/logs - \u003csvg onload=alert(\u0027XSS\u0027)\u003e",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/compliance/logs",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/compliance/logs",
+                                      "is_reflected":  false,
+                                      "payload":  "\u0027;alert(\u0027XSS\u0027);//"
+                                  },
+                      "timestamp":  "2025-08-18 10:11:01",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/compliance/logs - \u0027;alert(\u0027XSS\u0027);//",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested XSS payload on /api/compliance/logs",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/compliance/logs",
+                                      "is_reflected":  false,
+                                      "payload":  "\u003ciframe src=javascript:alert(\u0027XSS\u0027)\u003e"
+                                  },
+                      "timestamp":  "2025-08-18 10:11:05",
+                      "severity":  "High",
+                      "test_name":  "XSS - /api/compliance/logs - \u003ciframe src=javascript:alert(\u0027XSS\u0027)\u003e",
+                      "category":  "XSS"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested expired JWT token",
+                      "details":  {
+                                      "response_status":  null,
+                                      "rejected_expired_token":  true,
+                                      "expired_token":  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+                                  },
+                      "timestamp":  "2025-08-18 10:11:09",
+                      "severity":  "Medium",
+                      "test_name":  "JWT Expired Token",
+                      "category":  "JWT Security"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested login without TOTP code",
+                      "details":  {
+                                      "rejected_missing_totp":  true,
+                                      "response_status":  null
+                                  },
+                      "timestamp":  "2025-08-18 10:11:13",
+                      "severity":  "High",
+                      "test_name":  "TOTP Missing Code",
+                      "category":  "TOTP Security"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested invalid TOTP code",
+                      "details":  {
+                                      "response_status":  null,
+                                      "rejected_invalid_totp":  true,
+                                      "invalid_code":  "000000"
+                                  },
+                      "timestamp":  "2025-08-18 10:11:18",
+                      "severity":  "Medium",
+                      "test_name":  "TOTP Invalid Code - 000000",
+                      "category":  "TOTP Security"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested invalid TOTP code",
+                      "details":  {
+                                      "response_status":  null,
+                                      "rejected_invalid_totp":  true,
+                                      "invalid_code":  "123456"
+                                  },
+                      "timestamp":  "2025-08-18 10:11:22",
+                      "severity":  "Medium",
+                      "test_name":  "TOTP Invalid Code - 123456",
+                      "category":  "TOTP Security"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested invalid TOTP code",
+                      "details":  {
+                                      "response_status":  null,
+                                      "rejected_invalid_totp":  true,
+                                      "invalid_code":  "999999"
+                                  },
+                      "timestamp":  "2025-08-18 10:11:26",
+                      "severity":  "Medium",
+                      "test_name":  "TOTP Invalid Code - 999999",
+                      "category":  "TOTP Security"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested invalid TOTP code",
+                      "details":  {
+                                      "response_status":  null,
+                                      "rejected_invalid_totp":  true,
+                                      "invalid_code":  "abcdef"
+                                  },
+                      "timestamp":  "2025-08-18 10:11:30",
+                      "severity":  "Medium",
+                      "test_name":  "TOTP Invalid Code - abcdef",
+                      "category":  "TOTP Security"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested invalid TOTP code",
+                      "details":  {
+                                      "response_status":  null,
+                                      "rejected_invalid_totp":  true,
+                                      "invalid_code":  "12345"
+                                  },
+                      "timestamp":  "2025-08-18 10:11:34",
+                      "severity":  "Medium",
+                      "test_name":  "TOTP Invalid Code - 12345",
+                      "category":  "TOTP Security"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested invalid TOTP code",
+                      "details":  {
+                                      "response_status":  null,
+                                      "rejected_invalid_totp":  true,
+                                      "invalid_code":  "1234567"
+                                  },
+                      "timestamp":  "2025-08-18 10:11:38",
+                      "severity":  "Medium",
+                      "test_name":  "TOTP Invalid Code - 1234567",
+                      "category":  "TOTP Security"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested admin endpoint access with regular user token",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/admin/organizations",
+                                      "unauthorized_access":  true,
+                                      "user_role":  "enterprise_user"
+                                  },
+                      "timestamp":  "2025-08-18 10:11:42",
+                      "severity":  "Critical",
+                      "test_name":  "Privilege Escalation - /api/admin/organizations",
+                      "category":  "Privilege Escalation"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested admin endpoint access with regular user token",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/admin/users",
+                                      "unauthorized_access":  true,
+                                      "user_role":  "enterprise_user"
+                                  },
+                      "timestamp":  "2025-08-18 10:11:46",
+                      "severity":  "Critical",
+                      "test_name":  "Privilege Escalation - /api/admin/users",
+                      "category":  "Privilege Escalation"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested admin endpoint access with regular user token",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/admin/compliance/summary",
+                                      "unauthorized_access":  true,
+                                      "user_role":  "enterprise_user"
+                                  },
+                      "timestamp":  "2025-08-18 10:11:50",
+                      "severity":  "Critical",
+                      "test_name":  "Privilege Escalation - /api/admin/compliance/summary",
+                      "category":  "Privilege Escalation"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested admin endpoint access with regular user token",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/admin/compliance/logs",
+                                      "unauthorized_access":  true,
+                                      "user_role":  "enterprise_user"
+                                  },
+                      "timestamp":  "2025-08-18 10:11:54",
+                      "severity":  "Critical",
+                      "test_name":  "Privilege Escalation - /api/admin/compliance/logs",
+                      "category":  "Privilege Escalation"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested admin endpoint access with regular user token",
+                      "details":  {
+                                      "response_status":  null,
+                                      "endpoint":  "/api/admin/compliance/export",
+                                      "unauthorized_access":  true,
+                                      "user_role":  "enterprise_user"
+                                  },
+                      "timestamp":  "2025-08-18 10:11:58",
+                      "severity":  "Critical",
+                      "test_name":  "Privilege Escalation - /api/admin/compliance/export",
+                      "category":  "Privilege Escalation"
+                  },
+                  {
+                      "passed":  false,
+                      "description":  "Tested rate limiting on login endpoint",
+                      "details":  {
+                                      "response_status":  null,
+                                      "attempts_made":  51,
+                                      "rate_limit_exceeded":  false
+                                  },
+                      "timestamp":  "2025-08-18 10:15:22",
+                      "severity":  "Medium",
+                      "test_name":  "Rate Limiting - Login Attempts",
+                      "category":  "Rate Limiting"
+                  },
+                  {
+                      "passed":  true,
+                      "description":  "Tested presence of security headers",
+                      "details":  {
+                                      "missing_headers":  [
+
+                                                          ],
+                                      "response_headers":  null,
+                                      "all_headers_present":  true
+                                  },
+                      "timestamp":  "2025-08-18 10:15:27",
+                      "severity":  "Medium",
+                      "test_name":  "Security Headers",
+                      "category":  "Security Headers"
+                  }
+              ]
+}

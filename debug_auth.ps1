@@ -161,3 +161,9 @@ if ($signupSuccess) {
 
 Write-Info "=== Debug Complete ==="
 
+
+
+
+
+
+

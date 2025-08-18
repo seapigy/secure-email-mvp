@@ -1,0 +1,845 @@
+{
+  "results": [
+    {
+      "Test": "UUID-Only Visibility Verification",
+      "Details": "No external emails found in admin responses",
+      "Category": "ZKID",
+      "Status": "PASS"
+    },
+    {
+      "Test": "BOLA Protection",
+      "Details": "Unauthorized access to other user mappings blocked",
+      "Category": "ZKID",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Recovery Code Generation Integrity",
+      "Details": "Recovery codes generated with proper entropy",
+      "Category": "ZKID",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Recovery Code Validation Correctness",
+      "Details": "Recovery codes validate correctly with Argon2id",
+      "Category": "ZKID",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Recovery Code Revocation Enforcement",
+      "Details": "Revoked codes no longer validate",
+      "Category": "ZKID",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Audit Logging UUID-Only",
+      "Details": "Audit logs contain only UUIDs, no external emails",
+      "Category": "ZKID",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Feature Flag Behavior",
+      "Details": "ZKID_ENABLED flag controls functionality correctly",
+      "Category": "ZKID",
+      "Status": "PASS"
+    },
+    {
+      "Test": "AEAD Encryption/Decryption Correctness",
+      "Details": "AES-256-GCM and ChaCha20-Poly1305 working correctly",
+      "Category": "PQC",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Key Uniqueness Per Session",
+      "Details": "Each email gets unique encryption key",
+      "Category": "PQC",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Tag Forgery Detection",
+      "Details": "Modified ciphertext tags rejected correctly",
+      "Category": "PQC",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Algorithm Correctness",
+      "Details": "Post-quantum encryption validation successful",
+      "Category": "PQC",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Hybrid Mode Interoperability",
+      "Details": "PQC + classical mode working together",
+      "Category": "PQC",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Corrupted Ciphertext Handling",
+      "Details": "Error handling for corrupted data working",
+      "Category": "PQC",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Key Expiration and Refresh",
+      "Details": "Key expiration and refresh behavior correct",
+      "Category": "PQC",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Concurrent Rotation Operations",
+      "Details": "Concurrent rotation operations handled correctly",
+      "Category": "PQC_Rotation",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Grace Period Validation",
+      "Details": "Previous keys work during grace period",
+      "Category": "PQC_Rotation",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Key Replacement Atomicity",
+      "Details": "Key replacement is atomic and consistent",
+      "Category": "PQC_Rotation",
+      "Status": "PASS"
+    },
+    {
+      "Test": "HSM Simulation Behavior",
+      "Details": "HSM simulation and secure storage working",
+      "Category": "PQC_Rotation",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Key Rotation Logging",
+      "Details": "Key rotation events logged correctly",
+      "Category": "PQC_Rotation",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Argon2id Password Hashing",
+      "Details": "Password hashing with Argon2id verified",
+      "Category": "Authentication",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Password Complexity Enforcement",
+      "Details": "Password complexity rules enforced correctly",
+      "Category": "Authentication",
+      "Status": "PASS"
+    },
+    {
+      "Test": "MFA Verification",
+      "Details": "TOTP/hardware token MFA working correctly",
+      "Category": "Authentication",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Account Lockout",
+      "Details": "Account lockout after failed attempts working",
+      "Category": "Authentication",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Session Token Creation",
+      "Details": "JWT session tokens created and validated correctly",
+      "Category": "Authentication",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Session Expiration",
+      "Details": "Session expiration enforced correctly",
+      "Category": "Authentication",
+      "Status": "PASS"
+    },
+    {
+      "Test": "RBAC Enforcement",
+      "Details": "Role-based access control working correctly",
+      "Category": "Authentication",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Read-Once Enforcement",
+      "Details": "Email read-once policy enforced correctly",
+      "Category": "Email_Pipeline",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Retention Policy Enforcement",
+      "Details": "Email retention policies enforced correctly",
+      "Category": "Email_Pipeline",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Self-Destruct Workflow",
+      "Details": "Self-destruct mechanism working correctly",
+      "Category": "Email_Pipeline",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Encrypted Storage",
+      "Details": "Email storage encryption verified",
+      "Category": "Email_Pipeline",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Delivery Queue Correctness",
+      "Details": "Email delivery queue working correctly",
+      "Category": "Email_Pipeline",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Retrieval Latency",
+      "Details": "Email retrieval performance within thresholds",
+      "Category": "Email_Pipeline",
+      "Status": "PASS"
+    },
+    {
+      "Test": "WebSocket Authentication",
+      "Details": "WebSocket authentication and access control working",
+      "Category": "Real_Time",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Channel Isolation",
+      "Details": "Multi-user channel segregation working correctly",
+      "Category": "Real_Time",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Real-time Update Latency",
+      "Details": "Real-time updates delivered within latency thresholds",
+      "Category": "Real_Time",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Live Metric Accuracy",
+      "Details": "Live metrics accurate and up-to-date",
+      "Category": "Real_Time",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Connection Resilience",
+      "Details": "WebSocket connections resilient to failures",
+      "Category": "Real_Time",
+      "Status": "PASS"
+    },
+    {
+      "Test": "GDPR Compliance",
+      "Details": "GDPR compliance checks passed",
+      "Category": "Compliance",
+      "Status": "PASS"
+    },
+    {
+      "Test": "SOC 2 Audit Logging",
+      "Details": "SOC 2 audit logging requirements met",
+      "Category": "Compliance",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Data Protection",
+      "Details": "Data protection and encryption verified",
+      "Category": "Compliance",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Zero-Knowledge Compliance",
+      "Details": "Zero-knowledge compliance (UUID-only) verified",
+      "Category": "Compliance",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Security Incident Detection",
+      "Details": "Security incident detection and logging working",
+      "Category": "Compliance",
+      "Status": "PASS"
+    },
+    {
+      "Test": "Policy Enforcement",
+      "Details": "Policy enforcement validation successful",
+      "Category": "Compliance",
+      "Status": "PASS"
+    }
+  ],
+  "summary": {
+    "byCategory": {
+      "Compliance": {
+        "total": 6,
+        "failed": 0,
+        "passed": 6,
+        "tests": [
+          {
+            "Test": "GDPR Compliance",
+            "Details": "GDPR compliance checks passed",
+            "Category": "Compliance",
+            "Status": "PASS"
+          },
+          {
+            "Test": "SOC 2 Audit Logging",
+            "Details": "SOC 2 audit logging requirements met",
+            "Category": "Compliance",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Data Protection",
+            "Details": "Data protection and encryption verified",
+            "Category": "Compliance",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Zero-Knowledge Compliance",
+            "Details": "Zero-knowledge compliance (UUID-only) verified",
+            "Category": "Compliance",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Security Incident Detection",
+            "Details": "Security incident detection and logging working",
+            "Category": "Compliance",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Policy Enforcement",
+            "Details": "Policy enforcement validation successful",
+            "Category": "Compliance",
+            "Status": "PASS"
+          }
+        ]
+      },
+      "ZKID": {
+        "total": 7,
+        "failed": 0,
+        "passed": 7,
+        "tests": [
+          {
+            "Test": "UUID-Only Visibility Verification",
+            "Details": "No external emails found in admin responses",
+            "Category": "ZKID",
+            "Status": "PASS"
+          },
+          {
+            "Test": "BOLA Protection",
+            "Details": "Unauthorized access to other user mappings blocked",
+            "Category": "ZKID",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Recovery Code Generation Integrity",
+            "Details": "Recovery codes generated with proper entropy",
+            "Category": "ZKID",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Recovery Code Validation Correctness",
+            "Details": "Recovery codes validate correctly with Argon2id",
+            "Category": "ZKID",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Recovery Code Revocation Enforcement",
+            "Details": "Revoked codes no longer validate",
+            "Category": "ZKID",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Audit Logging UUID-Only",
+            "Details": "Audit logs contain only UUIDs, no external emails",
+            "Category": "ZKID",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Feature Flag Behavior",
+            "Details": "ZKID_ENABLED flag controls functionality correctly",
+            "Category": "ZKID",
+            "Status": "PASS"
+          }
+        ]
+      },
+      "Authentication": {
+        "total": 7,
+        "failed": 0,
+        "passed": 7,
+        "tests": [
+          {
+            "Test": "Argon2id Password Hashing",
+            "Details": "Password hashing with Argon2id verified",
+            "Category": "Authentication",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Password Complexity Enforcement",
+            "Details": "Password complexity rules enforced correctly",
+            "Category": "Authentication",
+            "Status": "PASS"
+          },
+          {
+            "Test": "MFA Verification",
+            "Details": "TOTP/hardware token MFA working correctly",
+            "Category": "Authentication",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Account Lockout",
+            "Details": "Account lockout after failed attempts working",
+            "Category": "Authentication",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Session Token Creation",
+            "Details": "JWT session tokens created and validated correctly",
+            "Category": "Authentication",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Session Expiration",
+            "Details": "Session expiration enforced correctly",
+            "Category": "Authentication",
+            "Status": "PASS"
+          },
+          {
+            "Test": "RBAC Enforcement",
+            "Details": "Role-based access control working correctly",
+            "Category": "Authentication",
+            "Status": "PASS"
+          }
+        ]
+      },
+      "PQC_Rotation": {
+        "total": 5,
+        "failed": 0,
+        "passed": 5,
+        "tests": [
+          {
+            "Test": "Concurrent Rotation Operations",
+            "Details": "Concurrent rotation operations handled correctly",
+            "Category": "PQC_Rotation",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Grace Period Validation",
+            "Details": "Previous keys work during grace period",
+            "Category": "PQC_Rotation",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Key Replacement Atomicity",
+            "Details": "Key replacement is atomic and consistent",
+            "Category": "PQC_Rotation",
+            "Status": "PASS"
+          },
+          {
+            "Test": "HSM Simulation Behavior",
+            "Details": "HSM simulation and secure storage working",
+            "Category": "PQC_Rotation",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Key Rotation Logging",
+            "Details": "Key rotation events logged correctly",
+            "Category": "PQC_Rotation",
+            "Status": "PASS"
+          }
+        ]
+      },
+      "PQC": {
+        "total": 7,
+        "failed": 0,
+        "passed": 7,
+        "tests": [
+          {
+            "Test": "AEAD Encryption/Decryption Correctness",
+            "Details": "AES-256-GCM and ChaCha20-Poly1305 working correctly",
+            "Category": "PQC",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Key Uniqueness Per Session",
+            "Details": "Each email gets unique encryption key",
+            "Category": "PQC",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Tag Forgery Detection",
+            "Details": "Modified ciphertext tags rejected correctly",
+            "Category": "PQC",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Algorithm Correctness",
+            "Details": "Post-quantum encryption validation successful",
+            "Category": "PQC",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Hybrid Mode Interoperability",
+            "Details": "PQC + classical mode working together",
+            "Category": "PQC",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Corrupted Ciphertext Handling",
+            "Details": "Error handling for corrupted data working",
+            "Category": "PQC",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Key Expiration and Refresh",
+            "Details": "Key expiration and refresh behavior correct",
+            "Category": "PQC",
+            "Status": "PASS"
+          }
+        ]
+      },
+      "Real_Time": {
+        "total": 5,
+        "failed": 0,
+        "passed": 5,
+        "tests": [
+          {
+            "Test": "WebSocket Authentication",
+            "Details": "WebSocket authentication and access control working",
+            "Category": "Real_Time",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Channel Isolation",
+            "Details": "Multi-user channel segregation working correctly",
+            "Category": "Real_Time",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Real-time Update Latency",
+            "Details": "Real-time updates delivered within latency thresholds",
+            "Category": "Real_Time",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Live Metric Accuracy",
+            "Details": "Live metrics accurate and up-to-date",
+            "Category": "Real_Time",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Connection Resilience",
+            "Details": "WebSocket connections resilient to failures",
+            "Category": "Real_Time",
+            "Status": "PASS"
+          }
+        ]
+      },
+      "Email_Pipeline": {
+        "total": 6,
+        "failed": 0,
+        "passed": 6,
+        "tests": [
+          {
+            "Test": "Read-Once Enforcement",
+            "Details": "Email read-once policy enforced correctly",
+            "Category": "Email_Pipeline",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Retention Policy Enforcement",
+            "Details": "Email retention policies enforced correctly",
+            "Category": "Email_Pipeline",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Self-Destruct Workflow",
+            "Details": "Self-destruct mechanism working correctly",
+            "Category": "Email_Pipeline",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Encrypted Storage",
+            "Details": "Email storage encryption verified",
+            "Category": "Email_Pipeline",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Delivery Queue Correctness",
+            "Details": "Email delivery queue working correctly",
+            "Category": "Email_Pipeline",
+            "Status": "PASS"
+          },
+          {
+            "Test": "Retrieval Latency",
+            "Details": "Email retrieval performance within thresholds",
+            "Category": "Email_Pipeline",
+            "Status": "PASS"
+          }
+        ]
+      }
+    },
+    "bySeverity": {
+      "MEDIUM": [
+        {
+          "Test": "GDPR Compliance",
+          "Details": "GDPR compliance checks passed",
+          "Category": "Compliance",
+          "Status": "PASS"
+        },
+        {
+          "Test": "SOC 2 Audit Logging",
+          "Details": "SOC 2 audit logging requirements met",
+          "Category": "Compliance",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Data Protection",
+          "Details": "Data protection and encryption verified",
+          "Category": "Compliance",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Zero-Knowledge Compliance",
+          "Details": "Zero-knowledge compliance (UUID-only) verified",
+          "Category": "Compliance",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Security Incident Detection",
+          "Details": "Security incident detection and logging working",
+          "Category": "Compliance",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Policy Enforcement",
+          "Details": "Policy enforcement validation successful",
+          "Category": "Compliance",
+          "Status": "PASS"
+        }
+      ],
+      "HIGH": [
+        {
+          "Test": "UUID-Only Visibility Verification",
+          "Details": "No external emails found in admin responses",
+          "Category": "ZKID",
+          "Status": "PASS"
+        },
+        {
+          "Test": "BOLA Protection",
+          "Details": "Unauthorized access to other user mappings blocked",
+          "Category": "ZKID",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Recovery Code Generation Integrity",
+          "Details": "Recovery codes generated with proper entropy",
+          "Category": "ZKID",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Recovery Code Validation Correctness",
+          "Details": "Recovery codes validate correctly with Argon2id",
+          "Category": "ZKID",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Recovery Code Revocation Enforcement",
+          "Details": "Revoked codes no longer validate",
+          "Category": "ZKID",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Audit Logging UUID-Only",
+          "Details": "Audit logs contain only UUIDs, no external emails",
+          "Category": "ZKID",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Feature Flag Behavior",
+          "Details": "ZKID_ENABLED flag controls functionality correctly",
+          "Category": "ZKID",
+          "Status": "PASS"
+        },
+        {
+          "Test": "AEAD Encryption/Decryption Correctness",
+          "Details": "AES-256-GCM and ChaCha20-Poly1305 working correctly",
+          "Category": "PQC",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Key Uniqueness Per Session",
+          "Details": "Each email gets unique encryption key",
+          "Category": "PQC",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Tag Forgery Detection",
+          "Details": "Modified ciphertext tags rejected correctly",
+          "Category": "PQC",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Algorithm Correctness",
+          "Details": "Post-quantum encryption validation successful",
+          "Category": "PQC",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Hybrid Mode Interoperability",
+          "Details": "PQC + classical mode working together",
+          "Category": "PQC",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Corrupted Ciphertext Handling",
+          "Details": "Error handling for corrupted data working",
+          "Category": "PQC",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Key Expiration and Refresh",
+          "Details": "Key expiration and refresh behavior correct",
+          "Category": "PQC",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Concurrent Rotation Operations",
+          "Details": "Concurrent rotation operations handled correctly",
+          "Category": "PQC_Rotation",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Grace Period Validation",
+          "Details": "Previous keys work during grace period",
+          "Category": "PQC_Rotation",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Key Replacement Atomicity",
+          "Details": "Key replacement is atomic and consistent",
+          "Category": "PQC_Rotation",
+          "Status": "PASS"
+        },
+        {
+          "Test": "HSM Simulation Behavior",
+          "Details": "HSM simulation and secure storage working",
+          "Category": "PQC_Rotation",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Key Rotation Logging",
+          "Details": "Key rotation events logged correctly",
+          "Category": "PQC_Rotation",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Argon2id Password Hashing",
+          "Details": "Password hashing with Argon2id verified",
+          "Category": "Authentication",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Password Complexity Enforcement",
+          "Details": "Password complexity rules enforced correctly",
+          "Category": "Authentication",
+          "Status": "PASS"
+        },
+        {
+          "Test": "MFA Verification",
+          "Details": "TOTP/hardware token MFA working correctly",
+          "Category": "Authentication",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Account Lockout",
+          "Details": "Account lockout after failed attempts working",
+          "Category": "Authentication",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Session Token Creation",
+          "Details": "JWT session tokens created and validated correctly",
+          "Category": "Authentication",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Session Expiration",
+          "Details": "Session expiration enforced correctly",
+          "Category": "Authentication",
+          "Status": "PASS"
+        },
+        {
+          "Test": "RBAC Enforcement",
+          "Details": "Role-based access control working correctly",
+          "Category": "Authentication",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Read-Once Enforcement",
+          "Details": "Email read-once policy enforced correctly",
+          "Category": "Email_Pipeline",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Retention Policy Enforcement",
+          "Details": "Email retention policies enforced correctly",
+          "Category": "Email_Pipeline",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Self-Destruct Workflow",
+          "Details": "Self-destruct mechanism working correctly",
+          "Category": "Email_Pipeline",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Encrypted Storage",
+          "Details": "Email storage encryption verified",
+          "Category": "Email_Pipeline",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Delivery Queue Correctness",
+          "Details": "Email delivery queue working correctly",
+          "Category": "Email_Pipeline",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Retrieval Latency",
+          "Details": "Email retrieval performance within thresholds",
+          "Category": "Email_Pipeline",
+          "Status": "PASS"
+        },
+        {
+          "Test": "WebSocket Authentication",
+          "Details": "WebSocket authentication and access control working",
+          "Category": "Real_Time",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Channel Isolation",
+          "Details": "Multi-user channel segregation working correctly",
+          "Category": "Real_Time",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Real-time Update Latency",
+          "Details": "Real-time updates delivered within latency thresholds",
+          "Category": "Real_Time",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Live Metric Accuracy",
+          "Details": "Live metrics accurate and up-to-date",
+          "Category": "Real_Time",
+          "Status": "PASS"
+        },
+        {
+          "Test": "Connection Resilience",
+          "Details": "WebSocket connections resilient to failures",
+          "Category": "Real_Time",
+          "Status": "PASS"
+        }
+      ],
+      "LOW": []
+    }
+  },
+  "metadata": {
+    "totalTests": 43,
+    "generated": "2025-08-18T15:38:46Z",
+    "failedTests": 0,
+    "passedTests": 43,
+    "overallStatus": "PASS"
+  }
+}

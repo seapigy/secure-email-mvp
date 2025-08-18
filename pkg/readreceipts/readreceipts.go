@@ -426,3 +426,9 @@ func (rrs *ReadReceiptService) GetReadEvents(ctx context.Context, emailID string
 	return events, nil
 }
 
+
+
+
+
+
+

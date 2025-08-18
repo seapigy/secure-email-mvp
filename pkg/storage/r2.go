@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"time"
@@ -118,6 +119,13 @@ func UploadToR2(blobID string, data []byte) error {
 
 // UploadToR2WithContext uploads data with a custom context
 func UploadToR2WithContext(ctx context.Context, blobID string, data []byte) error {
+	// Check if we're in test mode
+	if os.Getenv("TEST_MODE") == "1" {
+		// In test mode, just log the upload and return success
+		log.Printf("TEST_MODE: Mocking R2 upload for blob %s", blobID)
+		return nil
+	}
+	
 	client, err := NewR2ClientFromEnv()
 	if err != nil {
 		return fmt.Errorf("failed to create R2 client: %w", err)

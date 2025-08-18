@@ -40,6 +40,7 @@ func setupTestDBForGetEmail(t *testing.T) *sql.DB {
 		failed_attempts INTEGER DEFAULT 0,
 		max_attempts INTEGER DEFAULT 3,
 		self_destruct_after_attempts INTEGER DEFAULT 0,
+		self_destruct_threshold INTEGER DEFAULT 3,
 		reply_enabled INTEGER DEFAULT 0,
 		reply_requires_password INTEGER DEFAULT 1,
 		allow_forwarding INTEGER DEFAULT 0,
@@ -73,7 +74,7 @@ func createTestEmailForGet(t *testing.T, db *sql.DB, emailID, senderID string, f
 	query := `
 	INSERT INTO emails (
 		email_id, sender_id, recipient, subject, encrypted_blob_url, encrypted_key,
-		sha256_hash, encryption_nonce, encryption_auth_tag, fail_count
+		sha256_hash, encryption_nonce, encryption_auth_tag, failed_attempts
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
@@ -103,7 +104,7 @@ func TestHandleFailedAccess(t *testing.T) {
 
 	// Check that fail count was incremented
 	var failCount int
-	err = db.QueryRow("SELECT fail_count FROM emails WHERE email_id = ?", emailID).Scan(&failCount)
+	err = db.QueryRow("SELECT failed_attempts FROM emails WHERE email_id = ?", emailID).Scan(&failCount)
 	if err != nil {
 		t.Errorf("Failed to get fail count: %v", err)
 	}

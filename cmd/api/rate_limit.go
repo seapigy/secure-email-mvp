@@ -25,6 +25,7 @@ type IPRateLimiter struct {
 	store      sync.Map // key: ip+endpoint, value: *rateLimitEntry
 	cleanupInt time.Duration
 	quit       chan struct{}
+	mu         sync.Mutex // Global mutex for thread safety
 }
 
 // NewIPRateLimitMiddleware returns a middleware that limits requests per IP per endpoint
@@ -47,13 +48,12 @@ func (rl *IPRateLimiter) Middleware(next http.Handler) http.Handler {
 		key := ip + "|" + endpoint
 		now := time.Now()
 
+		// Use a global mutex for thread safety
+		rl.mu.Lock()
+		defer rl.mu.Unlock()
+
 		val, _ := rl.store.LoadOrStore(key, &rateLimitEntry{Count: 0, WindowStart: now, LastSeen: now})
 		entry := val.(*rateLimitEntry)
-
-		// Lock per entry for thread safety
-		var mu sync.Mutex
-		mu.Lock()
-		defer mu.Unlock()
 
 		// Check window
 		if now.Sub(entry.WindowStart) > rl.window {

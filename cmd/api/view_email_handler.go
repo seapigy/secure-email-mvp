@@ -191,8 +191,8 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 6. Get geolocation for all geo-based checks
 	var location *geolocation.Location
-	var geoService *geolocation.GeolocationService
-	
+	var geoService geolocation.GeolocationService
+
 	// Only get geolocation if we need it for any geo-based checks
 	if allowedCity != "" || allowedCountry != "" || geoRestrictionEnabled == 1 {
 		// Get client IP address
@@ -269,7 +269,7 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 	if geoRestrictionEnabled == 1 {
 		// Get enhanced geo-restriction rules and config
 		geoRestrictionService := georestriction.NewGeoRestrictionService()
-		
+
 		// Parse rules from JSON
 		var rules []georestriction.GeoRestrictionRule
 		if geoRestrictionRules != "" {
@@ -310,7 +310,7 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !accessAllowed {
-			log.Printf("Enhanced geo-restriction access blocked for IP %s (%s, %s): %s", 
+			log.Printf("Enhanced geo-restriction access blocked for IP %s (%s, %s): %s",
 				clientIP, location.City, strings.ToUpper(location.Country), accessReason)
 
 			// Increment geo-restriction violations
@@ -339,7 +339,7 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		log.Printf("Enhanced geo-restriction check passed for IP %s (%s, %s)", 
+		log.Printf("Enhanced geo-restriction check passed for IP %s (%s, %s)",
 			clientIP, location.City, strings.ToUpper(location.Country))
 	}
 

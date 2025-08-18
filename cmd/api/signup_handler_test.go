@@ -24,10 +24,15 @@ func TestSignupHandler(t *testing.T) {
 		id INTEGER PRIMARY KEY,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
+		password_hash TEXT NOT NULL,
+		totp_secret TEXT NOT NULL,
 		fallback_email TEXT,
 		fallback_token TEXT,
 		fallback_confirmed BOOLEAN DEFAULT FALSE,
 		fallback_token_expiration TIMESTAMP,
+		failed_login_attempts INTEGER DEFAULT 0,
+		last_failed_login TIMESTAMP,
+		account_locked_until TIMESTAMP,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	)`)
 	if err != nil {
@@ -50,7 +55,7 @@ func TestSignupHandler(t *testing.T) {
 			method: "POST",
 			requestBody: SignupRequest{
 				Email:         "test@example.com",
-				Password:      "password123",
+				Password:      "SecurePassword123!",
 				FallbackEmail: "recovery@example.com",
 			},
 			expectedStatus:  http.StatusCreated,
@@ -61,7 +66,7 @@ func TestSignupHandler(t *testing.T) {
 			method: "POST",
 			requestBody: SignupRequest{
 				Email:         "invalid-email",
-				Password:      "password123",
+				Password:      "SecurePassword123!",
 				FallbackEmail: "recovery@example.com",
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -76,14 +81,14 @@ func TestSignupHandler(t *testing.T) {
 				FallbackEmail: "recovery@example.com",
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "Password must be at least 8 characters long",
+			expectedError:  "Password does not meet security requirements",
 		},
 		{
 			name:   "Wrong HTTP method",
 			method: "GET",
 			requestBody: SignupRequest{
 				Email:         "test@example.com",
-				Password:      "password123",
+				Password:      "SecurePassword123!",
 				FallbackEmail: "recovery@example.com",
 			},
 			expectedStatus: http.StatusMethodNotAllowed,
@@ -93,7 +98,7 @@ func TestSignupHandler(t *testing.T) {
 			method: "POST",
 			requestBody: SignupRequest{
 				Email:         "",
-				Password:      "password123",
+				Password:      "SecurePassword123!",
 				FallbackEmail: "recovery@example.com",
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -108,14 +113,14 @@ func TestSignupHandler(t *testing.T) {
 				FallbackEmail: "recovery@example.com",
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "Password must be at least 8 characters long",
+			expectedError:  "Password does not meet security requirements",
 		},
 		{
 			name:   "Duplicate email",
 			method: "POST",
 			requestBody: SignupRequest{
 				Email:         "duplicate@example.com",
-				Password:      "password123",
+				Password:      "SecurePassword123!",
 				FallbackEmail: "recovery@example.com",
 			},
 			expectedStatus:  http.StatusCreated,
@@ -126,7 +131,7 @@ func TestSignupHandler(t *testing.T) {
 			method: "POST",
 			requestBody: SignupRequest{
 				Email:         "duplicate@example.com",
-				Password:      "password123",
+				Password:      "SecurePassword123!",
 				FallbackEmail: "recovery@example.com",
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -212,12 +217,12 @@ func TestIsValidPassword(t *testing.T) {
 		password string
 		expected bool
 	}{
-		{"password123", true},
-		{"12345678", true},
+		{"SecurePassword123!", true},
+		{"123456789012", false}, // Missing uppercase, lowercase, special char
 		{"short", false},
 		{"", false},
 		{"1234567", false},
-		{"   password123   ", true}, // Should trim whitespace
+		{"   SecurePassword123!   ", true}, // Should trim whitespace
 	}
 
 	for _, tt := range tests {
@@ -243,10 +248,15 @@ func TestCreateUser(t *testing.T) {
 		id INTEGER PRIMARY KEY,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
+		password_hash TEXT NOT NULL,
+		totp_secret TEXT NOT NULL,
 		fallback_email TEXT,
 		fallback_token TEXT,
 		fallback_confirmed BOOLEAN DEFAULT FALSE,
 		fallback_token_expiration TIMESTAMP,
+		failed_login_attempts INTEGER DEFAULT 0,
+		last_failed_login TIMESTAMP,
+		account_locked_until TIMESTAMP,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	)`)
 	if err != nil {

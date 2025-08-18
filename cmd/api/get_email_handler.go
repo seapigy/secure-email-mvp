@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"secure-email-mvp/pkg/auth"
+	"secure-email-mvp/pkg/email"
 	"secure-email-mvp/pkg/storage"
 )
 
@@ -71,16 +72,15 @@ func (srv *Server) getEmailHandler(w http.ResponseWriter, r *http.Request) {
 		blobID, encryptedKeyB64, nonceB64, authTagB64, compressionAlgo string
 		senderID, recipient, subject                                   string
 		createdAt                                                      time.Time
-		failCount                                                      int
 	)
 
 	err := srv.db.QueryRow(`
 		SELECT encrypted_blob_url, encrypted_key, encryption_nonce, encryption_auth_tag, 
-		       compression_algo, sender_id, recipient, subject, created_at, fail_count
+		       compression_algo, sender_id, recipient, subject, created_at
 		FROM emails WHERE email_id = ?`,
 		req.EmailID,
 	).Scan(&blobID, &encryptedKeyB64, &nonceB64, &authTagB64, &compressionAlgo,
-		&senderID, &recipient, &subject, &createdAt, &failCount)
+		&senderID, &recipient, &subject, &createdAt)
 
 	if err != nil {
 		log.Printf("Database query failed: %v", err)
@@ -94,10 +94,19 @@ func (srv *Server) getEmailHandler(w http.ResponseWriter, r *http.Request) {
 	if senderID != userID {
 		log.Printf("Unauthorized access attempt: user %s trying to access email from sender %s", userID, senderID)
 
-		// Increment fail count and check if limit reached
-		if err := srv.handleFailedAccess(req.EmailID, blobID, failCount, "unauthorized access"); err != nil {
-			if _, ok := err.(EmailDeletedError); ok {
-				// Email was deleted due to too many failed attempts
+		// Handle failed access with new self-destruct logic (Micro-Iteration 4.8)
+		emailSecurityDB := srv.createEmailSecurityDB()
+		if err := emailSecurityDB.IncrementFailedAttempts(req.EmailID); err != nil {
+			if _, ok := err.(email.SelfDestructError); ok {
+				// Email should be destroyed due to too many failed attempts
+				log.Printf("Self-destruct threshold reached for email %s, destroying email", req.EmailID)
+
+				// Securely delete the email
+				if deleteErr := emailSecurityDB.DeleteEmailSecure(req.EmailID); deleteErr != nil {
+					log.Printf("Failed to securely delete email %s: %v", req.EmailID, deleteErr)
+				}
+
+				// Return specific error for self-destruct
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusGone)
 				json.NewEncoder(w).Encode(map[string]interface{}{
@@ -105,12 +114,53 @@ func (srv *Server) getEmailHandler(w http.ResponseWriter, r *http.Request) {
 				})
 				return
 			}
-			log.Printf("Failed to handle failed access: %v", err)
+			log.Printf("Failed to increment failed attempts: %v", err)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte(`{"error":"Access denied"}`))
+		return
+	}
+
+	// Check email security toggles (Micro-Iteration 4.7)
+	emailSecurityDB := srv.createEmailSecurityDB()
+	accessError, err := emailSecurityDB.CheckEmailAccess(req.EmailID)
+	if err != nil {
+		log.Printf("Failed to check email access: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"Failed to verify email access"}`))
+		return
+	}
+
+	if accessError != "" {
+		log.Printf("Email access denied due to security toggles: %s", accessError)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": accessError,
+		})
+		return
+	}
+
+	// Check read-once consumption status (Micro-Iteration 4.10)
+	isConsumed, consumedAt, err := emailSecurityDB.IsReadOnceConsumed(req.EmailID)
+	if err != nil {
+		log.Printf("Failed to check read-once consumption status: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"Failed to verify email access"}`))
+		return
+	}
+
+	if isConsumed {
+		log.Printf("Email access denied: read-once email already consumed at %s", consumedAt.Format(time.RFC3339))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": "Email has been revoked by sender",
+		})
 		return
 	}
 
@@ -146,9 +196,16 @@ func (srv *Server) getEmailHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	encryptedBlob, err := storage.GetEmailFromR2(ctx, blobID)
-	if err != nil {
-		log.Printf("Failed to retrieve blob from R2: %v", err)
+	// Use injected R2 client if available, otherwise fall back to environment-based client
+	var encryptedBlob []byte
+	var r2Err error
+	if srv.r2Client != nil {
+		encryptedBlob, r2Err = srv.r2Client.GetEmail(ctx, blobID)
+	} else {
+		encryptedBlob, r2Err = storage.GetEmailFromR2(ctx, blobID)
+	}
+	if r2Err != nil {
+		log.Printf("Failed to retrieve blob from R2: %v", r2Err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":"Failed to retrieve encrypted content"}`))
@@ -189,18 +246,27 @@ func (srv *Server) getEmailHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Decryption failed: %v", err)
 
-		// Increment fail count and check if limit reached
-		if err := srv.handleFailedAccess(req.EmailID, blobID, failCount, "decryption failed"); err != nil {
-			if _, ok := err.(EmailDeletedError); ok {
-				// Email was deleted due to too many failed attempts
+		// Handle failed access with new self-destruct logic (Micro-Iteration 4.8)
+		emailSecurityDB := srv.createEmailSecurityDB()
+		if err := emailSecurityDB.IncrementFailedAttempts(req.EmailID); err != nil {
+			if _, ok := err.(email.SelfDestructError); ok {
+				// Email should be destroyed due to too many failed attempts
+				log.Printf("Self-destruct threshold reached for email %s, destroying email", req.EmailID)
+
+				// Securely delete the email
+				if deleteErr := emailSecurityDB.DeleteEmailSecure(req.EmailID); deleteErr != nil {
+					log.Printf("Failed to securely delete email %s: %v", req.EmailID, deleteErr)
+				}
+
+				// Return generic error to avoid information leakage
 				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusGone)
+				w.WriteHeader(http.StatusForbidden)
 				json.NewEncoder(w).Encode(map[string]interface{}{
-					"error": "Email deleted due to too many failed attempts",
+					"error": "Email has been revoked by sender",
 				})
 				return
 			}
-			log.Printf("Failed to handle failed access: %v", err)
+			log.Printf("Failed to increment failed attempts: %v", err)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -236,12 +302,49 @@ func (srv *Server) getEmailHandler(w http.ResponseWriter, r *http.Request) {
 		plaintext = compressed
 	}
 
-	// 9. Update access tracking and reset fail count on successful access
+	// 9. Handle read-once consumption (Micro-Iteration 4.10)
+	// Mark email as consumed before returning content to prevent race conditions
+	consumerDevice := "unknown" // TODO: Extract from request headers or user agent
+	consumedAt, err = emailSecurityDB.MarkReadOnceConsumed(req.EmailID, consumerDevice)
+	if err != nil {
+		if _, ok := err.(email.ReadOnceConsumedError); ok {
+			// Another request already consumed this email
+			log.Printf("Email access denied: read-once email already consumed by another request")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Email has been revoked by sender",
+			})
+			return
+		}
+		log.Printf("Failed to mark read-once consumed: %v", err)
+		// Don't fail the request for non-read-once emails
+	} else {
+		log.Printf("Successfully marked email %s as consumed at %s", req.EmailID, consumedAt.Format(time.RFC3339))
+
+		// Check if email should be deleted after consumption
+		if toggles, err := emailSecurityDB.GetEmailSecurityTogglesForAccess(req.EmailID); err == nil && toggles != nil && toggles.ShouldSelfDestructOnReadOnce() {
+			log.Printf("Email %s configured for deletion after read, performing secure deletion", req.EmailID)
+			if deleteErr := emailSecurityDB.DeleteEmailSecure(req.EmailID); deleteErr != nil {
+				log.Printf("Failed to delete email after read-once consumption: %v", deleteErr)
+				// Continue with returning content even if deletion fails
+			} else {
+				log.Printf("Successfully deleted email %s after read-once consumption", req.EmailID)
+			}
+		}
+	}
+
+	// 10. Update access tracking and reset failed attempts on successful access (Micro-Iteration 4.8)
+	if err := emailSecurityDB.ResetFailedAttempts(req.EmailID); err != nil {
+		log.Printf("Failed to reset failed attempts: %v", err)
+		// Don't fail the request for tracking errors
+	}
+
+	// Update other access tracking
 	_, err = srv.db.Exec(`
 		UPDATE emails SET 
 			last_access_at = CURRENT_TIMESTAMP,
-			access_count = access_count + 1,
-			fail_count = 0
+			access_count = access_count + 1
 		WHERE email_id = ?`,
 		req.EmailID,
 	)
@@ -296,7 +399,7 @@ func (srv *Server) handleFailedAccess(emailID, blobID string, currentFailCount i
 
 	// Update fail count
 	_, err = tx.Exec(`
-		UPDATE emails SET fail_count = ? WHERE email_id = ?`,
+		UPDATE emails SET failed_attempts = ? WHERE email_id = ?`,
 		newFailCount, emailID,
 	)
 	if err != nil {

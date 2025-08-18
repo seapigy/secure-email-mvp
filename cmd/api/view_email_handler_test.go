@@ -34,7 +34,6 @@ func setupTestDB(t *testing.T) *sql.DB {
 		compression_algo TEXT DEFAULT 'gzip',
 		sha256_hash TEXT,
 		requires_password INTEGER DEFAULT 0,
-		password_hash TEXT,
 		geolocation_json TEXT,
 		expires_at DATETIME,
 		burn_after_read INTEGER DEFAULT 0,
@@ -57,12 +56,60 @@ func setupTestDB(t *testing.T) *sql.DB {
 		deleted_at DATETIME,
 		failed_access_attempts INTEGER DEFAULT 0,
 		encryption_nonce TEXT,
-		encryption_auth_tag TEXT
+		encryption_auth_tag TEXT,
+		-- Simple geolocation fields
+		allowed_city TEXT,
+		allowed_country TEXT,
+		-- Geofencing fields
+		allowed_countries TEXT,
+		allowed_ip_ranges TEXT,
+		geofence_violations INTEGER DEFAULT 0,
+		geofence_last_violation DATETIME,
+		-- Enhanced geolocation verification fields
+		geo_verification_type TEXT CHECK (geo_verification_type IN ('none', 'country', 'city', 'city_country')) DEFAULT 'none',
+		geo_city TEXT,
+		geo_country TEXT,
+		-- MFA fields
+		require_mfa INTEGER DEFAULT 0,
+		mfa_type TEXT CHECK (mfa_type IN ('TOTP', 'EMAIL_CODE')),
+		encrypted_totp_secret TEXT,
+		mfa_failed_attempts INTEGER DEFAULT 0,
+		mfa_locked_until DATETIME,
+		-- Password protection fields
+		is_password_protected BOOLEAN DEFAULT FALSE,
+		password_hash TEXT,
+		password_salt TEXT,
+		-- Enhanced geo restriction fields
+		geo_restriction_rules TEXT,
+		geo_restriction_config TEXT,
+		geo_restriction_enabled INTEGER DEFAULT 1,
+		geo_restriction_violations INTEGER DEFAULT 0,
+		geo_restriction_last_violation DATETIME,
+		-- Brute force protection fields
+		brute_force_failed_attempts INTEGER DEFAULT 0,
+		brute_force_last_failed_attempt DATETIME,
+		brute_force_lockout_until DATETIME,
+		brute_force_max_attempts INTEGER DEFAULT 3,
+		brute_force_lockout_duration_minutes INTEGER DEFAULT 15
 	);
 	`
 
 	if _, err := db.Exec(schema); err != nil {
 		t.Fatalf("Failed to apply schema: %v", err)
+	}
+
+	// Create IP access attempts table for IP tracking
+	ipTrackingSchema := `
+	CREATE TABLE IF NOT EXISTS ip_access_attempts (
+		ip_address TEXT PRIMARY KEY,
+		failed_attempts INTEGER DEFAULT 0,
+		last_attempt_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		lockout_until TIMESTAMP NULL
+	);
+	`
+
+	if _, err := db.Exec(ipTrackingSchema); err != nil {
+		t.Fatalf("Failed to create ip_access_attempts table: %v", err)
 	}
 
 	return db
@@ -73,8 +120,11 @@ func createTestEmail(t *testing.T, db *sql.DB, emailID, senderID string, selfDes
 	query := `
 	INSERT INTO emails (
 		email_id, sender_id, recipient, subject, encrypted_blob_url, encrypted_key,
-		sha256_hash, self_destruct_after_attempts, max_attempts, encryption_nonce, encryption_auth_tag
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		sha256_hash, self_destruct_after_attempts, max_attempts, encryption_nonce, encryption_auth_tag,
+		allowed_city, allowed_country, geo_verification_type, geo_city, geo_country,
+		require_mfa, mfa_type, encrypted_totp_secret, is_password_protected, geo_restriction_enabled,
+		geo_restriction_rules, geo_restriction_config
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	selfDestructInt := 0
@@ -86,6 +136,9 @@ func createTestEmail(t *testing.T, db *sql.DB, emailID, senderID string, selfDes
 		emailID, senderID, "test@example.com", "Test Subject",
 		"test-blob-id", "test-key", "test-hash", selfDestructInt, maxAttempts,
 		"test-nonce", "test-auth-tag",
+		"", "", "none", "", "", // geolocation fields with defaults
+		0, "TOTP", "", 0, 1, // MFA and password protection fields with defaults
+		"", "", // geo restriction fields with defaults
 	)
 	if err != nil {
 		t.Fatalf("Failed to create test email: %v", err)

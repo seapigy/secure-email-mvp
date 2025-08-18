@@ -120,3 +120,9 @@ BEGIN
     UPDATE user_suspicious_activity_preferences SET updated_at = CURRENT_TIMESTAMP WHERE user_id = NEW.user_id;
 END;
 
+
+
+
+
+
+

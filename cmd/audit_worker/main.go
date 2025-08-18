@@ -72,12 +72,9 @@ func main() {
 	runAuditCleanup(context.Background(), auditService, exportService)
 
 	// Run periodic cleanup
-	for {
-		select {
-		case <-ticker.C:
-			log.Printf("Running periodic audit cleanup...")
-			runAuditCleanup(context.Background(), auditService, exportService)
-		}
+	for range ticker.C {
+		log.Printf("Running periodic audit cleanup...")
+		runAuditCleanup(context.Background(), auditService, exportService)
 	}
 }
 
@@ -97,4 +94,7 @@ func runAuditCleanup(ctx context.Context, auditService *audit.AuditService, expo
 		log.Printf("Successfully cleaned up expired exports")
 	}
 }
+
+
+
 

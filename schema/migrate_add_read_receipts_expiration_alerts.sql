@@ -98,3 +98,9 @@ CREATE INDEX IF NOT EXISTS idx_expiration_alerts_alert_type ON expiration_alerts
 -- enable_expiration_alerts: Whether to send expiration alerts for this email
 -- expiration_alert_hours: Hours before expiration to send reminder
 
+
+
+
+
+
+

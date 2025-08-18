@@ -1,0 +1,117 @@
+{
+  "base_url": "http://localhost:8080",
+  "concurrent_users": 100,
+  "test_duration": "5m",
+  "ramp_up_time": "30s",
+  "think_time": "100ms",
+  "timeout": "30s",
+  "max_retries": 3,
+  "headers": {
+    "Content-Type": "application/json",
+    "User-Agent": "LoadTester/1.0"
+  },
+  "endpoints": [
+    {
+      "path": "/api/health",
+      "method": "GET",
+      "weight": 10,
+      "expected_status": 200,
+      "headers": {},
+      "auth_required": false,
+      "validate_response": true
+    },
+    {
+      "path": "/api/signup",
+      "method": "POST",
+      "weight": 20,
+      "expected_status": 201,
+      "headers": {},
+      "body": {
+        "email": "test@example.com",
+        "password": "SecurePassword123!",
+        "fallback_email": "backup@example.com"
+      },
+      "auth_required": false,
+      "validate_response": true
+    },
+    {
+      "path": "/api/login",
+      "method": "POST",
+      "weight": 25,
+      "expected_status": 200,
+      "headers": {},
+      "body": {
+        "email": "test@example.com",
+        "password": "SecurePassword123!"
+      },
+      "auth_required": false,
+      "validate_response": true
+    },
+    {
+      "path": "/api/emails",
+      "method": "POST",
+      "weight": 15,
+      "expected_status": 201,
+      "headers": {},
+      "body": {
+        "to": "recipient@example.com",
+        "subject": "Test Email",
+        "content": "This is a test email content",
+        "password": "email_password_123"
+      },
+      "auth_required": true,
+      "validate_response": true
+    },
+    {
+      "path": "/api/emails/123456",
+      "method": "GET",
+      "weight": 20,
+      "expected_status": 200,
+      "headers": {},
+      "auth_required": false,
+      "validate_response": true
+    },
+    {
+      "path": "/admin/login",
+      "method": "POST",
+      "weight": 5,
+      "expected_status": 200,
+      "headers": {},
+      "body": {
+        "admin_uuid": "admin-123",
+        "password": "AdminPassword123!"
+      },
+      "auth_required": false,
+      "validate_response": true
+    },
+    {
+      "path": "/admin/metrics/zkid",
+      "method": "GET",
+      "weight": 5,
+      "expected_status": 200,
+      "headers": {},
+      "auth_required": true,
+      "validate_response": true
+    }
+  ],
+  "database_monitoring": true,
+  "performance_thresholds": {
+    "max_latency_p50": 500,
+    "max_latency_p95": 1000,
+    "max_latency_p99": 2000,
+    "max_error_rate": 5.0,
+    "min_throughput": 50,
+    "max_response_time": 5000,
+    "max_concurrent_connections": 200,
+    "max_memory_usage": 80,
+    "max_cpu_usage": 80
+  },
+  "report_format": "json",
+  "save_results": true,
+  "results_dir": "./load_test_results",
+  "enable_http2": false,
+  "ssl_verification": false,
+  "connection_pooling": true,
+  "keep_alive": true,
+  "compression": true
+}

@@ -116,3 +116,9 @@ INSERT OR IGNORE INTO audit_log_retention (retention_id, event_type, retention_d
 -- - mfa_setup: MFA setup/change events
 -- - geolocation_verification: Geolocation verification events
 
+
+
+
+
+
+

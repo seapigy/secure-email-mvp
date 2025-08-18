@@ -38,3 +38,9 @@ if (-not $totpCode) {
 # Return the TOTP code
 Write-Output $totpCode
 
+
+
+
+
+
+

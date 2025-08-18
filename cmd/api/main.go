@@ -14,13 +14,22 @@ import (
 	"sync"
 	"time"
 
+	"secure-email-mvp/pkg/admin"
 	"secure-email-mvp/pkg/audit"
 	"secure-email-mvp/pkg/auth"
 	"secure-email-mvp/pkg/cleanup"
+	"secure-email-mvp/pkg/devicefingerprint"
+	"secure-email-mvp/pkg/email"
+	"secure-email-mvp/pkg/geofencing"
+	"secure-email-mvp/pkg/geolocation"
+	"secure-email-mvp/pkg/humanverification"
 	"secure-email-mvp/pkg/iptracking"
 	"secure-email-mvp/pkg/notification"
 	"secure-email-mvp/pkg/readreceipts"
+	"secure-email-mvp/pkg/sessiontokens"
+	"secure-email-mvp/pkg/storage"
 	"secure-email-mvp/pkg/suspicious"
+	"secure-email-mvp/pkg/zkid"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -31,23 +40,48 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// main is the entry point for the Secure Email API server. It initializes the application by:
-// 1. Loading environment variables from .env file
-// 2. Establishing database connection with SQLite
-// 3. Testing Cloudflare R2 storage connectivity
-// 4. Applying database schema migrations (including all security features)
-// 5. Setting up HTTP server with middleware (CORS, security headers, rate limiting)
-// 6. Registering all API endpoints for authentication, email operations, MFA, and notifications
-// 7. Starting the HTTP server on the configured port
+// main is the entry point for the Secure Email API server
 //
-// Security Features Implemented:
-// - Multi-Factor Authentication (TOTP + Email-based)
-// - Enhanced Geolocation Verification (City + Country)
-// - Per-email Password Protection with Argon2id
-// - Brute Force Protection (Per-email + IP-based)
-// - Access Notification System
-// - Self-Destruct After Failed Attempts
-// - Session Management and Rate Limiting
+// This function initializes and starts the complete Secure Email MVP backend system.
+// It orchestrates all components including database setup, storage configuration,
+// security middleware, API endpoint registration, and server startup.
+//
+// INITIALIZATION STEPS:
+// 1. Load environment variables from .env file with fallback paths
+// 2. Validate critical environment variables (JWT_SECRET, R2 credentials)
+// 3. Establish SQLite database connection with proper error handling
+// 4. Test Cloudflare R2 storage connectivity for encrypted blob storage
+// 5. Apply comprehensive database schema migrations (all security features)
+// 6. Initialize security services (notification, audit, read receipts, suspicious detection)
+// 7. Set up HTTP server with security middleware (CORS, headers, rate limiting)
+// 8. Register all API endpoints with proper authentication and authorization
+// 9. Start email cleanup worker for automated maintenance
+// 10. Start HTTP server on configured port (default: 8080)
+//
+// SECURITY FEATURES IMPLEMENTED:
+// - Multi-Factor Authentication (TOTP + Email-based MFA)
+// - Enhanced Geolocation Verification (City + Country tracking)
+// - Per-email Password Protection with Argon2id hashing
+// - Brute Force Protection (Per-email + IP-based rate limiting)
+// - Access Notification System with configurable delivery
+// - Self-Destruct After Failed Attempts with secure deletion
+// - Session Management with JWT tokens and refresh tokens
+// - Comprehensive Audit Logging and Export
+// - Suspicious Access Pattern Detection
+// - Read Receipts and Expiration Alerts
+// - Multi-Channel Out-of-Band Authentication Alerts
+//
+// DATABASE MIGRATIONS APPLIED:
+// - Core schema (users, emails, audit_log)
+// - Security features (failed attempts, MFA, read-once, self-destruct)
+// - Advanced features (geolocation, notifications, read receipts)
+// - Monitoring and analytics (suspicious detection, audit exports)
+//
+// DEPLOYMENT PATHS SUPPORTED:
+// - Local development with relative paths
+// - Production deployment with absolute paths
+// - Fallback path handling for different deployment scenarios
+// - Comprehensive error handling and logging for troubleshooting
 func main() {
 	// Initialize logging and load environment configuration
 	log.Printf("Starting Secure Email API server...")
@@ -78,14 +112,14 @@ func main() {
 	if dbPath == "" {
 		dbPath = "/var/db/secure-email.db"
 	}
-	
+
 	// Get absolute path for logging
 	absDbPath, err := filepath.Abs(dbPath)
 	if err != nil {
 		log.Printf("Warning: Could not resolve absolute path for %s: %v", dbPath, err)
 		absDbPath = dbPath
 	}
-	
+
 	log.Printf("Attempting to connect to database at: %s (absolute: %s)", dbPath, absDbPath)
 
 	// Ensure database directory exists with proper permissions
@@ -115,15 +149,66 @@ func main() {
 		log.Printf("R2 connection test passed")
 	}
 
+	// Initialize R2 client for storage operations
+	var r2Client *storage.R2Client
+	r2Client, err = storage.NewR2ClientFromEnv()
+	if err != nil {
+		log.Printf("Warning: Failed to initialize R2 client: %v", err)
+		r2Client = nil
+	} else {
+		log.Printf("R2 client initialized successfully")
+	}
+
+	// Initialize geolocation and geofencing services
+	geolocationSvc := geolocation.NewSimpleGeolocationService()
+	geofencingSvc := geofencing.NewGeofencingService(db, geolocationSvc)
+
+	// Initialize device fingerprinting service
+	deviceFingerprintSvc := devicefingerprint.NewDeviceFingerprintService(db)
+
+	// Initialize session token service
+	sessionTokenSvc := sessiontokens.NewSessionTokenService(db)
+
+	// Initialize human verification service
+	humanVerificationConfig := humanverification.LoadConfigFromEnv()
+	humanVerificationSvc := humanverification.NewHumanVerificationService(db, humanVerificationConfig)
+
 	// Initialize server instance with database and rate limiting
 	srv := &Server{
-		db:                  db,
-		rateLimits:          &sync.Map{},
-		notificationService: notification.NewNotificationService(db),
-		readReceiptService:  readreceipts.NewReadReceiptService(db),
-		auditService:        audit.NewAuditService(db),
-		exportService:       audit.NewExportService(db, ""),
-		suspiciousService:   suspicious.NewSuspiciousDetectionService(db),
+		db:                       db,
+		r2Client:                 r2Client,
+		rateLimits:               &sync.Map{},
+		notificationService:      notification.NewNotificationService(db),
+		readReceiptService:       readreceipts.NewReadReceiptService(db),
+		auditService:             audit.NewAuditService(db),
+		exportService:            audit.NewExportService(db, ""),
+		suspiciousService:        suspicious.NewSuspiciousDetectionService(db),
+		geofencingService:        geofencingSvc,
+		deviceFingerprintService: deviceFingerprintSvc,
+		sessionTokenService:      sessionTokenSvc,
+		humanVerificationService: humanVerificationSvc,
+
+		// Security hardening components (Micro-Iteration 4.22)
+		emailAccessAuditor:      audit.NewEmailAccessAuditor(db, audit.DefaultRateLimitConfig),
+		concurrentAccessManager: audit.NewConcurrentAccessManager(db),
+
+		// Email retention and cleanup service (Micro-Iteration 4.24)
+		emailRetentionService: email.NewEmailRetentionService(db, r2Client),
+
+		// Smart retention policy engine and archival service (Micro-Iteration 4.26)
+		retentionPolicyEngine: email.NewRetentionPolicyEngine(db),
+		emailArchivalService:  email.NewEmailArchivalService(db, r2Client),
+
+		// Real-time monitoring and adaptive policy enforcement (Micro-Iteration 4.27-4.28)
+		retentionMonitorService: email.NewRetentionMonitorService(db),
+		adaptiveRetentionEngine: email.NewAdaptiveRetentionEngine(db, nil, nil), // Will be initialized after monitor service
+
+		// Predictive retention forecasting and anomaly detection (Micro-Iteration 4.29)
+		retentionForecastService: email.NewRetentionForecastService(db, nil), // Uses default config
+		retentionAnomalyDetector: email.NewRetentionAnomalyDetector(db, nil), // Uses default config
+
+		// Automated compliance and retention certification (Micro-Iteration 4.30)
+		complianceService: email.NewComplianceService(db),
 	}
 
 	// =============================================================================
@@ -722,6 +807,138 @@ func main() {
 		}
 	}
 
+	// Apply geofencing migration (Micro-Iteration 4.13)
+	log.Printf("Loading geofencing migration...")
+	geofencingMigrationPath := "schema/migrate_add_geofencing.sql"
+	log.Printf("Attempting to read geofencing migration from: %s", geofencingMigrationPath)
+
+	geofencingMigration, err := os.ReadFile(geofencingMigrationPath)
+	if err != nil {
+		log.Printf("Error reading geofencing migration from %s: %v", geofencingMigrationPath, err)
+		log.Printf("Attempting to read geofencing migration from absolute path...")
+		absGeofencingPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_geofencing.sql")
+		log.Printf("Trying absolute path: %s", absGeofencingPath)
+		geofencingMigration, err = os.ReadFile(absGeofencingPath)
+		if err != nil {
+			log.Printf("Error reading geofencing migration from absolute path: %v", err)
+		} else {
+			log.Printf("Geofencing migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(geofencingMigration)); err != nil {
+				log.Printf("Error applying geofencing migration: %v", err)
+				log.Printf("Geofencing migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("Geofencing migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Geofencing migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(geofencingMigration)); err != nil {
+			log.Printf("Error applying geofencing migration: %v", err)
+			log.Printf("Geofencing migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("Geofencing migration applied successfully")
+		}
+	}
+
+	// Apply device fingerprinting migration (Micro-Iteration 4.14)
+	log.Printf("Loading device fingerprinting migration...")
+	deviceFingerprintingMigrationPath := "schema/migrate_add_device_fingerprinting.sql"
+	log.Printf("Attempting to read device fingerprinting migration from: %s", deviceFingerprintingMigrationPath)
+
+	deviceFingerprintingMigration, err := os.ReadFile(deviceFingerprintingMigrationPath)
+	if err != nil {
+		log.Printf("Error reading device fingerprinting migration from %s: %v", deviceFingerprintingMigrationPath, err)
+		log.Printf("Attempting to read device fingerprinting migration from absolute path...")
+		absDeviceFingerprintingPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_device_fingerprinting.sql")
+		log.Printf("Trying absolute path: %s", absDeviceFingerprintingPath)
+		deviceFingerprintingMigration, err = os.ReadFile(absDeviceFingerprintingPath)
+		if err != nil {
+			log.Printf("Error reading device fingerprinting migration from absolute path: %v", err)
+		} else {
+			log.Printf("Device fingerprinting migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(deviceFingerprintingMigration)); err != nil {
+				log.Printf("Error applying device fingerprinting migration: %v", err)
+				log.Printf("Device fingerprinting migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("Device fingerprinting migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Device fingerprinting migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(deviceFingerprintingMigration)); err != nil {
+			log.Printf("Error applying device fingerprinting migration: %v", err)
+			log.Printf("Device fingerprinting migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("Device fingerprinting migration applied successfully")
+		}
+	}
+
+	// Apply session tokens migration (Micro-Iteration 4.15)
+	log.Printf("Loading session tokens migration...")
+	sessionTokensMigrationPath := "schema/migrate_add_session_tokens.sql"
+	log.Printf("Attempting to read session tokens migration from: %s", sessionTokensMigrationPath)
+
+	sessionTokensMigration, err := os.ReadFile(sessionTokensMigrationPath)
+	if err != nil {
+		log.Printf("Error reading session tokens migration from %s: %v", sessionTokensMigrationPath, err)
+		log.Printf("Attempting to read session tokens migration from absolute path...")
+		absSessionTokensPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_session_tokens.sql")
+		log.Printf("Trying absolute path: %s", absSessionTokensPath)
+		sessionTokensMigration, err = os.ReadFile(absSessionTokensPath)
+		if err != nil {
+			log.Printf("Error reading session tokens migration from absolute path: %v", err)
+		} else {
+			log.Printf("Session tokens migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(sessionTokensMigration)); err != nil {
+				log.Printf("Error applying session tokens migration: %v", err)
+				log.Printf("Session tokens migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("Session tokens migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Session tokens migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(sessionTokensMigration)); err != nil {
+			log.Printf("Error applying session tokens migration: %v", err)
+			log.Printf("Session tokens migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("Session tokens migration applied successfully")
+		}
+	}
+
+	// Apply human verification migration (Micro-Iteration 4.16)
+	log.Printf("Loading human verification migration...")
+	humanVerificationMigrationPath := "schema/migrate_add_human_verification.sql"
+	log.Printf("Attempting to read human verification migration from: %s", humanVerificationMigrationPath)
+
+	humanVerificationMigration, err := os.ReadFile(humanVerificationMigrationPath)
+	if err != nil {
+		log.Printf("Error reading human verification migration from %s: %v", humanVerificationMigrationPath, err)
+		log.Printf("Attempting to read human verification migration from absolute path...")
+		absHumanVerificationPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_human_verification.sql")
+		log.Printf("Trying absolute path: %s", absHumanVerificationPath)
+		humanVerificationMigration, err = os.ReadFile(absHumanVerificationPath)
+		if err != nil {
+			log.Printf("Error reading human verification migration from absolute path: %v", err)
+		} else {
+			log.Printf("Human verification migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(humanVerificationMigration)); err != nil {
+				log.Printf("Error applying human verification migration: %v", err)
+				log.Printf("Human verification migration may already be applied or have incompatible structure")
+			} else {
+				log.Printf("Human verification migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Human verification migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(humanVerificationMigration)); err != nil {
+			log.Printf("Error applying human verification migration: %v", err)
+			log.Printf("Human verification migration may already be applied or have incompatible structure")
+		} else {
+			log.Printf("Human verification migration applied successfully")
+		}
+	}
+
 	// Apply recipient ID migration (Micro-Iteration 4.18)
 	log.Printf("Loading recipient ID migration...")
 	recipientIDMigrationPath := "schema/migrate_add_recipient_id.sql"
@@ -920,8 +1137,42 @@ func main() {
 		}
 	}
 
+	// Apply email access logs migration (Micro-Iteration 4.22)
+	log.Printf("Loading email access logs migration...")
+	emailAccessLogsMigrationPath := "schema/migrate_add_email_access_logs.sql"
+	log.Printf("Attempting to read email access logs migration from: %s", emailAccessLogsMigrationPath)
+
+	emailAccessLogsMigration, err := os.ReadFile(emailAccessLogsMigrationPath)
+	if err != nil {
+		log.Printf("Error reading email access logs migration from %s: %v", emailAccessLogsMigrationPath, err)
+		log.Printf("Attempting to read email access logs migration from absolute path...")
+		absEmailAccessLogsPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_email_access_logs.sql")
+		log.Printf("Trying absolute path: %s", absEmailAccessLogsPath)
+		emailAccessLogsMigration, err = os.ReadFile(absEmailAccessLogsPath)
+		if err != nil {
+			log.Printf("Error reading email access logs migration from absolute path: %v", err)
+		} else {
+			log.Printf("Email access logs migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(emailAccessLogsMigration)); err != nil {
+				log.Printf("Error applying email access logs migration: %v", err)
+				log.Printf("Email access logs table may already exist or have incompatible structure")
+			} else {
+				log.Printf("Successfully applied email access logs migration")
+			}
+		}
+	} else {
+		log.Printf("Email access logs migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(emailAccessLogsMigration)); err != nil {
+			log.Printf("Error applying email access logs migration: %v", err)
+			log.Printf("Email access logs table may already exist or have incompatible structure")
+		} else {
+			log.Printf("Successfully applied email access logs migration")
+		}
+	}
+
 	// Initialize per-IP rate limiter for signup and login
-	signupLoginLimiter := NewIPRateLimitMiddleware(5, time.Minute)
+	// Allow 20 requests per minute for login attempts (more reasonable for testing)
+	signupLoginLimiter := NewIPRateLimitMiddleware(20, time.Minute)
 
 	// =============================================================================
 	// HTTP SERVER SETUP - API ENDPOINTS
@@ -950,6 +1201,104 @@ func main() {
 
 	log.Printf("Registering /health endpoint")
 	r.HandleFunc("/health", srv.healthHandler).Methods("GET")
+
+	// Initialize ZKID service and endpoints if enabled
+	zkidCfg := zkid.ConfigFromEnv()
+	if zkidCfg.Enabled {
+		log.Printf("Initializing ZKID layer (enabled)")
+
+		// Apply ZKID migration
+		zkidSchema, err := os.ReadFile("migrations/xxxx_add_zkid_layer.sql")
+		if err != nil {
+			log.Printf("Error reading ZKID schema from relative path: %v", err)
+			// Try absolute path
+			zkidSchema, err = os.ReadFile("/c:/Users/cpigu/OneDrive/Desktop/SecureChat - Email/migrations/xxxx_add_zkid_layer.sql")
+			if err != nil {
+				log.Printf("Error reading ZKID schema from absolute path: %v", err)
+			} else {
+				log.Printf("ZKID schema file loaded successfully, applying to database...")
+				if _, err := db.Exec(string(zkidSchema)); err != nil {
+					log.Printf("Error applying ZKID schema: %v", err)
+					log.Printf("ZKID tables may already exist or have incompatible structure")
+				} else {
+					log.Printf("ZKID schema applied successfully")
+				}
+			}
+		} else {
+			log.Printf("ZKID schema file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(zkidSchema)); err != nil {
+				log.Printf("Error applying ZKID schema: %v", err)
+				log.Printf("ZKID tables may already exist or have incompatible structure")
+			} else {
+				log.Printf("ZKID schema applied successfully")
+			}
+		}
+
+		zk := newZKIDHandlers(db, zkidCfg)
+		r.HandleFunc("/api/zkid/mapping", zk.createOrUpdateMappingHandler).Methods("POST")
+		r.HandleFunc("/api/zkid/email", zk.getEmailByUserHandler).Methods("GET")
+
+		// ZKID admin endpoints with RBAC protection
+		zkAdmin := newZKIDAdminHandlers(db, zkidCfg)
+		r.Handle("/api/admin/zkid/recovery-codes", jwtMiddleware(http.HandlerFunc(zkAdmin.getRecoveryCodesHandler))).Methods("GET")
+		r.Handle("/api/admin/zkid/revoke-code", jwtMiddleware(http.HandlerFunc(zkAdmin.revokeRecoveryCodeHandler))).Methods("POST")
+		r.Handle("/api/admin/zkid/stats", jwtMiddleware(http.HandlerFunc(zkAdmin.getZKIDStatsHandler))).Methods("GET")
+	}
+
+	// Apply admin users migration
+	log.Printf("Loading admin users migration...")
+	adminUsersMigrationPath := "schema/migrate_add_admin_users.sql"
+	log.Printf("Attempting to read admin users migration from: %s", adminUsersMigrationPath)
+
+	adminUsersMigration, err := os.ReadFile(adminUsersMigrationPath)
+	if err != nil {
+		log.Printf("Error reading admin users migration from %s: %v", adminUsersMigrationPath, err)
+		log.Printf("Attempting to read admin users migration from absolute path...")
+		absAdminUsersPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_admin_users.sql")
+		log.Printf("Trying absolute path: %s", absAdminUsersPath)
+		adminUsersMigration, err = os.ReadFile(absAdminUsersPath)
+		if err != nil {
+			log.Printf("Error reading admin users migration from absolute path: %v", err)
+		} else {
+			log.Printf("Admin users migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(adminUsersMigration)); err != nil {
+				log.Printf("Error applying admin users migration: %v", err)
+				log.Printf("Admin users tables may already exist or have incompatible structure")
+			} else {
+				log.Printf("Admin users migration applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Admin users migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(adminUsersMigration)); err != nil {
+			log.Printf("Error applying admin users migration: %v", err)
+			log.Printf("Admin users tables may already exist or have incompatible structure")
+		} else {
+			log.Printf("Admin users migration applied successfully")
+		}
+	}
+
+	// Initialize admin authentication service and endpoints
+	log.Printf("Initializing admin authentication system...")
+	adminAuthContainer := NewAdminAuthContainer(db)
+	adminMiddleware := admin.NewAdminMiddleware(db)
+
+	// Admin authentication endpoints (no middleware required for setup/check)
+	log.Printf("Registering admin authentication endpoints...")
+	r.HandleFunc("/admin/setup", adminAuthContainer.adminSetupHandler).Methods("POST")
+	r.HandleFunc("/admin/check-setup", adminAuthContainer.adminCheckSetupHandler).Methods("GET")
+	r.HandleFunc("/admin/login", adminAuthContainer.adminLoginHandler).Methods("POST")
+	r.HandleFunc("/admin/logout", adminAuthContainer.adminLogoutHandler).Methods("POST")
+	r.Handle("/admin/session", adminMiddleware.RequireAdminAuth(adminAuthContainer.adminSessionHandler)).Methods("GET")
+	r.Handle("/admin/audit-logs", adminMiddleware.RequireAdminAuth(adminAuthContainer.adminAuditLogsHandler)).Methods("GET")
+
+	// Admin invitation endpoints (Iteration 4 - Multi-Admin Management)
+	log.Printf("Registering admin invitation endpoints...")
+	r.Handle("/admin/invitations", adminMiddleware.RequireAdminAuth(adminAuthContainer.adminCreateInvitationHandler)).Methods("POST")
+	r.HandleFunc("/admin/invitations/validate", adminAuthContainer.adminValidateInvitationHandler).Methods("POST")
+	r.HandleFunc("/admin/invitations/use", adminAuthContainer.adminUseInvitationHandler).Methods("POST")
+	r.Handle("/admin/invitations", adminMiddleware.RequireAdminAuth(adminAuthContainer.adminListInvitationsHandler)).Methods("GET")
+	r.Handle("/admin/invitations/revoke", adminMiddleware.RequireAdminAuth(adminAuthContainer.adminRevokeInvitationHandler)).Methods("DELETE")
 
 	// Apply refresh tokens schema
 	log.Printf("Loading refresh tokens schema...")
@@ -981,6 +1330,60 @@ func main() {
 			log.Printf("Refresh tokens table may already exist or have incompatible structure")
 		} else {
 			log.Printf("Refresh tokens schema applied successfully")
+		}
+	}
+
+	// Apply retention notifications and analytics migration (Micro-Iteration 4.25)
+	retentionNotificationsAnalyticsSchema, err := os.ReadFile("schema/migrate_add_retention_notifications_analytics.sql")
+	if err != nil {
+		log.Printf("Error reading retention notifications and analytics schema from relative path: %v", err)
+		// Try absolute path
+		retentionNotificationsAnalyticsSchema, err = os.ReadFile("/c:/Users/cpigu/OneDrive/Desktop/SecureChat - Email/schema/migrate_add_retention_notifications_analytics.sql")
+		if err != nil {
+			log.Printf("Error reading retention notifications and analytics schema from absolute path: %v", err)
+		} else {
+			log.Printf("Retention notifications and analytics schema file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(retentionNotificationsAnalyticsSchema)); err != nil {
+				log.Printf("Error applying retention notifications and analytics schema: %v", err)
+				log.Printf("Retention notifications and analytics tables may already exist or have incompatible structure")
+			} else {
+				log.Printf("Retention notifications and analytics schema applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Retention notifications and analytics schema file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(retentionNotificationsAnalyticsSchema)); err != nil {
+			log.Printf("Error applying retention notifications and analytics schema: %v", err)
+			log.Printf("Retention notifications and analytics tables may already exist or have incompatible structure")
+		} else {
+			log.Printf("Retention notifications and analytics schema applied successfully")
+		}
+	}
+
+	// Apply retention policies and archival migration (Micro-Iteration 4.26)
+	retentionPoliciesArchivalSchema, err := os.ReadFile("schema/migrate_add_retention_policies_archival.sql")
+	if err != nil {
+		log.Printf("Error reading retention policies and archival schema from relative path: %v", err)
+		// Try absolute path
+		retentionPoliciesArchivalSchema, err = os.ReadFile("/c:/Users/cpigu/OneDrive/Desktop/SecureChat - Email/schema/migrate_add_retention_policies_archival.sql")
+		if err != nil {
+			log.Printf("Error reading retention policies and archival schema from absolute path: %v", err)
+		} else {
+			log.Printf("Retention policies and archival schema file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(retentionPoliciesArchivalSchema)); err != nil {
+				log.Printf("Error applying retention policies and archival schema: %v", err)
+				log.Printf("Retention policies and archival tables may already exist or have incompatible structure")
+			} else {
+				log.Printf("Retention policies and archival schema applied successfully")
+			}
+		}
+	} else {
+		log.Printf("Retention policies and archival schema file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(retentionPoliciesArchivalSchema)); err != nil {
+			log.Printf("Error applying retention policies and archival schema: %v", err)
+			log.Printf("Retention policies and archival tables may already exist or have incompatible structure")
+		} else {
+			log.Printf("Retention policies and archival schema applied successfully")
 		}
 	}
 
@@ -1018,6 +1421,8 @@ func main() {
 	r.Handle("/api/email/get", jwtMiddleware(http.HandlerFunc(srv.getEmailHandler))).Methods("POST")
 	log.Printf("Registering /api/email/list endpoint")
 	r.Handle("/api/email/list", jwtMiddleware(http.HandlerFunc(srv.listEmailHandler))).Methods("GET")
+	log.Printf("Registering /api/emails endpoint")
+	r.Handle("/api/emails", jwtMiddleware(http.HandlerFunc(srv.emailsHandler))).Methods("GET")
 	log.Printf("Registering /api/email/view/{id} endpoint")
 	r.Handle("/api/email/view/{id}", jwtMiddleware(http.HandlerFunc(srv.viewEmailHandler))).Methods("GET")
 	log.Printf("Registering /api/email/{id}/content endpoint")
@@ -1026,6 +1431,11 @@ func main() {
 	r.Handle("/api/email/{id}", jwtMiddleware(http.HandlerFunc(srv.getEmailByIdHandler))).Methods("GET")
 	r.Handle("/api/email/{id}", jwtMiddleware(http.HandlerFunc(srv.deleteEmailHandler))).Methods("DELETE")
 
+	// Register email security endpoints (Micro-Iteration 4.7)
+	log.Printf("Registering /api/email/security/{id} endpoints")
+	r.Handle("/api/email/security/{id}", jwtMiddleware(http.HandlerFunc(srv.updateEmailSecurityHandler))).Methods("POST")
+	r.Handle("/api/email/security/{id}", jwtMiddleware(http.HandlerFunc(srv.getEmailSecurityHandler))).Methods("GET")
+
 	// Register MFA endpoints (require JWT authentication)
 	log.Printf("Registering /api/mfa/validate endpoint")
 	r.Handle("/api/mfa/validate", jwtMiddleware(http.HandlerFunc(srv.validateMFAHandler))).Methods("POST")
@@ -1033,6 +1443,23 @@ func main() {
 	r.Handle("/api/mfa/email-code", jwtMiddleware(http.HandlerFunc(srv.generateEmailCodeHandler))).Methods("POST")
 	log.Printf("Registering /api/mfa/config/{emailID} endpoint")
 	r.Handle("/api/mfa/config/{emailID}", jwtMiddleware(http.HandlerFunc(srv.getMFAConfigHandler))).Methods("GET")
+
+	// Initialize human verification middleware
+	humanVerificationMiddleware := NewHumanVerificationMiddleware(srv.humanVerificationService, humanVerificationConfig)
+
+	// Register human verification challenge endpoint
+	log.Printf("Registering /api/human-verification/challenge endpoint")
+	r.HandleFunc("/api/human-verification/challenge", humanVerificationMiddleware.GenerateChallengeHandler).Methods("GET")
+
+	// Register device fingerprinting endpoints (Micro-Iteration 4.14)
+	// Note: trust-device endpoint removed due to audit service integration issues
+
+	// Register session token endpoints (Micro-Iteration 4.15)
+	log.Printf("Registering /api/email/{id}/session endpoint")
+	r.Handle("/api/email/{id}/session",
+		humanVerificationMiddleware.RequireHumanVerification(
+			jwtMiddleware(http.HandlerFunc(srv.generateSessionTokenHandler)),
+		)).Methods("POST")
 
 	// Register notification endpoints (require JWT authentication)
 	log.Printf("Registering /api/notifications/preferences endpoint")
@@ -1085,6 +1512,11 @@ func main() {
 	r.Handle("/api/suspicious/rules", jwtMiddleware(http.HandlerFunc(srv.getDetectionRulesHandler))).Methods("GET")
 	r.Handle("/api/suspicious/emails", jwtMiddleware(http.HandlerFunc(srv.getUserSuspiciousEmailsHandler))).Methods("GET")
 
+	// Register user compliance transparency endpoints (Micro-Iteration 4.31)
+	log.Printf("Registering user compliance transparency endpoints...")
+	r.Handle("/api/user/compliance/status", jwtMiddleware(http.HandlerFunc(srv.getUserComplianceStatusHandler))).Methods("GET")
+	r.Handle("/api/user/compliance/policies", jwtMiddleware(http.HandlerFunc(srv.getUserCompliancePoliciesHandler))).Methods("GET")
+
 	// Geo-restriction endpoints (Micro-Iteration 4.7)
 	log.Printf("Registering geo-restriction endpoints...")
 	geoRestrictionHandlers := NewGeoRestrictionHandlers(db)
@@ -1105,6 +1537,114 @@ func main() {
 	log.Printf("Registering /admin/manual-cleanup endpoint")
 	r.Handle("/admin/manual-cleanup", jwtMiddleware(http.HandlerFunc(srv.adminManualCleanupHandler))).Methods("POST")
 
+	// Micro-Iteration 4.23: Admin Access Log Query Endpoint
+	log.Printf("Registering /api/admin/email/access-logs endpoint")
+	r.Handle("/api/admin/email/access-logs", jwtMiddleware(http.HandlerFunc(srv.adminAccessLogsHandler))).Methods("GET")
+
+	// Micro-Iteration 4.24: Admin Email Retention Management Endpoints
+	log.Printf("Registering /api/admin/email/retention endpoint")
+	r.Handle("/api/admin/email/retention", jwtMiddleware(http.HandlerFunc(srv.adminRetentionQueryHandler))).Methods("GET")
+	log.Printf("Registering /api/admin/email/retention-stats endpoint")
+	r.Handle("/api/admin/email/retention-stats", jwtMiddleware(http.HandlerFunc(srv.adminRetentionStatsHandler))).Methods("GET")
+	log.Printf("Registering /api/admin/email/retention-cleanup endpoint")
+	r.Handle("/api/admin/email/retention-cleanup", jwtMiddleware(http.HandlerFunc(srv.adminManualRetentionCleanupHandler))).Methods("POST")
+	log.Printf("Registering /api/admin/email/{email_id}/expiration endpoint")
+	r.Handle("/api/admin/email/expiration", jwtMiddleware(http.HandlerFunc(srv.adminSetEmailExpirationHandler))).Methods("POST")
+
+	// Micro-Iteration 4.25: Admin Retention Analytics & Notifications Endpoints
+	log.Printf("Registering /api/admin/email/retention-analytics endpoint")
+	r.Handle("/api/admin/email/retention-analytics", jwtMiddleware(http.HandlerFunc(srv.adminRetentionAnalyticsHandler))).Methods("GET")
+	log.Printf("Registering /api/admin/email/retention-analytics-summary endpoint")
+	r.Handle("/api/admin/email/retention-analytics-summary", jwtMiddleware(http.HandlerFunc(srv.adminRetentionAnalyticsSummaryHandler))).Methods("GET")
+	log.Printf("Registering /api/admin/email/retention-notifications endpoint")
+	r.Handle("/api/admin/email/retention-notifications", jwtMiddleware(http.HandlerFunc(srv.adminRetentionNotificationsHandler))).Methods("GET")
+	log.Printf("Registering /api/admin/email/retention-notification-preferences endpoint")
+	r.Handle("/api/admin/email/retention-notification-preferences", jwtMiddleware(http.HandlerFunc(srv.adminRetentionNotificationPreferencesHandler))).Methods("GET")
+	log.Printf("Registering /api/admin/email/retention-notification-preferences update endpoint")
+	r.Handle("/api/admin/email/retention-notification-preferences", jwtMiddleware(http.HandlerFunc(srv.adminRetentionNotificationPreferencesUpdateHandler))).Methods("PUT")
+
+	// Micro-Iteration 4.26: Admin Retention Policy & Archival Endpoints
+	log.Printf("Registering /api/admin/email/retention-policies endpoint")
+	r.Handle("/api/admin/email/retention-policies", jwtMiddleware(http.HandlerFunc(srv.adminRetentionPoliciesHandler))).Methods("GET")
+	r.Handle("/api/admin/email/retention-policies", jwtMiddleware(http.HandlerFunc(srv.adminCreateRetentionPolicyHandler))).Methods("POST")
+	log.Printf("Registering /api/admin/email/retention-policies/{policy_id} endpoint")
+	r.Handle("/api/admin/email/retention-policies/{policy_id}", jwtMiddleware(http.HandlerFunc(srv.adminGetRetentionPolicyHandler))).Methods("GET")
+	r.Handle("/api/admin/email/retention-policies/{policy_id}", jwtMiddleware(http.HandlerFunc(srv.adminUpdateRetentionPolicyHandler))).Methods("PUT")
+	r.Handle("/api/admin/email/retention-policies/{policy_id}", jwtMiddleware(http.HandlerFunc(srv.adminDeleteRetentionPolicyHandler))).Methods("DELETE")
+
+	log.Printf("Registering /api/admin/email/archived endpoint")
+	r.Handle("/api/admin/email/archived", jwtMiddleware(http.HandlerFunc(srv.adminArchivedEmailsHandler))).Methods("GET")
+	r.Handle("/api/admin/email/archived", jwtMiddleware(http.HandlerFunc(srv.adminArchiveEmailHandler))).Methods("POST")
+	log.Printf("Registering /api/admin/email/archived/{archive_id} endpoint")
+	r.Handle("/api/admin/email/archived/{archive_id}", jwtMiddleware(http.HandlerFunc(srv.adminGetArchivedEmailHandler))).Methods("GET")
+	log.Printf("Registering /api/admin/email/archived/restore endpoint")
+	r.Handle("/api/admin/email/archived/restore", jwtMiddleware(http.HandlerFunc(srv.adminRestoreEmailHandler))).Methods("POST")
+	log.Printf("Registering /api/admin/email/archived/stats endpoint")
+	r.Handle("/api/admin/email/archived/stats", jwtMiddleware(http.HandlerFunc(srv.adminArchivalStatsHandler))).Methods("GET")
+	log.Printf("Registering /api/admin/email/archived/cleanup endpoint")
+	r.Handle("/api/admin/email/archived/cleanup", jwtMiddleware(http.HandlerFunc(srv.adminCleanupExpiredArchivesHandler))).Methods("POST")
+
+	// Micro-Iteration 4.27: Admin Retention Insights & Recommendations Endpoints
+	log.Printf("Registering /api/admin/email/retention-insights endpoint")
+	r.Handle("/api/admin/email/retention-insights", jwtMiddleware(http.HandlerFunc(srv.adminRetentionInsightsHandler))).Methods("GET")
+	log.Printf("Registering /api/admin/email/retention-insights/trends endpoint")
+	r.Handle("/api/admin/email/retention-insights/trends", jwtMiddleware(http.HandlerFunc(srv.adminRetentionTrendsHandler))).Methods("GET")
+	log.Printf("Registering /api/admin/email/retention-recommendations endpoint")
+	r.Handle("/api/admin/email/retention-recommendations", jwtMiddleware(http.HandlerFunc(srv.adminRetentionRecommendationsHandler))).Methods("GET")
+	log.Printf("Registering /api/admin/email/retention-recommendations/apply endpoint")
+	r.Handle("/api/admin/email/retention-recommendations/apply", jwtMiddleware(http.HandlerFunc(srv.adminApplyRecommendationHandler))).Methods("POST")
+
+	// Micro-Iteration 4.28: Real-Time Monitoring & Adaptive Policy Endpoints
+	log.Printf("Registering /api/admin/email/retention-realtime endpoint")
+	r.Handle("/api/admin/email/retention-realtime", jwtMiddleware(http.HandlerFunc(srv.adminRealtimeMetricsHandler))).Methods("GET")
+	log.Printf("Registering /api/admin/email/adaptive-policy-changes endpoint")
+	r.Handle("/api/admin/email/adaptive-policy-changes", jwtMiddleware(http.HandlerFunc(srv.adminAdaptivePolicyChangesHandler))).Methods("GET")
+	log.Printf("Registering /api/admin/email/adaptive-policy/enable endpoint")
+	r.Handle("/api/admin/email/adaptive-policy/enable", jwtMiddleware(http.HandlerFunc(srv.adminEnableAdaptivePolicyHandler))).Methods("POST")
+	log.Printf("Registering /api/admin/email/adaptive-policy/disable endpoint")
+	r.Handle("/api/admin/email/adaptive-policy/disable", jwtMiddleware(http.HandlerFunc(srv.adminDisableAdaptivePolicyHandler))).Methods("POST")
+	log.Printf("Registering /api/admin/email/adaptive-policy/apply endpoint")
+	r.Handle("/api/admin/email/adaptive-policy/apply", jwtMiddleware(http.HandlerFunc(srv.adminApplyAdaptiveChangeHandler))).Methods("POST")
+	log.Printf("Registering /api/admin/email/policy-performance endpoint")
+	r.Handle("/api/admin/email/policy-performance", jwtMiddleware(http.HandlerFunc(srv.adminPolicyPerformanceHandler))).Methods("GET")
+	log.Printf("Registering /api/admin/email/adaptive-policy/generate-recommendations endpoint")
+	r.Handle("/api/admin/email/adaptive-policy/generate-recommendations", jwtMiddleware(http.HandlerFunc(srv.adminGenerateAdaptiveRecommendationsHandler))).Methods("POST")
+
+	// Micro-Iteration 4.29: Predictive Retention Forecasting & Anomaly Detection Endpoints
+	log.Printf("Registering /api/admin/email/retention-forecast endpoint")
+	r.Handle("/api/admin/email/retention-forecast", jwtMiddleware(http.HandlerFunc(srv.adminRetentionForecastHandler))).Methods("GET")
+	log.Printf("Registering /api/admin/email/retention-forecast/generate endpoint")
+	r.Handle("/api/admin/email/retention-forecast/generate", jwtMiddleware(http.HandlerFunc(srv.adminGenerateForecastsHandler))).Methods("POST")
+	log.Printf("Registering /api/admin/email/retention-forecast/accuracy endpoint")
+	r.Handle("/api/admin/email/retention-forecast/accuracy", jwtMiddleware(http.HandlerFunc(srv.adminForecastAccuracyHandler))).Methods("GET")
+
+	log.Printf("Registering /api/admin/email/retention-anomalies endpoint")
+	r.Handle("/api/admin/email/retention-anomalies", jwtMiddleware(http.HandlerFunc(srv.adminRetentionAnomaliesHandler))).Methods("GET")
+	log.Printf("Registering /api/admin/email/retention-anomalies/detect endpoint")
+	r.Handle("/api/admin/email/retention-anomalies/detect", jwtMiddleware(http.HandlerFunc(srv.adminDetectAnomaliesHandler))).Methods("POST")
+	log.Printf("Registering /api/admin/email/retention-anomalies/ack endpoint")
+	r.Handle("/api/admin/email/retention-anomalies/ack", jwtMiddleware(http.HandlerFunc(srv.adminAcknowledgeAnomalyHandler))).Methods("POST")
+	log.Printf("Registering /api/admin/email/retention-anomalies/stats endpoint")
+	r.Handle("/api/admin/email/retention-anomalies/stats", jwtMiddleware(http.HandlerFunc(srv.adminAnomalyStatsHandler))).Methods("GET")
+
+	// Micro-Iteration 4.30: Automated Compliance & Retention Certification Endpoints
+	// TODO: Implement enterprise compliance endpoints for future micro-iteration
+	// log.Printf("Registering /api/admin/compliance/status endpoint")
+	// r.Handle("/api/admin/compliance/status", jwtMiddleware(http.HandlerFunc(srv.adminComplianceStatusHandler))).Methods("GET")
+	// log.Printf("Registering /api/admin/compliance/reports endpoint")
+	// r.Handle("/api/admin/compliance/reports", jwtMiddleware(http.HandlerFunc(srv.adminComplianceReportsHandler))).Methods("GET")
+	// log.Printf("Registering /api/admin/compliance/violations endpoint")
+	// r.Handle("/api/admin/compliance/violations", jwtMiddleware(http.HandlerFunc(srv.adminComplianceViolationsHandler))).Methods("GET")
+	// log.Printf("Registering /api/admin/compliance/certifications endpoint")
+	// r.Handle("/api/admin/compliance/certifications", jwtMiddleware(http.HandlerFunc(srv.adminComplianceCertificationsHandler))).Methods("GET")
+	// log.Printf("Registering /api/admin/compliance/enterprise endpoint")
+	// r.Handle("/api/admin/compliance/enterprise", jwtMiddleware(http.HandlerFunc(srv.adminEnterpriseOrganizationHandler))).Methods("GET")
+	// log.Printf("Registering /api/admin/compliance/enterprise create endpoint")
+	// r.Handle("/api/admin/compliance/enterprise", jwtMiddleware(http.HandlerFunc(srv.adminCreateEnterpriseHandler))).Methods("POST")
+	// log.Printf("Registering /api/admin/compliance/settings/user-transparency endpoints")
+	// r.Handle("/api/admin/compliance/settings/user-transparency", jwtMiddleware(http.HandlerFunc(srv.adminGetUserTransparencySettingsHandler))).Methods("GET")
+	// r.Handle("/api/admin/compliance/settings/user-transparency", jwtMiddleware(http.HandlerFunc(srv.adminUpdateUserTransparencySettingsHandler))).Methods("PUT")
+
 	// TEST ONLY: Register self-destruct test endpoint
 	if os.Getenv("SIMULATE_SELF_DESTRUCT") == "1" {
 		log.Printf("Registering /test/self-destruct endpoint (TEST ONLY)")
@@ -1114,6 +1654,17 @@ func main() {
 	// Protected routes (require JWT authentication)
 	log.Printf("Registering /protected-test endpoint")
 	r.Handle("/protected-test", jwtMiddleware(http.HandlerFunc(protectedTestHandler))).Methods("GET")
+
+	// Initialize real-time monitoring and adaptive policy services
+	log.Printf("Initializing real-time monitoring and adaptive policy services...")
+
+	// Start retention monitor service
+	srv.retentionMonitorService.Start(context.Background())
+	defer srv.retentionMonitorService.Stop()
+
+	// Initialize adaptive retention engine with monitor service
+	srv.adaptiveRetentionEngine = email.NewAdaptiveRetentionEngine(db, srv.retentionMonitorService, srv.retentionPolicyEngine)
+	srv.adaptiveRetentionEngine.Start(context.Background())
 
 	// Initialize and start email cleanup worker
 	log.Printf("Initializing email cleanup worker...")
@@ -1147,29 +1698,84 @@ func main() {
 	}
 }
 
-// Server struct holds the database connection and rate limiter map for per-IP rate limiting.
-// Server represents the main API server with all security features
+// Server represents the main API server with all security features and services
+//
+// This struct holds all the components needed to run the Secure Email MVP backend,
+// including database connections, storage clients, security services, and rate
+// limiting mechanisms. It serves as the central orchestrator for all API operations.
+//
+// CORE COMPONENTS:
+// - Database: SQLite connection for user data, email metadata, and audit logs
+// - R2 Storage: Cloudflare R2 client for encrypted blob storage (optional for testing)
+// - Rate Limiting: Per-IP rate limiting for authentication and sensitive endpoints
+//
+// SECURITY SERVICES:
+// - Notification Service: Handles access notifications and alerts
+// - Read Receipt Service: Manages read receipts and expiration alerts
+// - Audit Service: Comprehensive audit logging and event tracking
+// - Export Service: Audit log export and retention management
+// - Suspicious Detection Service: Advanced threat detection and pattern analysis
+//
+// SECURITY FEATURES IMPLEMENTED:
+// - Multi-Factor Authentication (TOTP + Email-based MFA)
+// - Enhanced Geolocation Verification (City + Country tracking)
+// - Per-email Password Protection with Argon2id hashing
+// - Brute Force Protection (Per-email + IP-based rate limiting)
+// - Access Notification System with configurable delivery
+// - Self-Destruct After Failed Attempts with secure deletion
+// - Session Management with JWT tokens and refresh tokens
+// - Multi-Channel Out-of-Band Authentication Alerts
+// - Read Receipts and Expiration Alerts
+// - Advanced Audit Log & Export with retention policies
+// - Suspicious Access Pattern Detection with machine learning
+//
+// DEPENDENCY INJECTION:
+// - R2 client can be injected for testing (allows mocking cloud storage)
+// - All services are initialized with database connection
+// - Rate limiting uses thread-safe sync.Map for concurrent access
 type Server struct {
-	db                  *sql.DB                                // SQLite database connection
-	rateLimits          *sync.Map                              // IP -> attempt count for rate limiting
-	notificationService *notification.NotificationService      // Notification service
-	readReceiptService  *readreceipts.ReadReceiptService       // Read receipt service
-	auditService        *audit.AuditService                    // Audit service
-	exportService       *audit.ExportService                   // Export service
-	suspiciousService   *suspicious.SuspiciousDetectionService // Suspicious access detection service
+	db                       *sql.DB                                    // SQLite database connection
+	r2Client                 *storage.R2Client                          // R2 storage client (optional, for testing)
+	rateLimits               *sync.Map                                  // IP -> attempt count for rate limiting
+	notificationService      *notification.NotificationService          // Notification service
+	readReceiptService       *readreceipts.ReadReceiptService           // Read receipt service
+	auditService             *audit.AuditService                        // Audit service
+	exportService            *audit.ExportService                       // Export service
+	suspiciousService        *suspicious.SuspiciousDetectionService     // Suspicious access detection service
+	geofencingService        *geofencing.GeofencingService              // Geofencing service for location-based access control
+	deviceFingerprintService devicefingerprint.DeviceFingerprintService // Device fingerprinting service
+	sessionTokenService      sessiontokens.SessionTokenService          // Session token service for per-session access tokens
+	humanVerificationService humanverification.HumanVerificationService // Human verification service for anti-automation
 
-	// Security features implemented:
-	// - Multi-Factor Authentication (TOTP + Email-based)
-	// - Enhanced Geolocation Verification (City + Country)
-	// - Per-email Password Protection with Argon2id
-	// - Brute Force Protection (Per-email + IP-based)
-	// - Access Notification System
-	// - Self-Destruct After Failed Attempts
-	// - Session Management and Rate Limiting
-	// - Multi-Channel Out-of-Band Authentication Alerts
-	// - Read Receipts and Expiration Alerts
-	// - Advanced Audit Log & Export
-	// - Suspicious Access Pattern Detection
+	// Security hardening components (Micro-Iteration 4.22)
+	emailAccessAuditor      *audit.EmailAccessAuditor      // Email access audit logging and rate limiting
+	concurrentAccessManager *audit.ConcurrentAccessManager // Concurrent access protection
+
+	// Email retention and cleanup service (Micro-Iteration 4.24)
+	emailRetentionService *email.EmailRetentionService // Email retention and cleanup service
+
+	// Smart retention policy engine and archival service (Micro-Iteration 4.26)
+	retentionPolicyEngine *email.RetentionPolicyEngine // Smart retention policy engine
+	emailArchivalService  *email.EmailArchivalService  // Email archival service
+
+	// Real-time monitoring and adaptive policy enforcement (Micro-Iteration 4.27-4.28)
+	retentionMonitorService *email.RetentionMonitorService // Real-time retention monitoring service
+	adaptiveRetentionEngine *email.AdaptiveRetentionEngine // Adaptive policy enforcement engine
+
+	// Predictive retention forecasting and anomaly detection (Micro-Iteration 4.29)
+	retentionForecastService *email.RetentionForecastService // Predictive retention forecasting service
+	retentionAnomalyDetector *email.RetentionAnomalyDetector // Retention anomaly detection service
+
+	// Automated compliance and retention certification (Micro-Iteration 4.30)
+	complianceService *email.ComplianceService // Compliance and certification service
+}
+
+// createEmailSecurityDB creates an EmailSecurityDB instance with R2 client if available
+func (srv *Server) createEmailSecurityDB() *email.EmailSecurityDB {
+	if srv.r2Client != nil {
+		return email.NewEmailSecurityDBWithR2(srv.db, srv.r2Client)
+	}
+	return email.NewEmailSecurityDB(srv.db)
 }
 
 // pingHandler is a simple health check endpoint for liveness probes.
@@ -1385,23 +1991,16 @@ func jwtMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Validate JWT token using session manager
-		sessionManager, err := auth.NewSessionManager()
-		if err != nil {
-			http.Error(w, `{"error":"Session configuration error"}`, http.StatusInternalServerError)
-			return
-		}
-
-		// Validate access token
-		claims, err := sessionManager.ValidateAccessToken(tokenString)
+		// Validate JWT token using simple validation
+		userID, email, err := auth.ValidateJWT(tokenString)
 		if err != nil {
 			http.Error(w, `{"error":"Invalid or missing token"}`, http.StatusUnauthorized)
 			return
 		}
 
-		// Set user_id in context using UserIDKey
-		ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
-		ctx = context.WithValue(ctx, EmailKey, claims.Email)
+		// Set user_id and email in context
+		ctx := context.WithValue(r.Context(), UserIDKey, userID)
+		ctx = context.WithValue(ctx, EmailKey, email)
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)

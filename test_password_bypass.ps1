@@ -56,3 +56,9 @@ try {
 $env:HIBP_API_KEY = $originalHIBPKey
 Write-Info "Restored HIBP API key"
 
+
+
+
+
+
+

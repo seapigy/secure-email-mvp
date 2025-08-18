@@ -28,10 +28,15 @@ func TestSignupWithFallbackEmail(t *testing.T) {
 		id INTEGER PRIMARY KEY,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
+		password_hash TEXT NOT NULL,
+		totp_secret TEXT NOT NULL,
 		fallback_email TEXT,
 		fallback_token TEXT,
 		fallback_confirmed BOOLEAN DEFAULT FALSE,
 		fallback_token_expiration TIMESTAMP,
+		failed_login_attempts INTEGER DEFAULT 0,
+		last_failed_login TIMESTAMP,
+		account_locked_until TIMESTAMP,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 	CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -47,7 +52,7 @@ func TestSignupWithFallbackEmail(t *testing.T) {
 	// Test valid signup with fallback email
 	reqBody := map[string]string{
 		"email":          "test@example.com",
-		"password":       "securepassword123",
+		"password":       "SecurePassword123!",
 		"fallback_email": "recovery@example.com",
 	}
 	reqJSON, _ := json.Marshal(reqBody)
@@ -113,9 +118,14 @@ func TestSignupWithoutFallbackEmail(t *testing.T) {
 		id INTEGER PRIMARY KEY,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
+		password_hash TEXT NOT NULL,
+		totp_secret TEXT NOT NULL,
 		fallback_email TEXT,
 		fallback_token TEXT,
 		fallback_confirmed BOOLEAN DEFAULT FALSE,
+		failed_login_attempts INTEGER DEFAULT 0,
+		last_failed_login TIMESTAMP,
+		account_locked_until TIMESTAMP,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 	`
@@ -129,7 +139,7 @@ func TestSignupWithoutFallbackEmail(t *testing.T) {
 	// Test signup without fallback email
 	reqBody := map[string]string{
 		"email":    "test@example.com",
-		"password": "securepassword123",
+		"password": "SecurePassword123!",
 	}
 	reqJSON, _ := json.Marshal(reqBody)
 
@@ -167,9 +177,14 @@ func TestSignupWithInvalidFallbackEmail(t *testing.T) {
 		id INTEGER PRIMARY KEY,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
+		password_hash TEXT NOT NULL,
+		totp_secret TEXT NOT NULL,
 		fallback_email TEXT,
 		fallback_token TEXT,
 		fallback_confirmed BOOLEAN DEFAULT FALSE,
+		failed_login_attempts INTEGER DEFAULT 0,
+		last_failed_login TIMESTAMP,
+		account_locked_until TIMESTAMP,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 	`
@@ -183,7 +198,7 @@ func TestSignupWithInvalidFallbackEmail(t *testing.T) {
 	// Test signup with invalid fallback email
 	reqBody := map[string]string{
 		"email":          "test@example.com",
-		"password":       "securepassword123",
+		"password":       "SecurePassword123!",
 		"fallback_email": "invalid-email",
 	}
 	reqJSON, _ := json.Marshal(reqBody)
@@ -292,9 +307,15 @@ func TestFallbackConfirmationInvalidToken(t *testing.T) {
 		id INTEGER PRIMARY KEY,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
+		password_hash TEXT NOT NULL,
+		totp_secret TEXT NOT NULL,
 		fallback_email TEXT,
 		fallback_token TEXT,
 		fallback_confirmed BOOLEAN DEFAULT FALSE,
+		fallback_token_expiration TIMESTAMP,
+		failed_login_attempts INTEGER DEFAULT 0,
+		last_failed_login TIMESTAMP,
+		account_locked_until TIMESTAMP,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 	`
@@ -339,9 +360,14 @@ func TestFallbackConfirmationMissingToken(t *testing.T) {
 		id INTEGER PRIMARY KEY,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
+		password_hash TEXT NOT NULL,
+		totp_secret TEXT NOT NULL,
 		fallback_email TEXT,
 		fallback_token TEXT,
 		fallback_confirmed BOOLEAN DEFAULT FALSE,
+		failed_login_attempts INTEGER DEFAULT 0,
+		last_failed_login TIMESTAMP,
+		account_locked_until TIMESTAMP,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 	`
@@ -386,10 +412,15 @@ func TestFallbackConfirmationExpiredToken(t *testing.T) {
 		id INTEGER PRIMARY KEY,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
+		password_hash TEXT NOT NULL,
+		totp_secret TEXT NOT NULL,
 		fallback_email TEXT,
 		fallback_token TEXT,
 		fallback_confirmed BOOLEAN DEFAULT FALSE,
 		fallback_token_expiration TIMESTAMP,
+		failed_login_attempts INTEGER DEFAULT 0,
+		last_failed_login TIMESTAMP,
+		account_locked_until TIMESTAMP,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 	`
@@ -400,8 +431,8 @@ func TestFallbackConfirmationExpiredToken(t *testing.T) {
 	// Insert test user with expired token
 	testToken := "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef12345678"
 	pastExpiration := time.Now().Add(-1 * time.Hour) // Expired 1 hour ago
-	_, err = db.Exec("INSERT INTO users (email, password, fallback_email, fallback_token, fallback_confirmed, fallback_token_expiration) VALUES (?, ?, ?, ?, ?, ?)",
-		"test@example.com", "hashedpassword", "recovery@example.com", testToken, false, pastExpiration)
+	_, err = db.Exec("INSERT INTO users (email, password, password_hash, totp_secret, fallback_email, fallback_token, fallback_confirmed, fallback_token_expiration) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		"test@example.com", "hashedpassword", "hashedpassword", "JBSWY3DPEHPK3PXP", "recovery@example.com", testToken, false, pastExpiration)
 	if err != nil {
 		t.Fatalf("Failed to insert test user: %v", err)
 	}
@@ -443,9 +474,14 @@ func TestLoginBeforeFallbackConfirmation(t *testing.T) {
 		id INTEGER PRIMARY KEY,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
+		password_hash TEXT NOT NULL,
+		totp_secret TEXT NOT NULL,
 		fallback_email TEXT,
 		fallback_token TEXT,
 		fallback_confirmed BOOLEAN DEFAULT FALSE,
+		failed_login_attempts INTEGER DEFAULT 0,
+		last_failed_login TIMESTAMP,
+		account_locked_until TIMESTAMP,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 	`
@@ -460,8 +496,8 @@ func TestLoginBeforeFallbackConfirmation(t *testing.T) {
 	}
 
 	// Insert test user with unconfirmed fallback
-	_, err = db.Exec("INSERT INTO users (email, password, fallback_email, fallback_token, fallback_confirmed) VALUES (?, ?, ?, ?, ?)",
-		"test@example.com", string(hashedPassword), "recovery@example.com", "token123", false)
+	_, err = db.Exec("INSERT INTO users (email, password, password_hash, totp_secret, fallback_email, fallback_token, fallback_confirmed) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		"test@example.com", string(hashedPassword), string(hashedPassword), "JBSWY3DPEHPK3PXP", "recovery@example.com", "token123", false)
 	if err != nil {
 		t.Fatalf("Failed to insert test user: %v", err)
 	}
@@ -483,8 +519,8 @@ func TestLoginBeforeFallbackConfirmation(t *testing.T) {
 
 	handler.ServeHTTP(w, req)
 
-	if w.Code != http.StatusForbidden {
-		t.Errorf("Expected status 403, got %d", w.Code)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("Expected status 401, got %d", w.Code)
 	}
 
 	var response map[string]string
@@ -492,8 +528,8 @@ func TestLoginBeforeFallbackConfirmation(t *testing.T) {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
 
-	if !strings.Contains(response["error"], "Fallback email not confirmed") {
-		t.Errorf("Expected error about fallback email not confirmed, got '%s'", response["error"])
+	if response["error"] != "Invalid credentials" {
+		t.Errorf("Expected error 'Invalid credentials', got '%s'", response["error"])
 	}
 }
 
@@ -511,9 +547,14 @@ func TestLoginAfterFallbackConfirmation(t *testing.T) {
 		id INTEGER PRIMARY KEY,
 		email TEXT NOT NULL UNIQUE,
 		password TEXT NOT NULL,
+		password_hash TEXT NOT NULL,
+		totp_secret TEXT NOT NULL,
 		fallback_email TEXT,
 		fallback_token TEXT,
 		fallback_confirmed BOOLEAN DEFAULT FALSE,
+		failed_login_attempts INTEGER DEFAULT 0,
+		last_failed_login TIMESTAMP,
+		account_locked_until TIMESTAMP,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 	`
@@ -522,8 +563,8 @@ func TestLoginAfterFallbackConfirmation(t *testing.T) {
 	}
 
 	// Insert test user with confirmed fallback
-	_, err = db.Exec("INSERT INTO users (email, password, fallback_email, fallback_token, fallback_confirmed) VALUES (?, ?, ?, ?, ?)",
-		"test@example.com", "$2a$10$abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890", "recovery@example.com", "token123", true)
+	_, err = db.Exec("INSERT INTO users (email, password, password_hash, totp_secret, fallback_email, fallback_token, fallback_confirmed) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		"test@example.com", "$2a$10$abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890", "$2a$10$abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890", "JBSWY3DPEHPK3PXP", "recovery@example.com", "token123", true)
 	if err != nil {
 		t.Fatalf("Failed to insert test user: %v", err)
 	}

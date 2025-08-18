@@ -273,3 +273,9 @@ Write-Host "- Export files are automatically cleaned up after 24 hours" -Foregro
 Write-Host "- Retention policies control how long different event types are kept" -ForegroundColor Gray
 Write-Host "- The audit worker should be running to handle cleanup tasks" -ForegroundColor Gray
 
+
+
+
+
+
+

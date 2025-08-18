@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+	"time"
 
-	"secure-email-mvp/pkg/auth"
+	"github.com/dgrijalva/jwt-go"
 )
 
 // TestJWTAuthentication tests JWT authentication middleware
@@ -82,8 +84,18 @@ func TestJWTAuthentication(t *testing.T) {
 
 // TestValidJWTAuthentication tests successful JWT authentication
 func TestValidJWTAuthentication(t *testing.T) {
-	// Generate a valid JWT token
-	token, err := auth.GenerateJWT("test-user-123")
+	// Set JWT secret for testing
+	os.Setenv("JWT_SECRET", "test-secret-key-for-jwt-signing")
+	defer os.Unsetenv("JWT_SECRET")
+
+	// Generate a valid JWT token with both user_id and email claims
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": "123",
+		"email":   "test@example.com",
+		"exp":     time.Now().Add(24 * time.Hour).Unix(),
+		"iat":     time.Now().Unix(),
+	})
+	tokenString, err := token.SignedString([]byte("test-secret-key-for-jwt-signing"))
 	if err != nil {
 		t.Fatalf("Failed to generate JWT token: %v", err)
 	}
@@ -91,7 +103,7 @@ func TestValidJWTAuthentication(t *testing.T) {
 	// Create request with valid token
 	reqBody := `{"recipient":"test@example.com","subject":"Test","body":"Test body"}`
 	req := httptest.NewRequest("POST", "/api/email/send", bytes.NewBuffer([]byte(reqBody)))
-	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Authorization", "Bearer "+tokenString)
 	req.Header.Set("Content-Type", "application/json")
 
 	// Create response recorder
