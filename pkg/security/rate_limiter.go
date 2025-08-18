@@ -21,19 +21,19 @@ type RateLimiterConfig struct {
 
 // RateLimitEntry represents a rate limit entry for a client
 type RateLimitEntry struct {
-	Count     int       `json:"count"`
-	FirstSeen time.Time `json:"first_seen"`
-	LastSeen  time.Time `json:"last_seen"`
-	Blocked   bool      `json:"blocked"`
+	Count     int        `json:"count"`
+	FirstSeen time.Time  `json:"first_seen"`
+	LastSeen  time.Time  `json:"last_seen"`
+	Blocked   bool       `json:"blocked"`
 	BlockedAt *time.Time `json:"blocked_at,omitempty"`
 }
 
 // RateLimiter implements rate limiting functionality
 type RateLimiter struct {
-	config     RateLimiterConfig
-	clients    map[string]*RateLimitEntry
-	mutex      sync.RWMutex
-	stopChan   chan struct{}
+	config        RateLimiterConfig
+	clients       map[string]*RateLimitEntry
+	mutex         sync.RWMutex
+	stopChan      chan struct{}
 	cleanupTicker *time.Ticker
 }
 
@@ -56,9 +56,9 @@ func NewRateLimiter(config RateLimiterConfig) *RateLimiter {
 	}
 
 	rl := &RateLimiter{
-		config:   config,
-		clients:  make(map[string]*RateLimitEntry),
-		stopChan: make(chan struct{}),
+		config:        config,
+		clients:       make(map[string]*RateLimitEntry),
+		stopChan:      make(chan struct{}),
 		cleanupTicker: time.NewTicker(config.CleanupInterval),
 	}
 
@@ -233,18 +233,18 @@ func RateLimitMiddleware(rl *RateLimiter) func(http.HandlerFunc) http.HandlerFun
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			clientID := rl.GetClientIdentifier(r)
-			
+
 			allowed, entry, err := rl.IsAllowed(clientID)
 			if !allowed {
 				// Log the rate limit violation
 				log.Printf("[RATE_LIMITER] Rate limit exceeded for client %s: %v", clientID, err)
-				
+
 				// Add rate limit headers
 				w.Header().Set("X-RateLimit-Limit", strconv.Itoa(rl.config.RequestsPerMinute))
 				w.Header().Set("X-RateLimit-Remaining", "0")
 				w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(time.Now().Add(rl.config.WindowSize).Unix(), 10))
 				w.Header().Set("Retry-After", strconv.Itoa(int(rl.config.WindowSize.Seconds())))
-				
+
 				// Return rate limit error
 				http.Error(w, `{"error":"Rate limit exceeded","code":"RATE_LIMIT_EXCEEDED"}`, http.StatusTooManyRequests)
 				return
@@ -255,7 +255,7 @@ func RateLimitMiddleware(rl *RateLimiter) func(http.HandlerFunc) http.HandlerFun
 			if remaining < 0 {
 				remaining = 0
 			}
-			
+
 			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(rl.config.RequestsPerMinute))
 			w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(remaining))
 			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(entry.FirstSeen.Add(rl.config.WindowSize).Unix(), 10))
@@ -395,7 +395,7 @@ func (arl *AdaptiveRateLimiter) IsAllowed(clientID string) (bool, *RateLimitEntr
 // adjustLimit adjusts the rate limit for a client
 func (arl *AdaptiveRateLimiter) adjustLimit(entry *AdaptiveClientEntry, increase bool) {
 	now := time.Now()
-	
+
 	// Prevent too frequent adjustments
 	if now.Sub(entry.LastAdjustment) < time.Minute {
 		return
@@ -424,7 +424,7 @@ func (arl *AdaptiveRateLimiter) adjustLimit(entry *AdaptiveClientEntry, increase
 	entry.SuccessfulReqs = 0
 	entry.Violations = 0
 
-	log.Printf("[ADAPTIVE_RATE_LIMITER] Adjusted limit for client: %d -> %d (trust_score: %d)", 
+	log.Printf("[ADAPTIVE_RATE_LIMITER] Adjusted limit for client: %d -> %d (trust_score: %d)",
 		oldLimit, entry.CurrentLimit, entry.TrustScore)
 }
 
@@ -444,7 +444,7 @@ func (arl *AdaptiveRateLimiter) GetStats() map[string]interface{} {
 	defer arl.mutex.RUnlock()
 
 	baseStats := arl.baseLimiter.GetStats()
-	
+
 	totalClients := len(arl.clients)
 	trustedClients := 0
 	penalizedClients := 0
@@ -478,18 +478,18 @@ func AdaptiveRateLimitMiddleware(arl *AdaptiveRateLimiter) func(http.HandlerFunc
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			clientID := arl.GetClientIdentifier(r)
-			
+
 			allowed, entry, err := arl.IsAllowed(clientID)
 			if !allowed {
 				// Log the rate limit violation
 				log.Printf("[ADAPTIVE_RATE_LIMITER] Rate limit exceeded for client %s: %v", clientID, err)
-				
+
 				// Add rate limit headers
 				w.Header().Set("X-RateLimit-Limit", strconv.Itoa(entry.Count))
 				w.Header().Set("X-RateLimit-Remaining", "0")
 				w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(time.Now().Add(time.Minute).Unix(), 10))
 				w.Header().Set("Retry-After", "60")
-				
+
 				// Return rate limit error
 				http.Error(w, `{"error":"Rate limit exceeded","code":"RATE_LIMIT_EXCEEDED"}`, http.StatusTooManyRequests)
 				return
@@ -500,7 +500,7 @@ func AdaptiveRateLimitMiddleware(arl *AdaptiveRateLimiter) func(http.HandlerFunc
 			if remaining < 0 {
 				remaining = 0
 			}
-			
+
 			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(entry.Count))
 			w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(remaining))
 			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(entry.FirstSeen.Add(time.Minute).Unix(), 10))

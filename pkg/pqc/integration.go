@@ -23,7 +23,7 @@ func NewPQCIntegration(db *sql.DB, config *PQCConfig) (*PQCIntegration, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PQC service: %w", err)
 	}
-	
+
 	return &PQCIntegration{
 		service: service,
 		db:      db,
@@ -36,7 +36,7 @@ func (pi *PQCIntegration) EncryptEmailContent(plaintext []byte, emailID string) 
 		// Fall back to existing AES encryption
 		return pi.encryptWithAES(plaintext, emailID)
 	}
-	
+
 	// Use PQC hybrid encryption
 	return pi.encryptWithPQC(plaintext, emailID)
 }
@@ -48,7 +48,7 @@ func (pi *PQCIntegration) DecryptEmailContent(emailID string) (*DecryptionResult
 	if err != nil {
 		return nil, fmt.Errorf("failed to get encryption metadata: %w", err)
 	}
-	
+
 	if metadata.PQCEnabled {
 		return pi.decryptWithPQC(emailID, metadata)
 	} else {
@@ -61,41 +61,41 @@ func (pi *PQCIntegration) MigrateEmailToPQC(emailID string) error {
 	if !pi.service.IsEnabled() {
 		return fmt.Errorf("PQC is not enabled")
 	}
-	
+
 	// Get current encryption metadata
 	metadata, err := pi.getEmailEncryptionMetadata(emailID)
 	if err != nil {
 		return fmt.Errorf("failed to get encryption metadata: %w", err)
 	}
-	
+
 	if metadata.PQCEnabled {
 		return fmt.Errorf("email is already PQC encrypted")
 	}
-	
+
 	// Decrypt with AES
 	aesResult, err := pi.decryptWithAES(emailID, metadata)
 	if err != nil {
 		return fmt.Errorf("failed to decrypt with AES: %w", err)
 	}
-	
+
 	// Re-encrypt with PQC
 	pqcResult, err := pi.encryptWithPQC(aesResult.Plaintext, emailID)
 	if err != nil {
 		return fmt.Errorf("failed to re-encrypt with PQC: %w", err)
 	}
-	
+
 	// Update database with PQC metadata
 	err = pi.updateEmailEncryptionMetadata(emailID, &EmailEncryptionMetadata{
 		PQCEnabled:        true,
 		EncryptionVersion: "PQC-HYBRID",
-		PQCKeyID:         pqcResult.KeyID,
+		PQCKeyID:          pqcResult.KeyID,
 		PQCEncryptionTime: time.Now(),
 		PQCEncryptedData:  pqcResult.SerializedData,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update encryption metadata: %w", err)
 	}
-	
+
 	log.Printf("Successfully migrated email %s to PQC encryption", emailID)
 	return nil
 }
@@ -105,13 +105,13 @@ func (pi *PQCIntegration) BatchMigrateEmailsToPQC(batchSize int) (int, error) {
 	if !pi.service.IsEnabled() {
 		return 0, fmt.Errorf("PQC is not enabled")
 	}
-	
+
 	// Get emails that need migration
 	emails, err := pi.getEmailsForMigration(batchSize)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get emails for migration: %w", err)
 	}
-	
+
 	migratedCount := 0
 	for _, emailID := range emails {
 		if err := pi.MigrateEmailToPQC(emailID); err != nil {
@@ -120,7 +120,7 @@ func (pi *PQCIntegration) BatchMigrateEmailsToPQC(batchSize int) (int, error) {
 		}
 		migratedCount++
 	}
-	
+
 	return migratedCount, nil
 }
 
@@ -155,25 +155,25 @@ type EmailEncryptionMetadata struct {
 // encryptWithPQC encrypts data using PQC hybrid encryption
 func (pi *PQCIntegration) encryptWithPQC(plaintext []byte, emailID string) (*EncryptionResult, error) {
 	startTime := time.Now()
-	
+
 	// Encrypt with PQC hybrid
 	hybridData, err := pi.service.EncryptHybrid(plaintext, fmt.Sprintf("email_%s", emailID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt with PQC: %w", err)
 	}
-	
+
 	// Serialize hybrid data
 	serializedData, err := pi.service.SerializeHybridData(hybridData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize hybrid data: %w", err)
 	}
-	
+
 	// Use AES-256-GCM data for R2 storage (primary method)
 	encryptedData := append(hybridData.AES256GCMData.Ciphertext, hybridData.AES256GCMData.AuthTag...)
-	
+
 	// Log performance metric
 	pi.logPerformanceMetric("ENCRYPT", time.Since(startTime), len(plaintext), hybridData.KyberLevel, true, nil, emailID)
-	
+
 	return &EncryptionResult{
 		EncryptedData:    encryptedData,
 		SerializedData:   serializedData,
@@ -191,13 +191,13 @@ func (pi *PQCIntegration) encryptWithPQC(plaintext []byte, emailID string) (*Enc
 // decryptWithPQC decrypts data using PQC hybrid decryption
 func (pi *PQCIntegration) decryptWithPQC(emailID string, metadata *EmailEncryptionMetadata) (*DecryptionResult, error) {
 	startTime := time.Now()
-	
+
 	// Deserialize hybrid data
 	hybridData, err := pi.service.DeserializeHybridData(metadata.PQCEncryptedData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deserialize hybrid data: %w", err)
 	}
-	
+
 	// Decrypt with PQC hybrid
 	plaintext, err := pi.service.DecryptHybrid(hybridData, fmt.Sprintf("email_%s", emailID))
 	if err != nil {
@@ -205,10 +205,10 @@ func (pi *PQCIntegration) decryptWithPQC(emailID string, metadata *EmailEncrypti
 		pi.logPerformanceMetric("DECRYPT", time.Since(startTime), 0, hybridData.KyberLevel, false, err, emailID)
 		return nil, fmt.Errorf("failed to decrypt with PQC: %w", err)
 	}
-	
+
 	// Log performance metric
 	pi.logPerformanceMetric("DECRYPT", time.Since(startTime), len(plaintext), hybridData.KyberLevel, true, nil, emailID)
-	
+
 	return &DecryptionResult{
 		Plaintext:        plaintext,
 		EncryptionMethod: "PQC-HYBRID",
@@ -224,31 +224,31 @@ func (pi *PQCIntegration) decryptWithPQC(emailID string, metadata *EmailEncrypti
 // encryptWithAES encrypts data using existing AES-256-GCM encryption
 func (pi *PQCIntegration) encryptWithAES(plaintext []byte, emailID string) (*EncryptionResult, error) {
 	startTime := time.Now()
-	
+
 	// Use existing AES encryption
 	encryptedData, err := auth.EncryptAES256GCM(plaintext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt with AES: %w", err)
 	}
-	
+
 	// Create metadata for database storage
 	metadata := map[string]interface{}{
-		"key":     base64.StdEncoding.EncodeToString(encryptedData.Key),
-		"nonce":   base64.StdEncoding.EncodeToString(encryptedData.Nonce),
+		"key":      base64.StdEncoding.EncodeToString(encryptedData.Key),
+		"nonce":    base64.StdEncoding.EncodeToString(encryptedData.Nonce),
 		"auth_tag": base64.StdEncoding.EncodeToString(encryptedData.AuthTag),
 	}
-	
+
 	serializedMetadata, err := json.Marshal(metadata)
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize metadata: %w", err)
 	}
-	
+
 	// Combine ciphertext and auth tag for R2 storage
 	encryptedBlob := append(encryptedData.Ciphertext, encryptedData.AuthTag...)
-	
+
 	// Log performance metric
 	pi.logPerformanceMetric("ENCRYPT", time.Since(startTime), len(plaintext), 0, true, nil, emailID)
-	
+
 	return &EncryptionResult{
 		EncryptedData:    encryptedBlob,
 		SerializedData:   string(serializedMetadata),
@@ -261,36 +261,36 @@ func (pi *PQCIntegration) encryptWithAES(plaintext []byte, emailID string) (*Enc
 // decryptWithAES decrypts data using existing AES-256-GCM decryption
 func (pi *PQCIntegration) decryptWithAES(emailID string, metadata *EmailEncryptionMetadata) (*DecryptionResult, error) {
 	startTime := time.Now()
-	
+
 	// Parse metadata
 	var aesMetadata map[string]interface{}
 	if err := json.Unmarshal([]byte(metadata.PQCEncryptedData), &aesMetadata); err != nil {
 		return nil, fmt.Errorf("failed to parse AES metadata: %w", err)
 	}
-	
+
 	// Decode components
 	key, err := base64.StdEncoding.DecodeString(aesMetadata["key"].(string))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode AES key: %w", err)
 	}
-	
+
 	nonce, err := base64.StdEncoding.DecodeString(aesMetadata["nonce"].(string))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode AES nonce: %w", err)
 	}
-	
+
 	authTag, err := base64.StdEncoding.DecodeString(aesMetadata["auth_tag"].(string))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode AES auth tag: %w", err)
 	}
-	
+
 	// Create EncryptedData struct
 	encryptedData := &auth.EncryptedData{
 		Key:     key,
 		Nonce:   nonce,
 		AuthTag: authTag,
 	}
-	
+
 	// Decrypt
 	plaintext, err := auth.DecryptAES256GCM(encryptedData)
 	if err != nil {
@@ -298,10 +298,10 @@ func (pi *PQCIntegration) decryptWithAES(emailID string, metadata *EmailEncrypti
 		pi.logPerformanceMetric("DECRYPT", time.Since(startTime), 0, 0, false, err, emailID)
 		return nil, fmt.Errorf("failed to decrypt with AES: %w", err)
 	}
-	
+
 	// Log performance metric
 	pi.logPerformanceMetric("DECRYPT", time.Since(startTime), len(plaintext), 0, true, nil, emailID)
-	
+
 	return &DecryptionResult{
 		Plaintext:        plaintext,
 		EncryptionMethod: "AES-256-GCM",
@@ -324,10 +324,10 @@ func (pi *PQCIntegration) getEmailEncryptionMetadata(emailID string) (*EmailEncr
 		FROM emails 
 		WHERE id = ?
 	`
-	
+
 	var metadata EmailEncryptionMetadata
 	var pqcEncryptionTime sql.NullTime
-	
+
 	err := pi.db.QueryRow(query, emailID).Scan(
 		&metadata.PQCEnabled,
 		&metadata.EncryptionVersion,
@@ -338,15 +338,15 @@ func (pi *PQCIntegration) getEmailEncryptionMetadata(emailID string) (*EmailEncr
 		&metadata.AESNonce,
 		&metadata.AESAuthTag,
 	)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to query encryption metadata: %w", err)
 	}
-	
+
 	if pqcEncryptionTime.Valid {
 		metadata.PQCEncryptionTime = pqcEncryptionTime.Time
 	}
-	
+
 	return &metadata, nil
 }
 
@@ -362,7 +362,7 @@ func (pi *PQCIntegration) updateEmailEncryptionMetadata(emailID string, metadata
 			pqc_encrypted_data = ?
 		WHERE id = ?
 	`
-	
+
 	_, err := pi.db.Exec(query,
 		metadata.PQCEnabled,
 		metadata.EncryptionVersion,
@@ -371,11 +371,11 @@ func (pi *PQCIntegration) updateEmailEncryptionMetadata(emailID string, metadata
 		metadata.PQCEncryptedData,
 		emailID,
 	)
-	
+
 	if err != nil {
 		return fmt.Errorf("failed to update encryption metadata: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -388,13 +388,13 @@ func (pi *PQCIntegration) getEmailsForMigration(batchSize int) ([]string, error)
 		AND encryption_version = 'AES-256-GCM'
 		LIMIT ?
 	`
-	
+
 	rows, err := pi.db.Query(query, batchSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query emails for migration: %w", err)
 	}
 	defer rows.Close()
-	
+
 	var emailIDs []string
 	for rows.Next() {
 		var emailID string
@@ -403,7 +403,7 @@ func (pi *PQCIntegration) getEmailsForMigration(batchSize int) ([]string, error)
 		}
 		emailIDs = append(emailIDs, emailID)
 	}
-	
+
 	return emailIDs, nil
 }
 
@@ -415,12 +415,12 @@ func (pi *PQCIntegration) logPerformanceMetric(operation string, duration time.D
 			hsm_enabled, success, error_message, context, timestamp
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
-	
+
 	errorMessage := ""
 	if err != nil {
 		errorMessage = err.Error()
 	}
-	
+
 	_, logErr := pi.db.Exec(query,
 		generateUUID(),
 		operation,
@@ -433,7 +433,7 @@ func (pi *PQCIntegration) logPerformanceMetric(operation string, duration time.D
 		context,
 		time.Now(),
 	)
-	
+
 	if logErr != nil {
 		log.Printf("Failed to log performance metric: %v", logErr)
 	}
@@ -454,37 +454,37 @@ func (pi *PQCIntegration) GetMigrationStats() (map[string]interface{}, error) {
 			COUNT(CASE WHEN encryption_version = 'PQC-HYBRID' THEN 1 END) as hybrid_emails
 		FROM emails
 	`
-	
+
 	var stats struct {
 		TotalEmails  int
 		PQCEmails    int
 		AESEmails    int
 		HybridEmails int
 	}
-	
+
 	err := pi.db.QueryRow(query).Scan(
 		&stats.TotalEmails,
 		&stats.PQCEmails,
 		&stats.AESEmails,
 		&stats.HybridEmails,
 	)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get migration stats: %w", err)
 	}
-	
+
 	adoptionRate := 0.0
 	if stats.TotalEmails > 0 {
 		adoptionRate = float64(stats.PQCEmails) / float64(stats.TotalEmails) * 100
 	}
-	
+
 	return map[string]interface{}{
-		"total_emails":      stats.TotalEmails,
-		"pqc_emails":        stats.PQCEmails,
-		"aes_emails":        stats.AESEmails,
-		"hybrid_emails":     stats.HybridEmails,
-		"adoption_rate":     adoptionRate,
-		"pqc_enabled":       pi.service.IsEnabled(),
-		"migration_needed":  stats.AESEmails,
+		"total_emails":     stats.TotalEmails,
+		"pqc_emails":       stats.PQCEmails,
+		"aes_emails":       stats.AESEmails,
+		"hybrid_emails":    stats.HybridEmails,
+		"adoption_rate":    adoptionRate,
+		"pqc_enabled":      pi.service.IsEnabled(),
+		"migration_needed": stats.AESEmails,
 	}, nil
 }

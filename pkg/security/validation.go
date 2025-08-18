@@ -20,7 +20,7 @@ var (
 		regexp.MustCompile(`(?i)(or\s+1\s*=\s*1|or\s+true|or\s+false|and\s+1\s*=\s*1|and\s+true|and\s+false)`),
 		regexp.MustCompile(`(?i)(';|";|'--|"--|'/\*|"/\*|'union|"union|'select|"select)`),
 	}
-	
+
 	// XSS patterns
 	xssPatterns = []*regexp.Regexp{
 		regexp.MustCompile(`(?i)(<script|javascript:|vbscript:|onload\s*=|onerror\s*=|onclick\s*=|onmouseover\s*=|onfocus\s*=|onblur\s*=)`),
@@ -28,7 +28,7 @@ var (
 		regexp.MustCompile(`(?i)(alert\(|confirm\(|prompt\(|eval\(|setTimeout\(|setInterval\(|Function\(|document\.|window\.|location\.|history\.)`),
 		regexp.MustCompile(`(?i)(data:text/html|data:application/x-javascript|vbscript:|javascript:|file:|ftp:|gopher:|mailto:|news:|telnet:)`),
 	}
-	
+
 	// CSV Injection patterns
 	csvInjectionPatterns = []*regexp.Regexp{
 		regexp.MustCompile(`^[=+\-@\t\r\n]`), // Starts with =, +, -, @, tab, newline
@@ -36,14 +36,14 @@ var (
 		regexp.MustCompile(`(?i)(=http|'http|"http|=ftp|'ftp|"ftp|=file|'file|"file)`),
 		regexp.MustCompile(`(?i)(=javascript|'javascript|"javascript|=vbscript|'vbscript|"vbscript)`),
 	}
-	
+
 	// Path traversal patterns
 	pathTraversalPatterns = []*regexp.Regexp{
 		regexp.MustCompile(`(?i)(\.\./|\.\.\\|\.\.%2f|\.\.%5c|\.\.%2F|\.\.%5C)`),
 		regexp.MustCompile(`(?i)(%2e%2e%2f|%2e%2e%5c|%2e%2e%2F|%2e%2e%5C)`),
 		regexp.MustCompile(`(?i)(\.\.%252f|\.\.%255c|\.\.%252F|\.\.%255C)`),
 	}
-	
+
 	// Command injection patterns
 	commandInjectionPatterns = []*regexp.Regexp{
 		regexp.MustCompile("(?i)(;|\\||&|\\$\\(|`|>|<|\\$IFS|\\$PATH|\\$PWD|\\$HOME|\\$USER)"),
@@ -51,16 +51,16 @@ var (
 		regexp.MustCompile(`(?i)(cat|ls|dir|pwd|whoami|id|uname|hostname|ps|top|kill|chmod|chown)`),
 		regexp.MustCompile(`(?i)(wget|curl|nc|netcat|telnet|ssh|scp|rsync|ftp|sftp|ncftp)`),
 	}
-	
+
 	// Valid UUID pattern
 	uuidPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-	
+
 	// Valid email pattern
 	emailPattern = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-	
+
 	// Valid organization name pattern (alphanumeric, spaces, hyphens, underscores)
 	orgNamePattern = regexp.MustCompile(`^[a-zA-Z0-9\s\-_]{1,100}$`)
-	
+
 	// Valid action pattern for compliance logs
 	actionPattern = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 )
@@ -79,21 +79,21 @@ func ValidateAndSanitizeInput(input string, inputType string, maxLength int) Val
 		IsValid: true,
 		Errors:  []string{},
 	}
-	
+
 	// Check for empty input
 	if strings.TrimSpace(input) == "" {
 		result.IsValid = false
 		result.Errors = append(result.Errors, "Input cannot be empty")
 		return result
 	}
-	
+
 	// Check length
 	if len(input) > maxLength {
 		result.IsValid = false
 		result.Errors = append(result.Errors, fmt.Sprintf("Input exceeds maximum length of %d characters", maxLength))
 		return result
 	}
-	
+
 	// Check for SQL injection
 	for _, pattern := range sqlInjectionPatterns {
 		if pattern.MatchString(input) {
@@ -103,7 +103,7 @@ func ValidateAndSanitizeInput(input string, inputType string, maxLength int) Val
 			return result
 		}
 	}
-	
+
 	// Check for XSS
 	for _, pattern := range xssPatterns {
 		if pattern.MatchString(input) {
@@ -113,7 +113,7 @@ func ValidateAndSanitizeInput(input string, inputType string, maxLength int) Val
 			return result
 		}
 	}
-	
+
 	// Check for CSV injection
 	for _, pattern := range csvInjectionPatterns {
 		if pattern.MatchString(input) {
@@ -123,7 +123,7 @@ func ValidateAndSanitizeInput(input string, inputType string, maxLength int) Val
 			return result
 		}
 	}
-	
+
 	// Check for path traversal
 	for _, pattern := range pathTraversalPatterns {
 		if pattern.MatchString(input) {
@@ -133,7 +133,7 @@ func ValidateAndSanitizeInput(input string, inputType string, maxLength int) Val
 			return result
 		}
 	}
-	
+
 	// Check for command injection
 	for _, pattern := range commandInjectionPatterns {
 		if pattern.MatchString(input) {
@@ -143,7 +143,7 @@ func ValidateAndSanitizeInput(input string, inputType string, maxLength int) Val
 			return result
 		}
 	}
-	
+
 	// Type-specific validation
 	switch inputType {
 	case "email":
@@ -179,12 +179,12 @@ func ValidateAndSanitizeInput(input string, inputType string, maxLength int) Val
 			result.Errors = append(result.Errors, "Invalid date format (expected YYYY-MM-DD)")
 		}
 	}
-	
+
 	// Sanitize the input if valid
 	if result.IsValid {
 		result.Sanitized = sanitizeInput(input)
 	}
-	
+
 	return result
 }
 
@@ -192,7 +192,7 @@ func ValidateAndSanitizeInput(input string, inputType string, maxLength int) Val
 func sanitizeInput(input string) string {
 	// Remove null bytes
 	input = strings.ReplaceAll(input, "\x00", "")
-	
+
 	// Remove control characters except newline and tab
 	var sanitized strings.Builder
 	for _, r := range input {
@@ -201,14 +201,14 @@ func sanitizeInput(input string) string {
 		}
 		sanitized.WriteRune(r)
 	}
-	
+
 	// Trim whitespace
 	result := strings.TrimSpace(sanitized.String())
-	
+
 	// Normalize line endings
 	result = strings.ReplaceAll(result, "\r\n", "\n")
 	result = strings.ReplaceAll(result, "\r", "\n")
-	
+
 	return result
 }
 
@@ -248,10 +248,10 @@ func ValidateDate(date string) bool {
 func SanitizeCSVValue(value string) string {
 	// Remove null bytes
 	value = strings.ReplaceAll(value, "\x00", "")
-	
+
 	// Escape quotes
 	value = strings.ReplaceAll(value, `"`, `""`)
-	
+
 	// Remove control characters
 	var sanitized strings.Builder
 	for _, r := range value {
@@ -260,14 +260,14 @@ func SanitizeCSVValue(value string) string {
 		}
 		sanitized.WriteRune(r)
 	}
-	
+
 	result := sanitized.String()
-	
+
 	// Check if the value needs to be quoted (contains comma, newline, or quote)
 	if strings.ContainsAny(result, ",\"\n\r") {
 		result = `"` + result + `"`
 	}
-	
+
 	return result
 }
 
@@ -276,13 +276,13 @@ func GenerateSecureToken(length int) (string, error) {
 	if length <= 0 {
 		length = 32 // Default length
 	}
-	
+
 	bytes := make([]byte, length)
 	_, err := rand.Read(bytes)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate secure token: %v", err)
 	}
-	
+
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
@@ -292,14 +292,14 @@ func ValidateJWTToken(token string) ValidationResult {
 		IsValid: true,
 		Errors:  []string{},
 	}
-	
+
 	// Check if token is empty
 	if strings.TrimSpace(token) == "" {
 		result.IsValid = false
 		result.Errors = append(result.Errors, "JWT token cannot be empty")
 		return result
 	}
-	
+
 	// Check if token has the correct format (3 parts separated by dots)
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
@@ -308,7 +308,7 @@ func ValidateJWTToken(token string) ValidationResult {
 		result.Errors = append(result.Errors, "Invalid JWT format")
 		return result
 	}
-	
+
 	// Validate each part
 	for i, part := range parts {
 		if part == "" {
@@ -317,7 +317,7 @@ func ValidateJWTToken(token string) ValidationResult {
 			result.Errors = append(result.Errors, fmt.Sprintf("JWT part %d cannot be empty", i+1))
 			return result
 		}
-		
+
 		// Check for valid base64 characters
 		for _, r := range part {
 			if !((r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' || r == '_' || r == '=') {
@@ -328,7 +328,7 @@ func ValidateJWTToken(token string) ValidationResult {
 			}
 		}
 	}
-	
+
 	return result
 }
 
@@ -338,21 +338,21 @@ func ValidateTOTPCode(code string) ValidationResult {
 		IsValid: true,
 		Errors:  []string{},
 	}
-	
+
 	// Check if code is empty
 	if strings.TrimSpace(code) == "" {
 		result.IsValid = false
 		result.Errors = append(result.Errors, "TOTP code cannot be empty")
 		return result
 	}
-	
+
 	// Check length (typically 6 digits)
 	if len(code) != 6 {
 		result.IsValid = false
 		result.Errors = append(result.Errors, "TOTP code must be 6 digits")
 		return result
 	}
-	
+
 	// Check if all characters are digits
 	for _, r := range code {
 		if r < '0' || r > '9' {
@@ -361,7 +361,7 @@ func ValidateTOTPCode(code string) ValidationResult {
 			return result
 		}
 	}
-	
+
 	return result
 }
 
@@ -371,25 +371,25 @@ func ValidatePassword(password string) ValidationResult {
 		IsValid: true,
 		Errors:  []string{},
 	}
-	
+
 	// Check minimum length
 	if len(password) < 8 {
 		result.IsValid = false
 		result.Errors = append(result.Errors, "Password must be at least 8 characters long")
 	}
-	
+
 	// Check maximum length
 	if len(password) > 128 {
 		result.IsValid = false
 		result.Errors = append(result.Errors, "Password must be no more than 128 characters long")
 	}
-	
+
 	// Check for common weak passwords
 	weakPasswords := []string{
 		"password", "123456", "123456789", "qwerty", "abc123", "password123",
 		"admin", "root", "user", "test", "guest", "welcome", "login",
 	}
-	
+
 	lowerPassword := strings.ToLower(password)
 	for _, weak := range weakPasswords {
 		if lowerPassword == weak {
@@ -398,7 +398,7 @@ func ValidatePassword(password string) ValidationResult {
 			break
 		}
 	}
-	
+
 	// Check for control characters
 	for _, r := range password {
 		if unicode.IsControl(r) {
@@ -407,7 +407,7 @@ func ValidatePassword(password string) ValidationResult {
 			break
 		}
 	}
-	
+
 	return result
 }
 
@@ -417,29 +417,29 @@ func ValidateRateLimit(limit, window int) ValidationResult {
 		IsValid: true,
 		Errors:  []string{},
 	}
-	
+
 	// Validate limit
 	if limit <= 0 {
 		result.IsValid = false
 		result.Errors = append(result.Errors, "Rate limit must be greater than 0")
 	}
-	
+
 	if limit > 10000 {
 		result.IsValid = false
 		result.Errors = append(result.Errors, "Rate limit cannot exceed 10000")
 	}
-	
+
 	// Validate window (in seconds)
 	if window <= 0 {
 		result.IsValid = false
 		result.Errors = append(result.Errors, "Rate limit window must be greater than 0")
 	}
-	
+
 	if window > 86400 { // 24 hours
 		result.IsValid = false
 		result.Errors = append(result.Errors, "Rate limit window cannot exceed 24 hours")
 	}
-	
+
 	return result
 }
 
@@ -451,34 +451,34 @@ func IsSuspiciousInput(input string) (bool, string) {
 			return true, "sql_injection"
 		}
 	}
-	
+
 	// Check for XSS
 	for _, pattern := range xssPatterns {
 		if pattern.MatchString(input) {
 			return true, "xss"
 		}
 	}
-	
+
 	// Check for CSV injection
 	for _, pattern := range csvInjectionPatterns {
 		if pattern.MatchString(input) {
 			return true, "csv_injection"
 		}
 	}
-	
+
 	// Check for path traversal
 	for _, pattern := range pathTraversalPatterns {
 		if pattern.MatchString(input) {
 			return true, "path_traversal"
 		}
 	}
-	
+
 	// Check for command injection
 	for _, pattern := range commandInjectionPatterns {
 		if pattern.MatchString(input) {
 			return true, "command_injection"
 		}
 	}
-	
+
 	return false, ""
 }

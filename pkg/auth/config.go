@@ -15,10 +15,10 @@ type Argon2Config struct {
 
 // TOTPConfig defines TOTP validation parameters
 type TOTPConfig struct {
-	Period     uint   // Time period in seconds (default: 30)
-	Skew       uint   // Time skew tolerance (default: 1)
-	Digits     int    // Number of digits (default: 6)
-	Algorithm  string // Hash algorithm (default: "SHA1")
+	Period    uint   // Time period in seconds (default: 30)
+	Skew      uint   // Time skew tolerance (default: 1)
+	Digits    int    // Number of digits (default: 6)
+	Algorithm string // Hash algorithm (default: "SHA1")
 }
 
 // AuthConfig defines the global authentication configuration
@@ -42,14 +42,14 @@ func LoadAuthConfig() AuthConfig {
 			KeyLength:   getEnvUint32("ARGON2_KEY_LENGTH", 32),
 		},
 		TOTP: TOTPConfig{
-			Period:     getEnvUint("TOTP_PERIOD", 30),
-			Skew:       getEnvUint("TOTP_SKEW", 1),
-			Digits:     6, // Fixed at 6 for compatibility
-			Algorithm:  "SHA1", // Fixed for compatibility
+			Period:    getEnvUint("TOTP_PERIOD", 30),
+			Skew:      getEnvUint("TOTP_SKEW", 1),
+			Digits:    6,      // Fixed at 6 for compatibility
+			Algorithm: "SHA1", // Fixed for compatibility
 		},
 		UseNewFlow: getEnvBool("AUTH_USE_NEW_FLOW", true),
 	}
-	
+
 	return config
 }
 

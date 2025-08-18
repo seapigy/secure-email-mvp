@@ -33,7 +33,7 @@ func NewAuditLogger(enabled bool) *AuditLogger {
 	al := &AuditLogger{
 		enabled: enabled,
 	}
-	
+
 	if enabled {
 		// Open audit log file
 		logFile, err := os.OpenFile("/var/log/pqc_audit.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -44,7 +44,7 @@ func NewAuditLogger(enabled bool) *AuditLogger {
 			al.logFile = logFile
 		}
 	}
-	
+
 	return al
 }
 
@@ -53,10 +53,10 @@ func (al *AuditLogger) LogEvent(eventType, description string, details map[strin
 	if !al.enabled {
 		return
 	}
-	
+
 	al.mu.Lock()
 	defer al.mu.Unlock()
-	
+
 	event := &AuditEvent{
 		Timestamp:   time.Now(),
 		EventType:   eventType,
@@ -64,21 +64,21 @@ func (al *AuditLogger) LogEvent(eventType, description string, details map[strin
 		Details:     details,
 		Severity:    al.determineSeverity(eventType),
 	}
-	
+
 	// Convert to JSON
 	jsonData, err := json.Marshal(event)
 	if err != nil {
 		log.Printf("Failed to marshal audit event: %v", err)
 		return
 	}
-	
+
 	// Write to log file if available
 	if al.logFile != nil {
 		if _, err := al.logFile.Write(append(jsonData, '\n')); err != nil {
 			log.Printf("Failed to write to audit log file: %v", err)
 		}
 	}
-	
+
 	// Also log to standard logger for immediate visibility
 	log.Printf("[PQC_AUDIT] %s: %s", eventType, description)
 }
@@ -88,10 +88,10 @@ func (al *AuditLogger) LogEventWithContext(eventType, description string, detail
 	if !al.enabled {
 		return
 	}
-	
+
 	al.mu.Lock()
 	defer al.mu.Unlock()
-	
+
 	event := &AuditEvent{
 		Timestamp:   time.Now(),
 		EventType:   eventType,
@@ -102,21 +102,21 @@ func (al *AuditLogger) LogEventWithContext(eventType, description string, detail
 		IPAddress:   ipAddress,
 		SessionID:   sessionID,
 	}
-	
+
 	// Convert to JSON
 	jsonData, err := json.Marshal(event)
 	if err != nil {
 		log.Printf("Failed to marshal audit event: %v", err)
 		return
 	}
-	
+
 	// Write to log file if available
 	if al.logFile != nil {
 		if _, err := al.logFile.Write(append(jsonData, '\n')); err != nil {
 			log.Printf("Failed to write to audit log file: %v", err)
 		}
 	}
-	
+
 	// Also log to standard logger for immediate visibility
 	log.Printf("[PQC_AUDIT] %s: %s (User: %s, IP: %s)", eventType, description, userID, ipAddress)
 }
@@ -126,10 +126,10 @@ func (al *AuditLogger) LogSecurityEvent(eventType, description string, details m
 	if !al.enabled {
 		return
 	}
-	
+
 	al.mu.Lock()
 	defer al.mu.Unlock()
-	
+
 	event := &AuditEvent{
 		Timestamp:   time.Now(),
 		EventType:   eventType,
@@ -137,21 +137,21 @@ func (al *AuditLogger) LogSecurityEvent(eventType, description string, details m
 		Details:     details,
 		Severity:    severity,
 	}
-	
+
 	// Convert to JSON
 	jsonData, err := json.Marshal(event)
 	if err != nil {
 		log.Printf("Failed to marshal security event: %v", err)
 		return
 	}
-	
+
 	// Write to log file if available
 	if al.logFile != nil {
 		if _, err := al.logFile.Write(append(jsonData, '\n')); err != nil {
 			log.Printf("Failed to write to audit log file: %v", err)
 		}
 	}
-	
+
 	// Also log to standard logger for immediate visibility
 	log.Printf("[PQC_SECURITY] %s: %s (Severity: %s)", eventType, description, severity)
 }
@@ -161,10 +161,10 @@ func (al *AuditLogger) LogKeyOperation(operation, keyID string, details map[stri
 	if !al.enabled {
 		return
 	}
-	
+
 	eventType := fmt.Sprintf("KEY_%s", operation)
 	description := fmt.Sprintf("Key operation: %s for key ID: %s", operation, keyID)
-	
+
 	al.LogEvent(eventType, description, details)
 }
 
@@ -173,16 +173,16 @@ func (al *AuditLogger) LogEncryptionOperation(operation, context string, dataSiz
 	if !al.enabled {
 		return
 	}
-	
+
 	eventType := fmt.Sprintf("ENCRYPTION_%s", operation)
 	description := fmt.Sprintf("Encryption operation: %s for context: %s (data size: %d bytes)", operation, context, dataSize)
-	
+
 	if details == nil {
 		details = make(map[string]interface{})
 	}
 	details["data_size"] = dataSize
 	details["context"] = context
-	
+
 	al.LogEvent(eventType, description, details)
 }
 
@@ -191,17 +191,17 @@ func (al *AuditLogger) LogDecryptionOperation(operation, context string, dataSiz
 	if !al.enabled {
 		return
 	}
-	
+
 	eventType := fmt.Sprintf("DECRYPTION_%s", operation)
 	description := fmt.Sprintf("Decryption operation: %s for context: %s using %s (data size: %d bytes)", operation, context, method, dataSize)
-	
+
 	if details == nil {
 		details = make(map[string]interface{})
 	}
 	details["data_size"] = dataSize
 	details["context"] = context
 	details["method"] = method
-	
+
 	al.LogEvent(eventType, description, details)
 }
 
@@ -210,15 +210,15 @@ func (al *AuditLogger) LogHSMOperation(operation, hsmKeyID string, details map[s
 	if !al.enabled {
 		return
 	}
-	
+
 	eventType := fmt.Sprintf("HSM_%s", operation)
 	description := fmt.Sprintf("HSM operation: %s for HSM key ID: %s", operation, hsmKeyID)
-	
+
 	if details == nil {
 		details = make(map[string]interface{})
 	}
 	details["hsm_key_id"] = hsmKeyID
-	
+
 	al.LogEvent(eventType, description, details)
 }
 
@@ -227,16 +227,16 @@ func (al *AuditLogger) LogPerformanceEvent(operation string, duration time.Durat
 	if !al.enabled {
 		return
 	}
-	
+
 	eventType := fmt.Sprintf("PERFORMANCE_%s", operation)
 	description := fmt.Sprintf("Performance event: %s took %v", operation, duration)
-	
+
 	if details == nil {
 		details = make(map[string]interface{})
 	}
 	details["duration_ms"] = duration.Milliseconds()
 	details["duration_ns"] = duration.Nanoseconds()
-	
+
 	al.LogEvent(eventType, description, details)
 }
 
@@ -245,12 +245,12 @@ func (al *AuditLogger) LogError(eventType, description string, err error, detail
 	if !al.enabled {
 		return
 	}
-	
+
 	if details == nil {
 		details = make(map[string]interface{})
 	}
 	details["error"] = err.Error()
-	
+
 	al.LogSecurityEvent(eventType, description, details, "ERROR")
 }
 
@@ -259,7 +259,7 @@ func (al *AuditLogger) LogWarning(eventType, description string, details map[str
 	if !al.enabled {
 		return
 	}
-	
+
 	al.LogSecurityEvent(eventType, description, details, "WARN")
 }
 
@@ -268,7 +268,7 @@ func (al *AuditLogger) LogCritical(eventType, description string, details map[st
 	if !al.enabled {
 		return
 	}
-	
+
 	al.LogSecurityEvent(eventType, description, details, "CRITICAL")
 }
 
@@ -295,7 +295,7 @@ func (al *AuditLogger) isCriticalEvent(eventType string) bool {
 		"UNAUTHORIZED_ACCESS",
 		"KEY_ROTATION_FAILURE",
 	}
-	
+
 	for _, event := range criticalEvents {
 		if eventType == event {
 			return true
@@ -312,7 +312,7 @@ func (al *AuditLogger) isErrorEvent(eventType string) bool {
 		"HSM_OPERATION_FAILURE",
 		"CONFIGURATION_ERROR",
 	}
-	
+
 	for _, event := range errorEvents {
 		if eventType == event {
 			return true
@@ -329,7 +329,7 @@ func (al *AuditLogger) isWarningEvent(eventType string) bool {
 		"HSM_SLOW_RESPONSE",
 		"KEY_ROTATION_DUE",
 	}
-	
+
 	for _, event := range warningEvents {
 		if eventType == event {
 			return true
@@ -342,7 +342,7 @@ func (al *AuditLogger) isWarningEvent(eventType string) bool {
 func (al *AuditLogger) Close() error {
 	al.mu.Lock()
 	defer al.mu.Unlock()
-	
+
 	if al.logFile != nil {
 		return al.logFile.Close()
 	}

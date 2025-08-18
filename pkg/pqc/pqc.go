@@ -17,13 +17,13 @@ import (
 
 // PQCConfig holds configuration for PQC operations
 type PQCConfig struct {
-	EnablePQC          bool   `json:"enable_pqc"`
-	KyberLevel         int    `json:"kyber_level"`         // 512, 768, or 1024
-	HybridMode         bool   `json:"hybrid_mode"`         // Use hybrid classical + PQC
-	KeyRotationDays    int    `json:"key_rotation_days"`   // Key rotation interval
-	HSMEnabled         bool   `json:"hsm_enabled"`         // Use HSM for key operations
-	PerformanceMode    bool   `json:"performance_mode"`    // Optimize for performance
-	AuditLogging       bool   `json:"audit_logging"`       // Enable detailed audit logging
+	EnablePQC       bool `json:"enable_pqc"`
+	KyberLevel      int  `json:"kyber_level"`       // 512, 768, or 1024
+	HybridMode      bool `json:"hybrid_mode"`       // Use hybrid classical + PQC
+	KeyRotationDays int  `json:"key_rotation_days"` // Key rotation interval
+	HSMEnabled      bool `json:"hsm_enabled"`       // Use HSM for key operations
+	PerformanceMode bool `json:"performance_mode"`  // Optimize for performance
+	AuditLogging    bool `json:"audit_logging"`     // Enable detailed audit logging
 }
 
 // DefaultPQCConfig returns the default PQC configuration
@@ -42,21 +42,21 @@ func DefaultPQCConfig() *PQCConfig {
 // LoadPQCConfigFromEnv loads PQC configuration from environment variables
 func LoadPQCConfigFromEnv() *PQCConfig {
 	config := DefaultPQCConfig()
-	
+
 	// Check if PQC is enabled via feature flag
 	if os.Getenv("ENABLE_PQC_LAYER") == "true" {
 		config.EnablePQC = true
 	}
-	
+
 	// Load other configuration values
 	if hsmEnabled := os.Getenv("PQC_HSM_ENABLED"); hsmEnabled == "true" {
 		config.HSMEnabled = true
 	}
-	
+
 	if performanceMode := os.Getenv("PQC_PERFORMANCE_MODE"); performanceMode == "true" {
 		config.PerformanceMode = true
 	}
-	
+
 	return config
 }
 
@@ -65,16 +65,16 @@ type HybridEncryptedData struct {
 	// PQC Components
 	KyberCiphertext []byte `json:"kyber_ciphertext"` // Kyber encapsulated key
 	KyberLevel      int    `json:"kyber_level"`      // Kyber security level used
-	
+
 	// Symmetric Components (dual encryption)
-	AES256GCMData   *SymmetricEncryptedData `json:"aes256gcm_data"`   // AES-256-GCM encrypted data
-	ChaCha20Data    *SymmetricEncryptedData `json:"chacha20_data"`    // ChaCha20-Poly1305 encrypted data
-	
+	AES256GCMData *SymmetricEncryptedData `json:"aes256gcm_data"` // AES-256-GCM encrypted data
+	ChaCha20Data  *SymmetricEncryptedData `json:"chacha20_data"`  // ChaCha20-Poly1305 encrypted data
+
 	// Metadata
-	EncryptionTime  time.Time `json:"encryption_time"`
-	HybridMode      bool      `json:"hybrid_mode"`
-	KeyID           string    `json:"key_id"`           // HSM key identifier
-	Version         string    `json:"version"`          // PQC implementation version
+	EncryptionTime time.Time `json:"encryption_time"`
+	HybridMode     bool      `json:"hybrid_mode"`
+	KeyID          string    `json:"key_id"`  // HSM key identifier
+	Version        string    `json:"version"` // PQC implementation version
 }
 
 // SymmetricEncryptedData represents AES-256-GCM or ChaCha20-Poly1305 encrypted data
@@ -98,20 +98,20 @@ func NewPQCService(config *PQCConfig) (*PQCService, error) {
 	if config == nil {
 		config = DefaultPQCConfig()
 	}
-	
+
 	keyManager, err := NewKeyManager(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create key manager: %w", err)
 	}
-	
+
 	auditLog := NewAuditLogger(config.AuditLogging)
-	
+
 	service := &PQCService{
 		config:     config,
 		keyManager: keyManager,
 		auditLog:   auditLog,
 	}
-	
+
 	// Log service initialization
 	service.auditLog.LogEvent("PQC_SERVICE_INIT", "Service initialized", map[string]interface{}{
 		"kyber_level":      config.KyberLevel,
@@ -119,7 +119,7 @@ func NewPQCService(config *PQCConfig) (*PQCService, error) {
 		"hsm_enabled":      config.HSMEnabled,
 		"performance_mode": config.PerformanceMode,
 	})
-	
+
 	return service, nil
 }
 
@@ -127,37 +127,37 @@ func NewPQCService(config *PQCConfig) (*PQCService, error) {
 func (s *PQCService) EncryptHybrid(plaintext []byte, context string) (*HybridEncryptedData, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	if !s.config.EnablePQC {
 		return nil, fmt.Errorf("PQC layer is disabled")
 	}
-	
+
 	startTime := time.Now()
-	
+
 	// Generate a random symmetric key for this encryption
 	symmetricKey := make([]byte, 32) // 256 bits
 	if _, err := io.ReadFull(rand.Reader, symmetricKey); err != nil {
 		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
 	}
-	
+
 	// Encapsulate the symmetric key using Kyber
 	kyberCiphertext, err := s.keyManager.EncapsulateKey(symmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encapsulate key with Kyber: %w", err)
 	}
-	
+
 	// Encrypt data with AES-256-GCM
 	aesData, err := s.encryptAES256GCM(plaintext, symmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt with AES-256-GCM: %w", err)
 	}
-	
+
 	// Encrypt data with ChaCha20-Poly1305
 	chachaData, err := s.encryptChaCha20(plaintext, symmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt with ChaCha20-Poly1305: %w", err)
 	}
-	
+
 	// Create hybrid encrypted data
 	hybridData := &HybridEncryptedData{
 		KyberCiphertext: kyberCiphertext,
@@ -169,7 +169,7 @@ func (s *PQCService) EncryptHybrid(plaintext []byte, context string) (*HybridEnc
 		KeyID:           s.keyManager.GetCurrentKeyID(),
 		Version:         "1.0.0",
 	}
-	
+
 	// Log encryption event
 	s.auditLog.LogEvent("HYBRID_ENCRYPT", "Data encrypted with hybrid PQC", map[string]interface{}{
 		"context":         context,
@@ -178,7 +178,7 @@ func (s *PQCService) EncryptHybrid(plaintext []byte, context string) (*HybridEnc
 		"encryption_time": time.Since(startTime).Milliseconds(),
 		"key_id":          hybridData.KeyID,
 	})
-	
+
 	return hybridData, nil
 }
 
@@ -186,19 +186,19 @@ func (s *PQCService) EncryptHybrid(plaintext []byte, context string) (*HybridEnc
 func (s *PQCService) DecryptHybrid(hybridData *HybridEncryptedData, context string) ([]byte, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	if !s.config.EnablePQC {
 		return nil, fmt.Errorf("PQC layer is disabled")
 	}
-	
+
 	startTime := time.Now()
-	
+
 	// Decapsulate the symmetric key using Kyber
 	symmetricKey, err := s.keyManager.DecapsulateKey(hybridData.KyberCiphertext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decapsulate key with Kyber: %w", err)
 	}
-	
+
 	// Try to decrypt with AES-256-GCM first (primary method)
 	plaintext, err := s.decryptAES256GCM(hybridData.AES256GCMData, symmetricKey)
 	if err == nil {
@@ -212,13 +212,13 @@ func (s *PQCService) DecryptHybrid(hybridData *HybridEncryptedData, context stri
 		})
 		return plaintext, nil
 	}
-	
+
 	// Fallback to ChaCha20-Poly1305 if AES-256-GCM fails
 	plaintext, err = s.decryptChaCha20(hybridData.ChaCha20Data, symmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("both AES-256-GCM and ChaCha20-Poly1305 decryption failed: %w", err)
 	}
-	
+
 	// Log successful fallback decryption
 	s.auditLog.LogEvent("HYBRID_DECRYPT", "Data decrypted with ChaCha20-Poly1305 (fallback)", map[string]interface{}{
 		"context":         context,
@@ -228,7 +228,7 @@ func (s *PQCService) DecryptHybrid(hybridData *HybridEncryptedData, context stri
 		"method":          "ChaCha20-Poly1305",
 		"fallback":        true,
 	})
-	
+
 	return plaintext, nil
 }
 
@@ -238,23 +238,23 @@ func (s *PQCService) encryptAES256GCM(plaintext, key []byte) (*SymmetricEncrypte
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AES cipher: %w", err)
 	}
-	
+
 	aesGCM, err := cipher.NewGCM(block)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GCM mode: %w", err)
 	}
-	
+
 	nonce := make([]byte, aesGCM.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		return nil, fmt.Errorf("failed to generate nonce: %w", err)
 	}
-	
+
 	ciphertext := aesGCM.Seal(nil, nonce, plaintext, nil)
-	
+
 	// Extract auth tag (last 16 bytes)
 	authTag := ciphertext[len(ciphertext)-16:]
 	ciphertextOnly := ciphertext[:len(ciphertext)-16]
-	
+
 	return &SymmetricEncryptedData{
 		Ciphertext: ciphertextOnly,
 		Nonce:      nonce,
@@ -269,21 +269,21 @@ func (s *PQCService) decryptAES256GCM(data *SymmetricEncryptedData, key []byte) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AES cipher: %w", err)
 	}
-	
+
 	aesGCM, err := cipher.NewGCM(block)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GCM mode: %w", err)
 	}
-	
+
 	// For AES-256-GCM, the ciphertext should already include the auth tag
 	// Combine ciphertext and auth tag (nonce is separate)
 	ciphertext := append(data.Ciphertext, data.AuthTag...)
-	
+
 	plaintext, err := aesGCM.Open(nil, data.Nonce, ciphertext, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt with AES-256-GCM: %w", err)
 	}
-	
+
 	return plaintext, nil
 }
 
@@ -293,18 +293,18 @@ func (s *PQCService) encryptChaCha20(plaintext, key []byte) (*SymmetricEncrypted
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ChaCha20-Poly1305: %w", err)
 	}
-	
+
 	nonce := make([]byte, aead.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		return nil, fmt.Errorf("failed to generate nonce: %w", err)
 	}
-	
+
 	ciphertext := aead.Seal(nil, nonce, plaintext, nil)
-	
+
 	// Extract auth tag (last 16 bytes)
 	authTag := ciphertext[len(ciphertext)-16:]
 	ciphertextOnly := ciphertext[:len(ciphertext)-16]
-	
+
 	return &SymmetricEncryptedData{
 		Ciphertext: ciphertextOnly,
 		Nonce:      nonce,
@@ -319,16 +319,16 @@ func (s *PQCService) decryptChaCha20(data *SymmetricEncryptedData, key []byte) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ChaCha20-Poly1305: %w", err)
 	}
-	
+
 	// For ChaCha20-Poly1305, the ciphertext should already include the auth tag
 	// Combine ciphertext and auth tag (nonce is separate)
 	ciphertext := append(data.Ciphertext, data.AuthTag...)
-	
+
 	plaintext, err := aead.Open(nil, data.Nonce, ciphertext, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt with ChaCha20-Poly1305: %w", err)
 	}
-	
+
 	return plaintext, nil
 }
 
@@ -338,7 +338,7 @@ func (s *PQCService) SerializeHybridData(data *HybridEncryptedData) (string, err
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal hybrid data: %w", err)
 	}
-	
+
 	return base64.StdEncoding.EncodeToString(jsonData), nil
 }
 
@@ -348,12 +348,12 @@ func (s *PQCService) DeserializeHybridData(serialized string) (*HybridEncryptedD
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode base64: %w", err)
 	}
-	
+
 	var data HybridEncryptedData
 	if err := json.Unmarshal(jsonData, &data); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal hybrid data: %w", err)
 	}
-	
+
 	return &data, nil
 }
 
@@ -368,7 +368,7 @@ func (s *PQCService) GetConfig() *PQCConfig {
 func (s *PQCService) UpdateConfig(newConfig *PQCConfig) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	// Log configuration change
 	s.auditLog.LogEvent("PQC_CONFIG_UPDATE", "Configuration updated", map[string]interface{}{
 		"old_kyber_level": s.config.KyberLevel,
@@ -378,7 +378,7 @@ func (s *PQCService) UpdateConfig(newConfig *PQCConfig) error {
 		"old_hsm_enabled": s.config.HSMEnabled,
 		"new_hsm_enabled": newConfig.HSMEnabled,
 	})
-	
+
 	s.config = newConfig
 	return nil
 }
@@ -394,14 +394,14 @@ func (s *PQCService) IsEnabled() bool {
 func (s *PQCService) GetStats() map[string]interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	return map[string]interface{}{
-		"enabled":         s.config.EnablePQC,
-		"kyber_level":     s.config.KyberLevel,
-		"hybrid_mode":     s.config.HybridMode,
-		"hsm_enabled":     s.config.HSMEnabled,
-		"performance_mode": s.config.PerformanceMode,
-		"audit_logging":   s.config.AuditLogging,
+		"enabled":           s.config.EnablePQC,
+		"kyber_level":       s.config.KyberLevel,
+		"hybrid_mode":       s.config.HybridMode,
+		"hsm_enabled":       s.config.HSMEnabled,
+		"performance_mode":  s.config.PerformanceMode,
+		"audit_logging":     s.config.AuditLogging,
 		"key_rotation_days": s.config.KeyRotationDays,
 	}
 }
