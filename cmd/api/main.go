@@ -20,6 +20,7 @@ import (
 	"secure-email-mvp/pkg/cleanup"
 	"secure-email-mvp/pkg/devicefingerprint"
 	"secure-email-mvp/pkg/email"
+	"secure-email-mvp/pkg/errors"
 	"secure-email-mvp/pkg/geofencing"
 	"secure-email-mvp/pkg/geolocation"
 	"secure-email-mvp/pkg/humanverification"
@@ -1193,6 +1194,7 @@ func main() {
 	r := mux.NewRouter()
 
 	// Apply middleware BEFORE route registration
+	r.Use(errors.ErrorMiddleware) // Standardize error responses
 	r.Use(srv.corsMiddleware)
 	r.Use(srv.secureHeadersMiddleware)
 
@@ -1808,7 +1810,9 @@ func (srv *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 		TOTPCode string `json:"totp_code"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request"}`, http.StatusBadRequest)
+		errors.WriteErrorResponse(w, http.StatusBadRequest, errors.ErrorCodeInvalidRequest, "Invalid request format", map[string]interface{}{
+			"field": "request_body",
+		})
 		return
 	}
 
@@ -1816,7 +1820,7 @@ func (srv *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	token, userID, err := auth.Authenticate(srv.db, req.Email, req.Password, req.TOTPCode)
 	if err != nil {
 		srv.logError(r, req.Email, "Authentication failed")
-		http.Error(w, `{"error":"Invalid credentials"}`, http.StatusUnauthorized)
+		errors.WriteAuthError(w, errors.ErrorCodeAuthInvalidCredentials, "Invalid credentials")
 		return
 	}
 
@@ -1975,26 +1979,26 @@ func jwtMiddleware(next http.Handler) http.Handler {
 		// Get Authorization header
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			http.Error(w, `{"error":"Invalid or missing token"}`, http.StatusUnauthorized)
+			errors.WriteAuthError(w, errors.ErrorCodeAuthRequired, "Authorization header required")
 			return
 		}
 
 		// Check Bearer format
 		if len(authHeader) < 7 || authHeader[:7] != "Bearer " {
-			http.Error(w, `{"error":"Invalid or missing token"}`, http.StatusUnauthorized)
+			errors.WriteAuthError(w, errors.ErrorCodeAuthInvalidToken, "Invalid authorization format")
 			return
 		}
 
 		tokenString := authHeader[7:]
 		if tokenString == "" {
-			http.Error(w, `{"error":"Invalid or missing token"}`, http.StatusUnauthorized)
+			errors.WriteAuthError(w, errors.ErrorCodeAuthInvalidToken, "Token is required")
 			return
 		}
 
 		// Validate JWT token using simple validation
 		userID, email, err := auth.ValidateJWT(tokenString)
 		if err != nil {
-			http.Error(w, `{"error":"Invalid or missing token"}`, http.StatusUnauthorized)
+			errors.WriteAuthError(w, errors.ErrorCodeAuthInvalidToken, "Invalid or expired token")
 			return
 		}
 

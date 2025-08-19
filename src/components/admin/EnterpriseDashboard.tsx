@@ -330,35 +330,36 @@ const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ adminToken })
       )}
 
       {/* Main Dashboard Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-6">
+        {/* Mobile-first responsive grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           {/* ZKID Layer Panel */}
-          <div className="lg:col-span-1">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-1">
             <ZKIDLayerPanel metrics={zkidMetrics} isLoading={isLoading} onRefresh={() => fetchDashboardData()} />
           </div>
 
           {/* PQC Encryption Panel */}
-          <div className="lg:col-span-1">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-1">
             <PQCEncryptionPanel metrics={pqcMetrics} isLoading={isLoading} onRefresh={() => fetchDashboardData()} />
           </div>
 
           {/* Email Delivery Panel */}
-          <div className="lg:col-span-1">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-1">
             <EmailDeliveryPanel metrics={emailMetrics} isLoading={isLoading} onRefresh={() => fetchDashboardData()} />
           </div>
 
           {/* Security & Compliance Panel */}
-          <div className="lg:col-span-1">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-1">
             <SecurityCompliancePanel metrics={securityMetrics} isLoading={isLoading} onRefresh={() => fetchDashboardData()} />
           </div>
 
           {/* Performance & Operational Panel */}
-          <div className="lg:col-span-1">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-1">
             <PerformanceOperationalPanel metrics={performanceMetrics} isLoading={isLoading} onRefresh={() => fetchDashboardData()} />
           </div>
 
           {/* Alerts Panel */}
-          <div className="lg:col-span-1">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-1">
             <AlertsPanel 
               alerts={alerts} 
               isLoading={isLoading} 
@@ -370,24 +371,24 @@ const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ adminToken })
 
           {/* Admin Management Panel - Only visible to primary admins */}
           {canManageAdmins && (
-            <div className="lg:col-span-1">
+            <div className="col-span-1 sm:col-span-2 lg:col-span-1">
               <AdminManagementPanel isLoading={isLoading} onRefresh={() => fetchDashboardData()} />
             </div>
           )}
         </div>
 
         {/* Analytics Dashboard Panel - Full Width */}
-        <div className="mt-6">
+        <div className="mt-4 sm:mt-6">
           <AnalyticsDashboardPanel dashboardService={dashboardService} isReadOnly={isReadOnlyAdmin} />
         </div>
 
         {/* Threat Awareness Panel - Full Width */}
-        <div className="mt-6">
+        <div className="mt-4 sm:mt-6">
           <ThreatAwarenessPanel dashboardService={dashboardService} isReadOnly={isReadOnlyAdmin} />
         </div>
 
         {/* Audit Logs Panel - Full Width */}
-        <div className="mt-6">
+        <div className="mt-4 sm:mt-6">
           <AuditLogsPanel logs={auditLogs} isLoading={isLoading} onRefresh={() => fetchDashboardData()} />
         </div>
 

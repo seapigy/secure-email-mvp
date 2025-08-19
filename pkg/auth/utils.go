@@ -40,28 +40,50 @@ func hashPasswordWithConfig(password, email string, config Argon2Config) ([]byte
 }
 
 // validateTOTPWithConfig validates TOTP code using the provided configuration
-// This ensures consistent TOTP validation with proper time skew tolerance
+// This ensures consistent TOTP validation with RFC 6238 compliant drift tolerance
 func validateTOTPWithConfig(code, secret string, config TOTPConfig) bool {
 	// DIAGNOSTIC: Log TOTP validation details
 	log.Printf("[AUTH_DEBUG] validateTOTPWithConfig - Code: %s, Secret length: %d", code, len(secret))
-	log.Printf("[AUTH_DEBUG] TOTP Parameters - Period: %d, Skew: %d, Digits: %d, Algorithm: %s",
-		config.Period, config.Skew, config.Digits, config.Algorithm)
+	log.Printf("[AUTH_DEBUG] TOTP Parameters - Period: %d, Skew: %d, Digits: %d, Algorithm: %s, DriftTolerance: %ds, MaxDriftSteps: %d",
+		config.Period, config.Skew, config.Digits, config.Algorithm, config.DriftToleranceSeconds, config.MaxDriftSteps)
 
-	// Validate TOTP with custom parameters for time skew tolerance
-	valid, err := totp.ValidateCustom(code, secret, time.Now(), totp.ValidateOpts{
-		Period:    config.Period,
-		Skew:      config.Skew,
-		Digits:    6, // Default to 6 digits
-		Algorithm: 1, // Default to SHA1 for compatibility
-	})
+	// Get current time
+	now := time.Now()
 
-	if err != nil {
-		log.Printf("[AUTH_DEBUG] TOTP validation error: %v", err)
-		return false
+	// Try validation with RFC 6238 compliant drift tolerance
+	// Check current time step and surrounding steps within drift tolerance
+	for step := -config.MaxDriftSteps; step <= config.MaxDriftSteps; step++ {
+		// Calculate time for this step
+		checkTime := now.Add(time.Duration(step*int(config.Period)) * time.Second)
+
+		// Validate TOTP with custom parameters for this time step
+		valid, err := totp.ValidateCustom(code, secret, checkTime, totp.ValidateOpts{
+			Period:    config.Period,
+			Skew:      0, // No additional skew since we're manually checking steps
+			Digits:    6, // Default to 6 digits
+			Algorithm: 1, // Default to SHA1 for compatibility
+		})
+
+		if err != nil {
+			log.Printf("[AUTH_DEBUG] TOTP validation error for step %d: %v", step, err)
+			continue
+		}
+
+		if valid {
+			// Log successful validation with drift information
+			if step != 0 {
+				log.Printf("[AUTH_DEBUG] TOTP validation SUCCESS with %d step drift (%.1f seconds)", step, float64(step*int(config.Period)))
+			} else {
+				log.Printf("[AUTH_DEBUG] TOTP validation SUCCESS with no drift")
+			}
+			return true
+		}
 	}
 
-	log.Printf("[AUTH_DEBUG] TOTP validation result: %t", valid)
-	return valid
+	// Log failed validation attempt
+	log.Printf("[AUTH_DEBUG] TOTP validation FAILED - code not valid within ±%d steps (±%d seconds)",
+		config.MaxDriftSteps, config.DriftToleranceSeconds)
+	return false
 }
 
 // generateTOTPSecretWithConfig generates a new TOTP secret using the provided configuration

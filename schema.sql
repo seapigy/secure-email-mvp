@@ -58,13 +58,44 @@ CREATE TABLE IF NOT EXISTS email_folders (
     FOREIGN KEY (folder_id) REFERENCES folders(id)
 );
 
+-- Sessions table - Stores user session information for authentication
+CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    token TEXT UNIQUE NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Audit logs table - Stores system audit events for security monitoring
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id TEXT PRIMARY KEY,
+    user_id TEXT,
+    action TEXT NOT NULL,
+    resource_type TEXT,
+    resource_id TEXT,
+    ip_address TEXT,
+    user_agent TEXT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    details TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 -- =============================================================================
 -- DATABASE INDEXES
 -- =============================================================================
 -- Indexes for optimizing query performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_uuid ON users(id);
 CREATE INDEX IF NOT EXISTS idx_emails_sender ON emails(sender_id);
 CREATE INDEX IF NOT EXISTS idx_emails_recipient ON emails(recipient_email);
 CREATE INDEX IF NOT EXISTS idx_emails_expires ON emails(expires_at);
+CREATE INDEX IF NOT EXISTS idx_emails_from_uuid ON emails(sender_id);
+CREATE INDEX IF NOT EXISTS idx_emails_to_uuid ON emails(recipient_email);
 CREATE INDEX IF NOT EXISTS idx_access_attempts_email ON access_attempts(email_id);
-CREATE INDEX IF NOT EXISTS idx_folders_user ON folders(user_id); 
+CREATE INDEX IF NOT EXISTS idx_folders_user ON folders(user_id);
+
+-- Additional indexes for Iteration 1 performance optimization
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_logs(timestamp); 
