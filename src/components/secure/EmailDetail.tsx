@@ -38,6 +38,9 @@ interface EmailDetailProps {
   
   /** Security settings for the current session */
   securitySettings?: SecuritySettings;
+  
+  /** Timestamp when this email was selected (used to reset modal state) */
+  selectedAt?: number;
 }
 
 /**
@@ -71,7 +74,7 @@ interface EmailDetailProps {
  * - Full mode for mobile detail view
  * - Responsive design that adapts to screen size
  */
-const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack, isCompact = false, securitySettings }) => {
+const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack, isCompact = false, securitySettings, selectedAt }) => {
   // State for decrypted content display
   const [showDecrypted, setShowDecrypted] = useState(false);
   
@@ -148,6 +151,19 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack, isCompact = fa
       setShowUnlockModal(true);
     }
   }, [needsPasswordPrompt, showUnlockModal, userManuallyClosed]);
+
+  /**
+   * Reset userManuallyClosed state when email changes or is re-selected
+   * This allows the password modal to show again when clicking on a different email
+   * or when the same email is clicked again after being dismissed
+   */
+  React.useEffect(() => {
+    setUserManuallyClosed(false);
+    setShowUnlockModal(false);
+    setUnlockError('');
+    setIsUnlocking(false);
+    setFailedAttempts(0);
+  }, [email.id, selectedAt]);
 
   /**
    * Get status configuration for visual display

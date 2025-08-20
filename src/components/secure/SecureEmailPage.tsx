@@ -32,6 +32,7 @@ import { useTheme } from '@/hooks/useTheme';
  */
 const SecureEmailPage: React.FC = () => {
   const [selectedEmail, setSelectedEmail] = useState<SecureEmail | null>(null);
+  const [selectedAt, setSelectedAt] = useState<number>(Date.now());
   const [showSecuritySettings, setShowSecuritySettings] = useState(false);
   const [showComposeModal, setShowComposeModal] = useState(false);
   const [isMobileDetailView, setIsMobileDetailView] = useState(false);
@@ -56,6 +57,7 @@ const SecureEmailPage: React.FC = () => {
   // Handle email selection from inbox
   const handleEmailSelect = (email: SecureEmail) => {
     setSelectedEmail(email);
+    setSelectedAt(Date.now()); // Update timestamp to trigger modal reset
     // On mobile, switch to detail view
     if (window.innerWidth < 768) {
       setIsMobileDetailView(true);
@@ -178,6 +180,7 @@ const SecureEmailPage: React.FC = () => {
                 onBack={() => setSelectedEmail(null)}
                 isCompact={true}
                 securitySettings={securitySettings}
+                selectedAt={selectedAt}
               />
             ) : (
               <div className="flex items-center justify-center h-full">
@@ -208,6 +211,7 @@ const SecureEmailPage: React.FC = () => {
                   onBack={handleBackToInbox}
                   isCompact={false}
                   securitySettings={securitySettings}
+                  selectedAt={selectedAt}
                 />
               )}
             </div>

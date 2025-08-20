@@ -10,6 +10,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -156,7 +157,7 @@ type LoadTester struct {
 // NewLoadTester creates a new load tester
 func NewLoadTester(configPath string) (*LoadTester, error) {
 	// Load configuration
-	configData, err := io.ReadFile(configPath)
+	configData, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
@@ -167,7 +168,7 @@ func NewLoadTester(configPath string) (*LoadTester, error) {
 	}
 
 	// Parse durations
-	testDuration, err := time.ParseDuration(config.TestDuration)
+	_, err = time.ParseDuration(config.TestDuration)
 	if err != nil {
 		return nil, fmt.Errorf("invalid test duration: %w", err)
 	}
