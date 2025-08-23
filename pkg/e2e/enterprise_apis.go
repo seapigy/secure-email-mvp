@@ -1,8 +1,8 @@
+// CodeQL: disable=go/unused-field
 package e2e
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"net/http"
 	"sync"
@@ -273,7 +273,6 @@ type EnterpriseManager struct {
 // AdminAPI handles administrative API operations
 type AdminAPI struct {
 	config     AdminAPIConfig
-	server     *http.Server
 	handlers   map[string]http.HandlerFunc
 	middleware []Middleware
 }
@@ -283,7 +282,7 @@ type SSOManager struct {
 	config    SSOConfig
 	providers map[string]SSOProvider
 	sessions  map[string]*SSOSession
-	mutex     sync.RWMutex
+	mutex     sync.RWMutex //nolint:unused
 }
 
 // RBACManager handles role-based access control
@@ -293,7 +292,7 @@ type RBACManager struct {
 	permissions map[string]*Permission
 	userRoles   map[string][]string
 	cache       map[string]*AuthorizationResult
-	mutex       sync.RWMutex
+	mutex       sync.RWMutex //nolint:unused
 }
 
 // OrganizationManager handles organization and user management
@@ -302,7 +301,7 @@ type OrganizationManager struct {
 	organizations map[string]*Organization
 	users         map[string]*User
 	memberships   map[string][]string // userID -> orgIDs
-	mutex         sync.RWMutex
+	mutex         sync.RWMutex        //nolint:unused
 }
 
 // Supporting types
@@ -590,13 +589,6 @@ func NewRateLimiter(config RateLimitConfig) *RateLimiter {
 		config:   config,
 		counters: make(map[string]*Counter),
 	}
-}
-
-// Utility functions
-func generateSessionID() string {
-	id := make([]byte, 16)
-	rand.Read(id)
-	return fmt.Sprintf("sess_%x", id)
 }
 
 // DefaultEnterpriseConfig returns a default enterprise configuration

@@ -57,17 +57,17 @@ function Invoke-ApiRequest {
         [hashtable]$Headers = @{},
         [string]$Body = ""
     )
-    
+
     $uri = "$($TestConfig.BaseUrl)$Endpoint"
-    
+
     $requestHeaders = @{
         "Content-Type" = "application/json"
     }
-    
+
     foreach ($key in $Headers.Keys) {
         $requestHeaders[$key] = $Headers[$key]
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri $uri -Method $Method -Headers $requestHeaders -Body $Body -ErrorAction Stop
         return @{
@@ -78,7 +78,7 @@ function Invoke-ApiRequest {
     } catch {
         $statusCode = $_.Exception.Response.StatusCode.value__
         $errorMessage = $_.Exception.Message
-        
+
         try {
             $errorResponse = $_.Exception.Response.GetResponseStream()
             $reader = New-Object System.IO.StreamReader($errorResponse)
@@ -86,7 +86,7 @@ function Invoke-ApiRequest {
         } catch {
             $errorBody = "Unable to read error response"
         }
-        
+
         return @{
             Success = $false
             StatusCode = $statusCode
@@ -98,9 +98,9 @@ function Invoke-ApiRequest {
 
 function Test-HealthCheck {
     Write-Info "Testing API server health..."
-    
+
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/health"
-    
+
     if ($response.Success) {
         Write-Success "API server is healthy"
         return $true
@@ -116,16 +116,16 @@ function Create-TestUser {
         [string]$Password,
         [string]$UserType
     )
-    
+
     Write-Info "Creating $UserType user: $Email"
-    
+
     $signupData = @{
         email = $Email
         password = $Password
     }
-    
+
     $response = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/signup" -Body ($signupData | ConvertTo-Json)
-    
+
     if ($response.Success) {
         Write-Success "$UserType user created successfully"
         return $true
@@ -146,23 +146,23 @@ function Get-UserToken {
         [string]$Password,
         [string]$UserType
     )
-    
+
     Write-Info "Logging in $UserType user: $Email"
-    
+
     $loginData = @{
         email = $Email
         password = $Password
         totp_code = "123456"  # Default TOTP for testing
     }
-    
+
     $response = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/login" -Body ($loginData | ConvertTo-Json)
-    
+
     if ($response.Success) {
         $token = $response.Data.access_token
         if (-not $token) {
             $token = $response.Data.token  # Try alternative field name
         }
-        
+
         if ($token) {
             Write-Success "$UserType login successful"
             Write-Info "Token: $($token.Substring(0, [Math]::Min(20, $token.Length)))..."
@@ -179,20 +179,20 @@ function Get-UserToken {
 
 function Setup-EnterpriseOrganization {
     param([string]$AdminToken)
-    
+
     Write-Info "Setting up enterprise organization for admin user..."
-    
+
     $enterpriseData = @{
         organization_name = "Test Enterprise Corp"
         domain = "securesystem.email"
         compliance_frameworks = @("GDPR", "HIPAA")
         contact_email = $TestConfig.AdminUserEmail
     }
-    
+
     $response = Invoke-ApiRequest -Method "POST" -Endpoint "/api/admin/compliance/enterprise" -Headers @{
         "Authorization" = "Bearer $AdminToken"
     } -Body ($enterpriseData | ConvertTo-Json)
-    
+
     if ($response.Success) {
         Write-Success "Enterprise organization created successfully"
         return $true
@@ -209,74 +209,74 @@ function Setup-EnterpriseOrganization {
 
 # Main setup function
 function Start-TestEnvironmentSetup {
-    Write-Host "`n" -NoNewline
-    Write-Host "🚀 Setting up test environment for Micro-Iteration 4.31" -ForegroundColor Yellow
-    Write-Host "Base URL: $($TestConfig.BaseUrl)" -ForegroundColor Gray
-    
+    Write-Output "`n" -NoNewline
+    Write-Output "🚀 Setting up test environment for Micro-Iteration 4.31"
+    Write-Output "Base URL: $($TestConfig.BaseUrl)"
+
     # Step 1: Health check
     if (-not (Test-HealthCheck)) {
         Write-Error "Cannot proceed without a healthy API server"
-        Write-Host "Please start the API server with: go run cmd/api/main.go" -ForegroundColor Yellow
+        Write-Output "Please start the API server with: go run cmd/api/main.go"
         exit 1
     }
-    
+
     # Step 2: Create test users
-    Write-Host "`n📝 Creating test users..." -ForegroundColor Cyan
-    
+    Write-Output "`n📝 Creating test users..."
+
     $userCreated = Create-TestUser -Email $TestConfig.TestUserEmail -Password $TestConfig.TestUserPassword -UserType "Test"
     $adminCreated = Create-TestUser -Email $TestConfig.AdminUserEmail -Password $TestConfig.AdminUserPassword -UserType "Admin"
-    
+
     if (-not $userCreated -or -not $adminCreated) {
         Write-Error "Failed to create required test users"
         exit 1
     }
-    
+
     # Step 3: Get authentication tokens
-    Write-Host "`n🔐 Obtaining authentication tokens..." -ForegroundColor Cyan
-    
+    Write-Output "`n🔐 Obtaining authentication tokens..."
+
     $userToken = Get-UserToken -Email $TestConfig.TestUserEmail -Password $TestConfig.TestUserPassword -UserType "Test"
     $adminToken = Get-UserToken -Email $TestConfig.AdminUserEmail -Password $TestConfig.AdminUserPassword -UserType "Admin"
-    
+
     if (-not $userToken -or -not $adminToken) {
         Write-Error "Failed to obtain required authentication tokens"
         exit 1
     }
-    
+
     # Step 4: Setup enterprise organization
-    Write-Host "`n🏢 Setting up enterprise organization..." -ForegroundColor Cyan
+    Write-Output "`n🏢 Setting up enterprise organization..."
     Setup-EnterpriseOrganization -AdminToken $adminToken
-    
+
     # Step 5: Display results and next steps
-    Write-Host "`n" -NoNewline
-    Write-Host "=" * 80 -ForegroundColor Green
-    Write-Host "✅ Test Environment Setup Complete" -ForegroundColor Green
-    Write-Host "=" * 80 -ForegroundColor Green
-    
-    Write-Host "`n📋 Test Configuration:" -ForegroundColor White
-    Write-Host "  Base URL: $($TestConfig.BaseUrl)" -ForegroundColor Gray
-    Write-Host "  Test User: $($TestConfig.TestUserEmail)" -ForegroundColor Gray
-    Write-Host "  Admin User: $($TestConfig.AdminUserEmail)" -ForegroundColor Gray
-    
-    Write-Host "`n🔑 Authentication Tokens:" -ForegroundColor White
-    Write-Host "  User Token: $($userToken.Substring(0, [Math]::Min(20, $userToken.Length)))..." -ForegroundColor Gray
-    Write-Host "  Admin Token: $($adminToken.Substring(0, [Math]::Min(20, $adminToken.Length)))..." -ForegroundColor Gray
-    
-    Write-Host "`n🚀 Next Steps:" -ForegroundColor White
-    Write-Host "  Run the user compliance transparency tests:" -ForegroundColor Yellow
-    Write-Host "  .\scripts\test_user_compliance_transparency.ps1 -UserToken '$userToken' -AdminToken '$adminToken' -EnableUserPortal" -ForegroundColor Cyan
-    
-    Write-Host "`n💡 Notes:" -ForegroundColor White
-    Write-Host "  - TOTP code for testing: 123456" -ForegroundColor Gray
-    Write-Host "  - Enterprise organization is set up for compliance testing" -ForegroundColor Gray
-    Write-Host "  - Both users are ready for Micro-Iteration 4.31 testing" -ForegroundColor Gray
-    
+    Write-Output "`n" -NoNewline
+    Write-Output "=" * 80 -ForegroundColor Green
+    Write-Output "✅ Test Environment Setup Complete"
+    Write-Output "=" * 80 -ForegroundColor Green
+
+    Write-Output "`n📋 Test Configuration:"
+    Write-Output "  Base URL: $($TestConfig.BaseUrl)"
+    Write-Output "  Test User: $($TestConfig.TestUserEmail)"
+    Write-Output "  Admin User: $($TestConfig.AdminUserEmail)"
+
+    Write-Output "`n🔑 Authentication Tokens:"
+    Write-Output "  User Token: $($userToken.Substring(0, [Math]::Min(20, $userToken.Length)))..."
+    Write-Output "  Admin Token: $($adminToken.Substring(0, [Math]::Min(20, $adminToken.Length)))..."
+
+    Write-Output "`n🚀 Next Steps:"
+    Write-Output "  Run the user compliance transparency tests:"
+    Write-Output "  .\scripts\test_user_compliance_transparency.ps1 -UserToken '$userToken' -AdminToken '$adminToken' -EnableUserPortal"
+
+    Write-Output "`n💡 Notes:"
+    Write-Output "  - TOTP code for testing: 123456"
+    Write-Output "  - Enterprise organization is set up for compliance testing"
+    Write-Output "  - Both users are ready for Micro-Iteration 4.31 testing"
+
     # Save tokens to environment variables for easy access
     $env:TEST_USER_TOKEN = $userToken
     $env:TEST_ADMIN_TOKEN = $adminToken
-    
-    Write-Host "`nTokens saved to environment variables:" -ForegroundColor White
-    Write-Host "  `$env:TEST_USER_TOKEN" -ForegroundColor Gray
-    Write-Host "  `$env:TEST_ADMIN_TOKEN" -ForegroundColor Gray
+
+    Write-Output "`nTokens saved to environment variables:"
+    Write-Output "  `$env:TEST_USER_TOKEN"
+    Write-Output "  `$env:TEST_ADMIN_TOKEN"
 }
 
 # Script execution

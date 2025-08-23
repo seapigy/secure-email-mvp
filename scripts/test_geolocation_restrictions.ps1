@@ -8,9 +8,9 @@ param(
     [string]$TotpCode = "123456"
 )
 
-Write-Host "=== Testing Geolocation Restrictions Feature ===" -ForegroundColor Green
-Write-Host "API Host: $ApiHost" -ForegroundColor Yellow
-Write-Host ""
+Write-Output "=== Testing Geolocation Restrictions Feature ==="
+Write-Output "API Host: $ApiHost"
+Write-Output ""
 
 # Function to make API requests
 function Invoke-ApiRequest {
@@ -20,25 +20,25 @@ function Invoke-ApiRequest {
         [object]$Body = $null,
         [string]$Token = $null
     )
-    
+
     $headers = @{
         "Content-Type" = "application/json"
     }
-    
+
     if ($Token) {
         $headers["Authorization"] = "Bearer $Token"
     }
-    
+
     $params = @{
         Method = $Method
         Uri = "$ApiHost$Endpoint"
         Headers = $headers
     }
-    
+
     if ($Body) {
         $params.Body = $Body | ConvertTo-Json -Depth 10
     }
-    
+
     try {
         $response = Invoke-RestMethod @params
         return @{
@@ -52,7 +52,7 @@ function Invoke-ApiRequest {
             $reader = New-Object System.IO.StreamReader($errorResponse.GetResponseStream())
             $errorBody = $reader.ReadToEnd()
             $reader.Close()
-            
+
             try {
                 $errorData = $errorBody | ConvertFrom-Json
                 return @{
@@ -79,7 +79,7 @@ function Invoke-ApiRequest {
 }
 
 # Test 1: Login to get JWT token
-Write-Host "1. Testing Login..." -ForegroundColor Cyan
+Write-Output "1. Testing Login..."
 $loginBody = @{
     email = $TestEmail
     password = $TestPassword
@@ -89,17 +89,17 @@ $loginBody = @{
 $loginResult = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/login" -Body $loginBody
 
 if (-not $loginResult.Success) {
-    Write-Host "❌ Login failed: $($loginResult.Error.error)" -ForegroundColor Red
+    Write-Output "❌ Login failed: $($loginResult.Error.error)"
     exit 1
 }
 
 $token = $loginResult.Data.token
 $userId = $loginResult.Data.user_id
-Write-Host "✅ Login successful. User ID: $userId" -ForegroundColor Green
-Write-Host ""
+Write-Output "✅ Login successful. User ID: $userId"
+Write-Output ""
 
 # Test 2: Send email with country restrictions only
-Write-Host "2. Testing Country-Only Restrictions..." -ForegroundColor Cyan
+Write-Output "2. Testing Country-Only Restrictions..."
 $countryRestrictionBody = @{
     recipient = "recipient@example.com"
     subject = "Test Email - Country Restrictions"
@@ -111,15 +111,15 @@ $countryRestrictionBody = @{
 $countryResult = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Body $countryRestrictionBody -Token $token
 
 if (-not $countryResult.Success) {
-    Write-Host "❌ Country restriction email send failed: $($countryResult.Error.error)" -ForegroundColor Red
+    Write-Output "❌ Country restriction email send failed: $($countryResult.Error.error)"
 } else {
-    Write-Host "✅ Country restriction email sent successfully. Blob ID: $($countryResult.Data.blob_id)" -ForegroundColor Green
+    Write-Output "✅ Country restriction email sent successfully. Blob ID: $($countryResult.Data.blob_id)"
     $countryEmailId = $countryResult.Data.blob_id -replace "\.blob$", ""
 }
-Write-Host ""
+Write-Output ""
 
 # Test 3: Send email with city restrictions only
-Write-Host "3. Testing City-Only Restrictions..." -ForegroundColor Cyan
+Write-Output "3. Testing City-Only Restrictions..."
 $cityRestrictionBody = @{
     recipient = "recipient@example.com"
     subject = "Test Email - City Restrictions"
@@ -131,15 +131,15 @@ $cityRestrictionBody = @{
 $cityResult = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Body $cityRestrictionBody -Token $token
 
 if (-not $cityResult.Success) {
-    Write-Host "❌ City restriction email send failed: $($cityResult.Error.error)" -ForegroundColor Red
+    Write-Output "❌ City restriction email send failed: $($cityResult.Error.error)"
 } else {
-    Write-Host "✅ City restriction email sent successfully. Blob ID: $($cityResult.Data.blob_id)" -ForegroundColor Green
+    Write-Output "✅ City restriction email sent successfully. Blob ID: $($cityResult.Data.blob_id)"
     $cityEmailId = $cityResult.Data.blob_id -replace "\.blob$", ""
 }
-Write-Host ""
+Write-Output ""
 
 # Test 4: Send email with both country and city restrictions
-Write-Host "4. Testing Combined Country and City Restrictions..." -ForegroundColor Cyan
+Write-Output "4. Testing Combined Country and City Restrictions..."
 $combinedRestrictionBody = @{
     recipient = "recipient@example.com"
     subject = "Test Email - Combined Restrictions"
@@ -151,15 +151,15 @@ $combinedRestrictionBody = @{
 $combinedResult = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Body $combinedRestrictionBody -Token $token
 
 if (-not $combinedResult.Success) {
-    Write-Host "❌ Combined restriction email send failed: $($combinedResult.Error.error)" -ForegroundColor Red
+    Write-Output "❌ Combined restriction email send failed: $($combinedResult.Error.error)"
 } else {
-    Write-Host "✅ Combined restriction email sent successfully. Blob ID: $($combinedResult.Data.blob_id)" -ForegroundColor Green
+    Write-Output "✅ Combined restriction email sent successfully. Blob ID: $($combinedResult.Data.blob_id)"
     $combinedEmailId = $combinedResult.Data.blob_id -replace "\.blob$", ""
 }
-Write-Host ""
+Write-Output ""
 
 # Test 5: Send email with no restrictions (control)
-Write-Host "5. Testing No Restrictions (Control)..." -ForegroundColor Cyan
+Write-Output "5. Testing No Restrictions (Control)..."
 $noRestrictionBody = @{
     recipient = "recipient@example.com"
     subject = "Test Email - No Restrictions"
@@ -171,69 +171,69 @@ $noRestrictionBody = @{
 $noRestrictionResult = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Body $noRestrictionBody -Token $token
 
 if (-not $noRestrictionResult.Success) {
-    Write-Host "❌ No restriction email send failed: $($noRestrictionResult.Error.error)" -ForegroundColor Red
+    Write-Output "❌ No restriction email send failed: $($noRestrictionResult.Error.error)"
 } else {
-    Write-Host "✅ No restriction email sent successfully. Blob ID: $($noRestrictionResult.Data.blob_id)" -ForegroundColor Green
+    Write-Output "✅ No restriction email sent successfully. Blob ID: $($noRestrictionResult.Data.blob_id)"
     $noRestrictionEmailId = $noRestrictionResult.Data.blob_id -replace "\.blob$", ""
 }
-Write-Host ""
+Write-Output ""
 
 # Test 6: Test viewing emails (this will trigger geolocation checks)
-Write-Host "6. Testing Email Viewing (Geolocation Enforcement)..." -ForegroundColor Cyan
+Write-Output "6. Testing Email Viewing (Geolocation Enforcement)..."
 
 if ($noRestrictionEmailId) {
-    Write-Host "   Testing no restriction email..." -ForegroundColor Yellow
+    Write-Output "   Testing no restriction email..."
     $viewResult = Invoke-ApiRequest -Method "GET" -Endpoint "/api/email/view/$noRestrictionEmailId" -Token $token
-    
+
     if ($viewResult.Success) {
-        Write-Host "   ✅ No restriction email view successful" -ForegroundColor Green
+        Write-Output "   ✅ No restriction email view successful"
     } else {
-        Write-Host "   ❌ No restriction email view failed: $($viewResult.Error.error)" -ForegroundColor Red
+        Write-Output "   ❌ No restriction email view failed: $($viewResult.Error.error)"
     }
 }
 
 if ($countryEmailId) {
-    Write-Host "   Testing country restriction email..." -ForegroundColor Yellow
+    Write-Output "   Testing country restriction email..."
     $viewResult = Invoke-ApiRequest -Method "GET" -Endpoint "/api/email/view/$countryEmailId" -Token $token
-    
+
     if ($viewResult.Success) {
-        Write-Host "   ✅ Country restriction email view successful (location allowed)" -ForegroundColor Green
+        Write-Output "   ✅ Country restriction email view successful (location allowed)"
     } elseif ($viewResult.StatusCode -eq 403 -and $viewResult.Error.code -eq "geo_restricted") {
-        Write-Host "   ✅ Country restriction email blocked as expected: $($viewResult.Error.error)" -ForegroundColor Green
+        Write-Output "   ✅ Country restriction email blocked as expected: $($viewResult.Error.error)"
     } else {
-        Write-Host "   ❌ Country restriction email view failed: $($viewResult.Error.error)" -ForegroundColor Red
+        Write-Output "   ❌ Country restriction email view failed: $($viewResult.Error.error)"
     }
 }
 
 if ($cityEmailId) {
-    Write-Host "   Testing city restriction email..." -ForegroundColor Yellow
+    Write-Output "   Testing city restriction email..."
     $viewResult = Invoke-ApiRequest -Method "GET" -Endpoint "/api/email/view/$cityEmailId" -Token $token
-    
+
     if ($viewResult.Success) {
-        Write-Host "   ✅ City restriction email view successful (location allowed)" -ForegroundColor Green
+        Write-Output "   ✅ City restriction email view successful (location allowed)"
     } elseif ($viewResult.StatusCode -eq 403 -and $viewResult.Error.code -eq "geo_restricted") {
-        Write-Host "   ✅ City restriction email blocked as expected: $($viewResult.Error.error)" -ForegroundColor Green
+        Write-Output "   ✅ City restriction email blocked as expected: $($viewResult.Error.error)"
     } else {
-        Write-Host "   ❌ City restriction email view failed: $($viewResult.Error.error)" -ForegroundColor Red
+        Write-Output "   ❌ City restriction email view failed: $($viewResult.Error.error)"
     }
 }
 
 if ($combinedEmailId) {
-    Write-Host "   Testing combined restriction email..." -ForegroundColor Yellow
+    Write-Output "   Testing combined restriction email..."
     $viewResult = Invoke-ApiRequest -Method "GET" -Endpoint "/api/email/view/$combinedEmailId" -Token $token
-    
+
     if ($viewResult.Success) {
-        Write-Host "   ✅ Combined restriction email view successful (location allowed)" -ForegroundColor Green
+        Write-Output "   ✅ Combined restriction email view successful (location allowed)"
     } elseif ($viewResult.StatusCode -eq 403 -and $viewResult.Error.code -eq "geo_restricted") {
-        Write-Host "   ✅ Combined restriction email blocked as expected: $($viewResult.Error.error)" -ForegroundColor Green
+        Write-Output "   ✅ Combined restriction email blocked as expected: $($viewResult.Error.error)"
     } else {
-        Write-Host "   ❌ Combined restriction email view failed: $($viewResult.Error.error)" -ForegroundColor Red
+        Write-Output "   ❌ Combined restriction email view failed: $($viewResult.Error.error)"
     }
 }
-Write-Host ""
+Write-Output ""
 
 # Test 7: Test invalid country code validation
-Write-Host "7. Testing Invalid Country Code Validation..." -ForegroundColor Cyan
+Write-Output "7. Testing Invalid Country Code Validation..."
 $invalidCountryBody = @{
     recipient = "recipient@example.com"
     subject = "Test Email - Invalid Country"
@@ -245,14 +245,14 @@ $invalidCountryBody = @{
 $invalidCountryResult = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Body $invalidCountryBody -Token $token
 
 if (-not $invalidCountryResult.Success -and $invalidCountryResult.StatusCode -eq 400) {
-    Write-Host "✅ Invalid country code properly rejected: $($invalidCountryResult.Error.error)" -ForegroundColor Green
+    Write-Output "✅ Invalid country code properly rejected: $($invalidCountryResult.Error.error)"
 } else {
-    Write-Host "❌ Invalid country code validation failed" -ForegroundColor Red
+    Write-Output "❌ Invalid country code validation failed"
 }
-Write-Host ""
+Write-Output ""
 
 # Test 8: Test invalid city name validation
-Write-Host "8. Testing Invalid City Name Validation..." -ForegroundColor Cyan
+Write-Output "8. Testing Invalid City Name Validation..."
 $invalidCityBody = @{
     recipient = "recipient@example.com"
     subject = "Test Email - Invalid City"
@@ -264,21 +264,21 @@ $invalidCityBody = @{
 $invalidCityResult = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Body $invalidCityBody -Token $token
 
 if (-not $invalidCityResult.Success -and $invalidCityResult.StatusCode -eq 400) {
-    Write-Host "✅ Invalid city name properly rejected: $($invalidCityResult.Error.error)" -ForegroundColor Green
+    Write-Output "✅ Invalid city name properly rejected: $($invalidCityResult.Error.error)"
 } else {
-    Write-Host "❌ Invalid city name validation failed" -ForegroundColor Red
+    Write-Output "❌ Invalid city name validation failed"
 }
-Write-Host ""
+Write-Output ""
 
-Write-Host "=== Geolocation Restrictions Test Complete ===" -ForegroundColor Green
-Write-Host ""
-Write-Host "Summary:" -ForegroundColor Yellow
-Write-Host "- Country-only restrictions: Tested" -ForegroundColor White
-Write-Host "- City-only restrictions: Tested" -ForegroundColor White
-Write-Host "- Combined restrictions: Tested" -ForegroundColor White
-Write-Host "- No restrictions (control): Tested" -ForegroundColor White
-Write-Host "- Geolocation enforcement: Tested" -ForegroundColor White
-Write-Host "- Input validation: Tested" -ForegroundColor White
-Write-Host ""
-Write-Host "Note: Actual geolocation blocking depends on your current IP location." -ForegroundColor Cyan
-Write-Host "If you're using a VPN, the results may vary." -ForegroundColor Cyan
+Write-Output "=== Geolocation Restrictions Test Complete ==="
+Write-Output ""
+Write-Output "Summary:"
+Write-Output "- Country-only restrictions: Tested"
+Write-Output "- City-only restrictions: Tested"
+Write-Output "- Combined restrictions: Tested"
+Write-Output "- No restrictions (control): Tested"
+Write-Output "- Geolocation enforcement: Tested"
+Write-Output "- Input validation: Tested"
+Write-Output ""
+Write-Output "Note: Actual geolocation blocking depends on your current IP location."
+Write-Output "If you're using a VPN, the results may vary."

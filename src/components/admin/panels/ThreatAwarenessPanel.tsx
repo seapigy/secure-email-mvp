@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ShieldExclamationIcon, EyeIcon, Cog6ToothIcon, BellIcon,
   ExclamationTriangleIcon, ArrowPathIcon, PencilIcon, TrashIcon,
@@ -7,9 +7,10 @@ import {
   ThreatIntelligence, ThreatAlert, ThreatFeed, ThreatRule,
   ThreatAwarenessConfig,
 } from '../../../types/admin';
+import { EnterpriseDashboardService } from '../../../services/enterpriseDashboardService';
 
 interface ThreatAwarenessPanelProps {
-  dashboardService: any;
+  dashboardService: EnterpriseDashboardService;
   isReadOnly?: boolean;
 }
 
@@ -28,11 +29,7 @@ const ThreatAwarenessPanel: React.FC<ThreatAwarenessPanelProps> = ({
   const [selectedAlert, setSelectedAlert] = useState<ThreatAlert | null>(null);
   const [showAlertModal, setShowAlertModal] = useState(false);
 
-  useEffect(() => {
-    fetchThreatData();
-  }, []);
-
-  const fetchThreatData = async () => {
+  const fetchThreatData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -48,12 +45,17 @@ const ThreatAwarenessPanel: React.FC<ThreatAwarenessPanelProps> = ({
       setThreatFeeds(feeds);
       setThreatRules(rules);
       setConfig(threatConfig);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch threat data');
+    } catch (err: unknown) {
+      const error = err as Error;
+      setError(error.message || 'Failed to fetch threat data');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [dashboardService]);
+
+  useEffect(() => {
+    fetchThreatData();
+  }, [fetchThreatData]);
 
   const handleUpdateAlert = async (alertId: string, updates: Partial<ThreatAlert>) => {
     try {
@@ -63,8 +65,9 @@ const ThreatAwarenessPanel: React.FC<ThreatAwarenessPanelProps> = ({
       ));
       setShowAlertModal(false);
       setSelectedAlert(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to update alert');
+    } catch (err: unknown) {
+      const error = err as Error;
+      setError(error.message || 'Failed to update alert');
     }
   };
 
@@ -170,7 +173,7 @@ const ThreatAwarenessPanel: React.FC<ThreatAwarenessPanelProps> = ({
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as 'overview' | 'alerts' | 'feeds' | 'rules' | 'config')}
               className={`flex items-center space-x-2 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                 activeTab === tab.id
                   ? 'text-red-600 bg-red-50'
@@ -625,7 +628,7 @@ const ThreatAwarenessPanel: React.FC<ThreatAwarenessPanelProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
                   value={selectedAlert.status}
-                  onChange={(e) => setSelectedAlert({...selectedAlert, status: e.target.value as any})}
+                  onChange={(e) => setSelectedAlert({...selectedAlert, status: e.target.value as 'active' | 'investigating' | 'mitigated' | 'resolved'})}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 >
                   <option value="active">Active</option>

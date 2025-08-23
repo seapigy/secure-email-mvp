@@ -23,20 +23,20 @@ $EnterpriseAdminToken = $null
 
 function Test-SystemAdminLogin {
     Write-Info "Testing system admin login"
-    
+
     $loginData = @{
         email = $SystemAdminEmail
         password = $SystemAdminPassword
         totp_code = "123456"  # Using test TOTP code
     }
-    
+
     $headers = @{
         "Content-Type" = "application/json"
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$ApiHost/api/auth/login" -Method POST -Body ($loginData | ConvertTo-Json) -Headers $headers -TimeoutSec 30
-        
+
         if ($response.access_token) {
             $script:SystemAdminToken = $response.access_token
             Write-Success "System admin login successful"
@@ -53,20 +53,20 @@ function Test-SystemAdminLogin {
 
 function Test-EnterpriseAdminLogin {
     Write-Info "Testing enterprise admin login"
-    
+
     $loginData = @{
         email = $EnterpriseAdminEmail
         password = $EnterpriseAdminPassword
         totp_code = "123456"  # Using test TOTP code
     }
-    
+
     $headers = @{
         "Content-Type" = "application/json"
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$ApiHost/api/auth/login" -Method POST -Body ($loginData | ConvertTo-Json) -Headers $headers -TimeoutSec 30
-        
+
         if ($response.access_token) {
             $script:EnterpriseAdminToken = $response.access_token
             Write-Success "Enterprise admin login successful"
@@ -83,19 +83,19 @@ function Test-EnterpriseAdminLogin {
 
 function Test-CreateTestOrganization {
     Write-Info "Creating test organization: $TestOrgName"
-    
+
     $orgData = @{
         name = $TestOrgName
     }
-    
+
     $headers = @{
         "Authorization" = "Bearer $SystemAdminToken"
         "Content-Type" = "application/json"
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$ApiHost/api/admin/organizations" -Method POST -Body ($orgData | ConvertTo-Json) -Headers $headers -TimeoutSec 30
-        
+
         if ($response.id -and $response.name -eq $TestOrgName) {
             $script:TestOrgID = $response.id
             Write-Success "Test organization created: $($response.name) (ID: $($response.id))"
@@ -112,20 +112,20 @@ function Test-CreateTestOrganization {
 
 function Test-AddEnterpriseAdminToOrganization {
     Write-Info "Adding enterprise admin to test organization"
-    
+
     $userData = @{
         email = $EnterpriseAdminEmail
         role = "enterprise_admin"
     }
-    
+
     $headers = @{
         "Authorization" = "Bearer $SystemAdminToken"
         "Content-Type" = "application/json"
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$ApiHost/api/admin/organizations/$TestOrgID/users" -Method POST -Body ($userData | ConvertTo-Json) -Headers $headers -TimeoutSec 30
-        
+
         if ($response.success) {
             Write-Success "Enterprise admin added to organization"
             return $true
@@ -141,7 +141,7 @@ function Test-AddEnterpriseAdminToOrganization {
 
 function Test-GenerateComplianceLogs {
     Write-Info "Generating test compliance logs"
-    
+
     # Generate various compliance events
     $events = @(
         @{action = "policy_violation"; details = @{user_id = "user1"; policy = "data_retention"; severity = "high"}},
@@ -153,12 +153,12 @@ function Test-GenerateComplianceLogs {
         @{action = "data_breach"; details = @{severity = "critical"; affected_users = 5}},
         @{action = "retention_policy_applied"; details = @{policy_id = "retention_001"; affected_items = 100}}
     )
-    
+
     $headers = @{
         "Authorization" = "Bearer $SystemAdminToken"
         "Content-Type" = "application/json"
     }
-    
+
     $successCount = 0
     foreach ($event in $events) {
         try {
@@ -167,36 +167,36 @@ function Test-GenerateComplianceLogs {
                 action = $event.action
                 details = $event.details
             }
-            
+
             # Note: This would require a direct database call or a test endpoint
             # For now, we'll simulate the logging
             Write-Info "Simulating compliance log: $($event.action)"
             $successCount++
-            
+
             # Add a small delay to ensure different timestamps
             Start-Sleep -Milliseconds 100
         } catch {
             Write-Warning "Failed to log compliance event $($event.action): $($_.Exception.Message)"
         }
     }
-    
+
     Write-Success "Generated $successCount compliance logs"
     return $successCount
 }
 
 function Test-ComplianceSummary {
     param([string]$AccessToken, [string]$ExpectedRole)
-    
+
     Write-Info "Testing compliance summary endpoint (Role: $ExpectedRole)"
-    
+
     $headers = @{
         "Authorization" = "Bearer $AccessToken"
         "Content-Type" = "application/json"
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$ApiHost/api/admin/organizations/$TestOrgID/compliance/summary" -Method GET -Headers $headers -TimeoutSec 30
-        
+
         if ($response.organization_id -eq $TestOrgID) {
             Write-Success "Compliance summary retrieved successfully"
             Write-Info "  Organization: $($response.organization_name)"
@@ -220,41 +220,41 @@ function Test-ComplianceSummary {
 
 function Test-ComplianceLogs {
     param([string]$AccessToken, [string]$ExpectedRole)
-    
+
     Write-Info "Testing compliance logs endpoint (Role: $ExpectedRole)"
-    
+
     $headers = @{
         "Authorization" = "Bearer $AccessToken"
         "Content-Type" = "application/json"
     }
-    
+
     try {
         # Test basic logs retrieval
         $response = Invoke-RestMethod -Uri "$ApiHost/api/admin/organizations/$TestOrgID/compliance/logs" -Method GET -Headers $headers -TimeoutSec 30
-        
+
         if ($response.organization_id -eq $TestOrgID -and $response.logs) {
             Write-Success "Compliance logs retrieved successfully"
             Write-Info "  Total Logs: $($response.total)"
             Write-Info "  Limit: $($response.limit)"
             Write-Info "  Offset: $($response.offset)"
             Write-Info "  Has More: $($response.has_more)"
-            
+
             # Test filtering by action
             $filteredResponse = Invoke-RestMethod -Uri "$ApiHost/api/admin/organizations/$TestOrgID/compliance/logs?action=policy_violation" -Method GET -Headers $headers -TimeoutSec 30
-            
+
             if ($filteredResponse.logs) {
                 Write-Success "Action filtering works correctly"
                 Write-Info "  Filtered logs count: $($filteredResponse.total)"
             }
-            
+
             # Test pagination
             $paginatedResponse = Invoke-RestMethod -Uri "$ApiHost/api/admin/organizations/$TestOrgID/compliance/logs?limit=2&offset=0" -Method GET -Headers $headers -TimeoutSec 30
-            
+
             if ($paginatedResponse.logs.Count -le 2) {
                 Write-Success "Pagination works correctly"
                 Write-Info "  Paginated logs count: $($paginatedResponse.logs.Count)"
             }
-            
+
             return $true
         } else {
             Write-Error "Compliance logs failed - invalid response"
@@ -268,17 +268,17 @@ function Test-ComplianceLogs {
 
 function Test-ComplianceStats {
     param([string]$AccessToken, [string]$ExpectedRole)
-    
+
     Write-Info "Testing compliance stats endpoint (Role: $ExpectedRole)"
-    
+
     $headers = @{
         "Authorization" = "Bearer $AccessToken"
         "Content-Type" = "application/json"
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$ApiHost/api/admin/organizations/$TestOrgID/compliance/stats" -Method GET -Headers $headers -TimeoutSec 30
-        
+
         if ($response.organization_id -eq $TestOrgID) {
             Write-Success "Compliance stats retrieved successfully"
             Write-Info "  Organization: $($response.organization_name)"
@@ -302,20 +302,20 @@ function Test-ComplianceStats {
 
 function Test-ComplianceExport {
     param([string]$AccessToken, [string]$ExpectedRole)
-    
+
     Write-Info "Testing compliance export endpoint (Role: $ExpectedRole)"
-    
+
     $headers = @{
         "Authorization" = "Bearer $AccessToken"
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$ApiHost/api/admin/organizations/$TestOrgID/compliance/export" -Method GET -Headers $headers -TimeoutSec 30
-        
+
         if ($response -and $response.Length -gt 0) {
             Write-Success "Compliance export successful"
             Write-Info "  Export size: $($response.Length) bytes"
-            
+
             # Check if it's valid CSV
             $csvContent = [System.Text.Encoding]::UTF8.GetString($response)
             if ($csvContent.Contains("ID,Organization ID,Timestamp,Action,Details,Created At")) {
@@ -323,7 +323,7 @@ function Test-ComplianceExport {
             } else {
                 Write-Warning "CSV format may be incorrect"
             }
-            
+
             return $true
         } else {
             Write-Error "Compliance export failed - empty response"
@@ -337,26 +337,26 @@ function Test-ComplianceExport {
 
 function Test-ComplianceActivity {
     param([string]$AccessToken, [string]$ExpectedRole)
-    
+
     Write-Info "Testing compliance activity endpoint (Role: $ExpectedRole)"
-    
+
     $headers = @{
         "Authorization" = "Bearer $AccessToken"
         "Content-Type" = "application/json"
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$ApiHost/api/admin/organizations/$TestOrgID/compliance/activity" -Method GET -Headers $headers -TimeoutSec 30
-        
+
         if ($response.organization_id -eq $TestOrgID -and $response.activity) {
             Write-Success "Compliance activity retrieved successfully"
             Write-Info "  Days: $($response.days)"
             Write-Info "  Activity count: $($response.activity.Count)"
-            
+
             foreach ($activity in $response.activity) {
                 Write-Info "    $($activity.action): $($activity.count) events"
             }
-            
+
             return $true
         } else {
             Write-Error "Compliance activity failed - invalid response"
@@ -370,14 +370,14 @@ function Test-ComplianceActivity {
 
 function Test-RBACEnforcement {
     Write-Info "Testing RBAC enforcement for compliance endpoints"
-    
+
     # Test that enterprise admin cannot access other organizations
     if ($EnterpriseAdminToken) {
         $headers = @{
             "Authorization" = "Bearer $EnterpriseAdminToken"
             "Content-Type" = "application/json"
         }
-        
+
         try {
             # Try to access a different organization (should fail)
             $otherOrgID = "other-org-id"
@@ -392,7 +392,7 @@ function Test-RBACEnforcement {
             }
         }
     }
-    
+
     # Test that regular users cannot access compliance endpoints
     # This would require a regular user token, but for now we'll just note it
     Write-Info "RBAC enforcement tests completed"
@@ -401,13 +401,13 @@ function Test-RBACEnforcement {
 
 function Test-Cleanup {
     Write-Info "Cleaning up test data"
-    
+
     if ($TestOrgID -and $SystemAdminToken) {
         $headers = @{
             "Authorization" = "Bearer $SystemAdminToken"
             "Content-Type" = "application/json"
         }
-        
+
         try {
             Invoke-RestMethod -Uri "$ApiHost/api/admin/organizations/$TestOrgID" -Method DELETE -Headers $headers -TimeoutSec 30
             Write-Success "Test organization deleted"
@@ -423,28 +423,28 @@ try {
     if (-not (Test-SystemAdminLogin)) {
         throw "System admin login failed"
     }
-    
+
     # Step 2: Create test organization
     if (-not (Test-CreateTestOrganization)) {
         throw "Test organization creation failed"
     }
-    
+
     # Step 3: Add enterprise admin to organization
     if (-not (Test-AddEnterpriseAdminToOrganization)) {
         throw "Failed to add enterprise admin to organization"
     }
-    
+
     # Step 4: Enterprise admin login
     if (-not (Test-EnterpriseAdminLogin)) {
         throw "Enterprise admin login failed"
     }
-    
+
     # Step 5: Generate test compliance logs
     $logCount = Test-GenerateComplianceLogs
     if ($logCount -eq 0) {
         Write-Warning "No compliance logs generated - some tests may fail"
     }
-    
+
     # Step 6: Test compliance endpoints with system admin
     Write-Info "=== Testing with System Admin ==="
     Test-ComplianceSummary -AccessToken $SystemAdminToken -ExpectedRole "system_admin"
@@ -452,7 +452,7 @@ try {
     Test-ComplianceStats -AccessToken $SystemAdminToken -ExpectedRole "system_admin"
     Test-ComplianceExport -AccessToken $SystemAdminToken -ExpectedRole "system_admin"
     Test-ComplianceActivity -AccessToken $SystemAdminToken -ExpectedRole "system_admin"
-    
+
     # Step 7: Test compliance endpoints with enterprise admin
     Write-Info "=== Testing with Enterprise Admin ==="
     Test-ComplianceSummary -AccessToken $EnterpriseAdminToken -ExpectedRole "enterprise_admin"
@@ -460,12 +460,12 @@ try {
     Test-ComplianceStats -AccessToken $EnterpriseAdminToken -ExpectedRole "enterprise_admin"
     Test-ComplianceExport -AccessToken $EnterpriseAdminToken -ExpectedRole "enterprise_admin"
     Test-ComplianceActivity -AccessToken $EnterpriseAdminToken -ExpectedRole "enterprise_admin"
-    
+
     # Step 8: Test RBAC enforcement
     Test-RBACEnforcement
-    
+
     Write-Success "Enterprise Compliance Dashboard & Reporting Integration Test completed successfully"
-    
+
 } catch {
     Write-Error "Test failed: $($_.Exception.Message)"
     exit 1

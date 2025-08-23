@@ -191,12 +191,12 @@ func (hsm *ThresholdHSM) Verify(signature *ThresholdSignature, publicKey []byte)
 	// TODO: Implement actual threshold signature verification
 	// For now, simulate verification
 	messageHash := sha256.Sum256(signature.Message)
-	expectedSig := sha256.Sum256(append(messageHash[:], publicKey...))
+	_ = sha256.Sum256(append(messageHash[:], publicKey...))
 
 	// Simple comparison for demo
-	actualSigHash := sha256.Sum256(signature.Signature)
+	_ = sha256.Sum256(signature.Signature)
 
-	return len(expectedSig) == len(actualSigHash), nil
+	return true, nil
 }
 
 // RotateKey initiates key rotation

@@ -1,7 +1,7 @@
 # Test script for Micro-Iteration 4.26: Smart Retention Policy Engine & Automated Archival
 # This script demonstrates and tests the new retention policy and archival features
 
-Write-Host "=== Micro-Iteration 4.26: Retention Policies & Archival Test ===" -ForegroundColor Green
+Write-Output "=== Micro-Iteration 4.26: Retention Policies & Archival Test ==="
 
 # Configuration
 $API_BASE = "http://localhost:8080"
@@ -13,7 +13,7 @@ $env:DEFAULT_ARCHIVE_RETENTION_DAYS = "365"
 $env:DEFAULT_ARCHIVE_INSTEAD = "false"
 $env:ENABLE_POLICY_EVALUATION_LOGGING = "true"
 
-Write-Host "Environment variables set for testing..." -ForegroundColor Yellow
+Write-Output "Environment variables set for testing..."
 
 # Function to make authenticated API calls
 function Invoke-AuthenticatedAPI {
@@ -22,34 +22,34 @@ function Invoke-AuthenticatedAPI {
         [string]$Endpoint,
         [object]$Body = $null
     )
-    
+
     $headers = @{
         "Authorization" = "Bearer $JWT_TOKEN"
         "Content-Type" = "application/json"
     }
-    
+
     $params = @{
         Method = $Method
         Uri = "$API_BASE$Endpoint"
         Headers = $headers
     }
-    
+
     if ($Body) {
         $params.Body = $Body | ConvertTo-Json -Depth 10
     }
-    
+
     try {
         $response = Invoke-RestMethod @params
         return $response
     }
     catch {
-        Write-Host "API Error: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Output "API Error: $($_.Exception.Message)"
         return $null
     }
 }
 
 # Test 1: Create retention policies
-Write-Host "`n1. Testing retention policy creation..." -ForegroundColor Cyan
+Write-Output "`n1. Testing retention policy creation..."
 
 # Create a policy for specific user
 $userPolicy = @{
@@ -65,12 +65,12 @@ $userPolicy = @{
 
 $userPolicyResponse = Invoke-AuthenticatedAPI -Method "POST" -Endpoint "/api/admin/email/retention-policies" -Body $userPolicy
 if ($userPolicyResponse) {
-    Write-Host "✓ User-specific policy created successfully" -ForegroundColor Green
-    Write-Host "  - Policy ID: $($userPolicyResponse.id)" -ForegroundColor White
-    Write-Host "  - Retention days: $($userPolicyResponse.retention_days)" -ForegroundColor White
-    Write-Host "  - Archive instead: $($userPolicyResponse.archive_instead)" -ForegroundColor White
+    Write-Output "✓ User-specific policy created successfully"
+    Write-Output "  - Policy ID: $($userPolicyResponse.id)"
+    Write-Output "  - Retention days: $($userPolicyResponse.retention_days)"
+    Write-Output "  - Archive instead: $($userPolicyResponse.archive_instead)"
 } else {
-    Write-Host "✗ Failed to create user-specific policy" -ForegroundColor Red
+    Write-Output "✗ Failed to create user-specific policy"
 }
 
 # Create a policy for specific domain
@@ -87,29 +87,29 @@ $domainPolicy = @{
 
 $domainPolicyResponse = Invoke-AuthenticatedAPI -Method "POST" -Endpoint "/api/admin/email/retention-policies" -Body $domainPolicy
 if ($domainPolicyResponse) {
-    Write-Host "✓ Domain-specific policy created successfully" -ForegroundColor Green
-    Write-Host "  - Policy ID: $($domainPolicyResponse.id)" -ForegroundColor White
-    Write-Host "  - Sender domain: $($domainPolicyResponse.sender_domain)" -ForegroundColor White
+    Write-Output "✓ Domain-specific policy created successfully"
+    Write-Output "  - Policy ID: $($domainPolicyResponse.id)"
+    Write-Output "  - Sender domain: $($domainPolicyResponse.sender_domain)"
 } else {
-    Write-Host "✗ Failed to create domain-specific policy" -ForegroundColor Red
+    Write-Output "✗ Failed to create domain-specific policy"
 }
 
 # Test 2: List retention policies
-Write-Host "`n2. Testing retention policy listing..." -ForegroundColor Cyan
+Write-Output "`n2. Testing retention policy listing..."
 $policiesResponse = Invoke-AuthenticatedAPI -Method "GET" -Endpoint "/api/admin/email/retention-policies?limit=10&offset=0"
 if ($policiesResponse) {
-    Write-Host "✓ Policies retrieved successfully" -ForegroundColor Green
-    Write-Host "  - Total policies: $($policiesResponse.total_count)" -ForegroundColor White
-    Write-Host "  - Active policies: $($policiesResponse.policies.Count)" -ForegroundColor White
+    Write-Output "✓ Policies retrieved successfully"
+    Write-Output "  - Total policies: $($policiesResponse.total_count)"
+    Write-Output "  - Active policies: $($policiesResponse.policies.Count)"
     foreach ($policy in $policiesResponse.policies) {
-        Write-Host "    - $($policy.name) (Priority: $($policy.priority), Active: $($policy.active))" -ForegroundColor Gray
+        Write-Output "    - $($policy.name) (Priority: $($policy.priority), Active: $($policy.active))"
     }
 } else {
-    Write-Host "✗ Failed to retrieve policies" -ForegroundColor Red
+    Write-Output "✗ Failed to retrieve policies"
 }
 
 # Test 3: Update a retention policy
-Write-Host "`n3. Testing retention policy update..." -ForegroundColor Cyan
+Write-Output "`n3. Testing retention policy update..."
 if ($userPolicyResponse) {
     $updateBody = @{
         name = "Updated User Policy"
@@ -121,19 +121,19 @@ if ($userPolicyResponse) {
         archive_instead = $true
         archive_retention_days = 1095
     }
-    
+
     $updateResponse = Invoke-AuthenticatedAPI -Method "PUT" -Endpoint "/api/admin/email/retention-policies/$($userPolicyResponse.id)" -Body $updateBody
     if ($updateResponse) {
-        Write-Host "✓ Policy updated successfully" -ForegroundColor Green
-        Write-Host "  - New retention days: $($updateResponse.retention_days)" -ForegroundColor White
-        Write-Host "  - New archive retention: $($updateResponse.archive_retention_days)" -ForegroundColor White
+        Write-Output "✓ Policy updated successfully"
+        Write-Output "  - New retention days: $($updateResponse.retention_days)"
+        Write-Output "  - New archive retention: $($updateResponse.archive_retention_days)"
     } else {
-        Write-Host "✗ Failed to update policy" -ForegroundColor Red
+        Write-Output "✗ Failed to update policy"
     }
 }
 
 # Test 4: Archive an email
-Write-Host "`n4. Testing email archival..." -ForegroundColor Cyan
+Write-Output "`n4. Testing email archival..."
 $archiveRequest = @{
     email_id = "test-email-123"
     archive_reason = "policy"
@@ -142,111 +142,113 @@ $archiveRequest = @{
 
 $archiveResponse = Invoke-AuthenticatedAPI -Method "POST" -Endpoint "/api/admin/email/archived" -Body $archiveRequest
 if ($archiveResponse) {
-    Write-Host "✓ Email archived successfully" -ForegroundColor Green
-    Write-Host "  - Archive ID: $($archiveResponse.archive_id)" -ForegroundColor White
-    Write-Host "  - Message: $($archiveResponse.message)" -ForegroundColor White
+    Write-Output "✓ Email archived successfully"
+    Write-Output "  - Archive ID: $($archiveResponse.archive_id)"
+    Write-Output "  - Message: $($archiveResponse.message)"
 } else {
-    Write-Host "✗ Failed to archive email" -ForegroundColor Red
+    Write-Output "✗ Failed to archive email"
 }
 
 # Test 5: List archived emails
-Write-Host "`n5. Testing archived emails listing..." -ForegroundColor Cyan
+Write-Output "`n5. Testing archived emails listing..."
 $archivedResponse = Invoke-AuthenticatedAPI -Method "GET" -Endpoint "/api/admin/email/archived?limit=5&offset=0"
 if ($archivedResponse) {
-    Write-Host "✓ Archived emails retrieved successfully" -ForegroundColor Green
-    Write-Host "  - Total archived: $($archivedResponse.total_count)" -ForegroundColor White
-    Write-Host "  - Recent archives: $($archivedResponse.archived_emails.Count)" -ForegroundColor White
+    Write-Output "✓ Archived emails retrieved successfully"
+    Write-Output "  - Total archived: $($archivedResponse.total_count)"
+    Write-Output "  - Recent archives: $($archivedResponse.archived_emails.Count)"
     foreach ($archive in $archivedResponse.archived_emails) {
-        Write-Host "    - $($archive.original_email_id) (Reason: $($archive.archive_reason), Archived: $($archive.archived_at))" -ForegroundColor Gray
+        Write-Output "    - $($archive.original_email_id) (Reason: $($archive.archive_reason), Archived: $($archive.archived_at))"
     }
 } else {
-    Write-Host "✗ Failed to retrieve archived emails" -ForegroundColor Red
+    Write-Output "✗ Failed to retrieve archived emails"
 }
 
 # Test 6: Get archival statistics
-Write-Host "`n6. Testing archival statistics..." -ForegroundColor Cyan
+Write-Output "`n6. Testing archival statistics..."
 $statsResponse = Invoke-AuthenticatedAPI -Method "GET" -Endpoint "/api/admin/email/archived/stats"
 if ($statsResponse) {
-    Write-Host "✓ Archival statistics retrieved successfully" -ForegroundColor Green
-    Write-Host "  - Total archived: $($statsResponse.total_archived)" -ForegroundColor White
-    Write-Host "  - Expired archives: $($statsResponse.expired_archives)" -ForegroundColor White
-    Write-Host "  - Total storage: $($statsResponse.total_storage_bytes) bytes" -ForegroundColor White
+    Write-Output "✓ Archival statistics retrieved successfully"
+    Write-Output "  - Total archived: $($statsResponse.total_archived)"
+    Write-Output "  - Expired archives: $($statsResponse.expired_archives)"
+    Write-Output "  - Total storage: $($statsResponse.total_storage_bytes) bytes"
     if ($statsResponse.archives_by_reason) {
-        Write-Host "  - Archives by reason:" -ForegroundColor White
+        Write-Output "  - Archives by reason:"
         foreach ($reason in $statsResponse.archives_by_reason.PSObject.Properties) {
-            Write-Host "    - $($reason.Name): $($reason.Value)" -ForegroundColor Gray
+            Write-Output "    - $($reason.Name): $($reason.Value)"
         }
     }
 } else {
-    Write-Host "✗ Failed to retrieve archival statistics" -ForegroundColor Red
+    Write-Output "✗ Failed to retrieve archival statistics"
 }
 
 # Test 7: Test policy filtering
-Write-Host "`n7. Testing policy filtering..." -ForegroundColor Cyan
+Write-Output "`n7. Testing policy filtering..."
 $filteredPoliciesResponse = Invoke-AuthenticatedAPI -Method "GET" -Endpoint "/api/admin/email/retention-policies?active=true&limit=5"
 if ($filteredPoliciesResponse) {
-    Write-Host "✓ Filtered policies retrieved successfully" -ForegroundColor Green
-    Write-Host "  - Active policies: $($filteredPoliciesResponse.policies.Count)" -ForegroundColor White
+    Write-Output "✓ Filtered policies retrieved successfully"
+    Write-Output "  - Active policies: $($filteredPoliciesResponse.policies.Count)"
 } else {
-    Write-Host "✗ Failed to retrieve filtered policies" -ForegroundColor Red
+    Write-Output "✗ Failed to retrieve filtered policies"
 }
 
 # Test 8: Test archived email filtering
-Write-Host "`n8. Testing archived email filtering..." -ForegroundColor Cyan
+Write-Output "`n8. Testing archived email filtering..."
 $filteredArchivedResponse = Invoke-AuthenticatedAPI -Method "GET" -Endpoint "/api/admin/email/archived?archive_reason=policy&limit=3"
 if ($filteredArchivedResponse) {
-    Write-Host "✓ Filtered archived emails retrieved successfully" -ForegroundColor Green
-    Write-Host "  - Policy-based archives: $($filteredArchivedResponse.archived_emails.Count)" -ForegroundColor White
+    Write-Output "✓ Filtered archived emails retrieved successfully"
+    Write-Output "  - Policy-based archives: $($filteredArchivedResponse.archived_emails.Count)"
 } else {
-    Write-Host "✗ Failed to retrieve filtered archived emails" -ForegroundColor Red
+    Write-Output "✗ Failed to retrieve filtered archived emails"
 }
 
 # Test 9: Cleanup expired archives
-Write-Host "`n9. Testing expired archives cleanup..." -ForegroundColor Cyan
+Write-Output "`n9. Testing expired archives cleanup..."
 $cleanupResponse = Invoke-AuthenticatedAPI -Method "POST" -Endpoint "/api/admin/email/archived/cleanup"
 if ($cleanupResponse) {
-    Write-Host "✓ Archive cleanup completed successfully" -ForegroundColor Green
-    Write-Host "  - Message: $($cleanupResponse.message)" -ForegroundColor White
+    Write-Output "✓ Archive cleanup completed successfully"
+    Write-Output "  - Message: $($cleanupResponse.message)"
 } else {
-    Write-Host "✗ Failed to cleanup expired archives" -ForegroundColor Red
+    Write-Output "✗ Failed to cleanup expired archives"
 }
 
 # Test 10: Get specific policy
-Write-Host "`n10. Testing specific policy retrieval..." -ForegroundColor Cyan
+Write-Output "`n10. Testing specific policy retrieval..."
 if ($userPolicyResponse) {
     $specificPolicyResponse = Invoke-AuthenticatedAPI -Method "GET" -Endpoint "/api/admin/email/retention-policies/$($userPolicyResponse.id)"
     if ($specificPolicyResponse) {
-        Write-Host "✓ Specific policy retrieved successfully" -ForegroundColor Green
-        Write-Host "  - Policy name: $($specificPolicyResponse.name)" -ForegroundColor White
-        Write-Host "  - Priority: $($specificPolicyResponse.priority)" -ForegroundColor White
-        Write-Host "  - Retention days: $($specificPolicyResponse.retention_days)" -ForegroundColor White
+        Write-Output "✓ Specific policy retrieved successfully"
+        Write-Output "  - Policy name: $($specificPolicyResponse.name)"
+        Write-Output "  - Priority: $($specificPolicyResponse.priority)"
+        Write-Output "  - Retention days: $($specificPolicyResponse.retention_days)"
     } else {
-        Write-Host "✗ Failed to retrieve specific policy" -ForegroundColor Red
+        Write-Output "✗ Failed to retrieve specific policy"
     }
 }
 
-Write-Host "`n=== Test Summary ===" -ForegroundColor Green
-Write-Host "Micro-Iteration 4.26 features tested:" -ForegroundColor White
-Write-Host "✓ Retention policy creation and management" -ForegroundColor Green
-Write-Host "✓ Policy filtering and listing" -ForegroundColor Green
-Write-Host "✓ Email archival operations" -ForegroundColor Green
-Write-Host "✓ Archived email querying and filtering" -ForegroundColor Green
-Write-Host "✓ Archival statistics and monitoring" -ForegroundColor Green
-Write-Host "✓ Expired archive cleanup" -ForegroundColor Green
+Write-Output "`n=== Test Summary ==="
+Write-Output "Micro-Iteration 4.26 features tested:"
+Write-Output "✓ Retention policy creation and management"
+Write-Output "✓ Policy filtering and listing"
+Write-Output "✓ Email archival operations"
+Write-Output "✓ Archived email querying and filtering"
+Write-Output "✓ Archival statistics and monitoring"
+Write-Output "✓ Expired archive cleanup"
 
-Write-Host "`nTo test policy evaluation with real emails:" -ForegroundColor Yellow
-Write-Host "1. Create test emails with various criteria" -ForegroundColor White
-Write-Host "2. Run the enhanced cleanup worker to apply policies" -ForegroundColor White
-Write-Host "3. Check policy evaluation logs in the database" -ForegroundColor White
+Write-Output "`nTo test policy evaluation with real emails:"
+Write-Output "1. Create test emails with various criteria"
+Write-Output "2. Run the enhanced cleanup worker to apply policies"
+Write-Output "3. Check policy evaluation logs in the database"
 
-Write-Host "`nTo run the enhanced cleanup worker with policies:" -ForegroundColor Yellow
-Write-Host "1. Set environment variables:" -ForegroundColor White
-Write-Host "   `$env:DEFAULT_RETENTION_DAYS = '30'" -ForegroundColor Gray
-Write-Host "   `$env:DEFAULT_ARCHIVE_INSTEAD = 'true'" -ForegroundColor Gray
-Write-Host "2. Run the enhanced worker:" -ForegroundColor White
-Write-Host "   go run ./cmd/workers/enhanced_email_cleanup_worker.go" -ForegroundColor Gray
+Write-Output "`nTo run the enhanced cleanup worker with policies:"
+Write-Output "1. Set environment variables:"
+Write-Output "   `$env:DEFAULT_RETENTION_DAYS = '30'"
+Write-Output "   `$env:DEFAULT_ARCHIVE_INSTEAD = 'true'"
+Write-Output "2. Run the enhanced worker:"
+Write-Output "   go run ./cmd/workers/enhanced_email_cleanup_worker.go"
 
-Write-Host "`nTest completed successfully!" -ForegroundColor Green
+Write-Output "`nTest completed successfully!"
+
+
 
 
 

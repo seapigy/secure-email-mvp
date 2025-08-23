@@ -19,11 +19,6 @@ func newZKIDAdminHandlers(db *sql.DB, cfg *zkid.Config) *zkidAdminContainer {
 	return &zkidAdminContainer{svc: zkid.NewService(db, cfg)}
 }
 
-type recoveryCodeRequest struct {
-	UserID string `json:"user_id"`
-	Count  int    `json:"count,omitempty"`
-}
-
 type revokeCodeRequest struct {
 	UserID string `json:"user_id"`
 	CodeID string `json:"code_id"`

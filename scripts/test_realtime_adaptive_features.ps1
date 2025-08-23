@@ -35,35 +35,35 @@ function Test-Endpoint {
         [object]$Body = $null,
         [string]$Description
     )
-    
+
     Write-Info "Testing: $Description"
     Write-Info "  $Method $ApiHost$Endpoint"
-    
+
     $headers = @{
         "Content-Type" = "application/json"
     }
-    
+
     if ($AdminToken) {
         $headers["Authorization"] = "Bearer $AdminToken"
     }
-    
+
     try {
         $params = @{
             Uri = "$ApiHost$Endpoint"
             Method = $Method
             Headers = $headers
         }
-        
+
         if ($Body) {
             $params.Body = $Body | ConvertTo-Json -Depth 10
         }
-        
+
         $response = Invoke-RestMethod @params -ErrorAction Stop
-        
+
         if ($Verbose) {
             Write-Info "Response: $($response | ConvertTo-Json -Depth 10)"
         }
-        
+
         Write-Success "✅ $Description - SUCCESS"
         return $response
     }
@@ -73,7 +73,7 @@ function Test-Endpoint {
             $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
             $errorMessage = $reader.ReadToEnd()
         }
-        
+
         Write-Error "❌ $Description - FAILED: $errorMessage"
         return $null
     }
@@ -82,7 +82,7 @@ function Test-Endpoint {
 # Test real-time metrics endpoints
 function Test-RealtimeMetricsEndpoints {
     Write-Info "`n=== Testing Real-Time Metrics Endpoints ==="
-    
+
     # Test global real-time metrics
     $globalMetrics = Test-Endpoint -Method "GET" -Endpoint "/api/admin/email/retention-realtime" -Description "Get global real-time metrics"
     if ($globalMetrics) {
@@ -92,19 +92,19 @@ function Test-RealtimeMetricsEndpoints {
         Write-Info "  Deleted emails: $($globalMetrics.data.deleted_emails_count)"
         Write-Info "  Total storage: $($globalMetrics.data.total_storage_bytes) bytes"
     }
-    
+
     # Test user-specific metrics
     $userMetrics = Test-Endpoint -Method "GET" -Endpoint "/api/admin/email/retention-realtime?metric_type=user&metric_key=test@example.com" -Description "Get user-specific real-time metrics"
     if ($userMetrics) {
         Write-Info "User metrics retrieved successfully"
     }
-    
+
     # Test domain-specific metrics
     $domainMetrics = Test-Endpoint -Method "GET" -Endpoint "/api/admin/email/retention-realtime?metric_type=domain&metric_key=example.com" -Description "Get domain-specific real-time metrics"
     if ($domainMetrics) {
         Write-Info "Domain metrics retrieved successfully"
     }
-    
+
     # Test policy-specific metrics
     $policyMetrics = Test-Endpoint -Method "GET" -Endpoint "/api/admin/email/retention-realtime?metric_type=policy&metric_key=1" -Description "Get policy-specific real-time metrics"
     if ($policyMetrics) {
@@ -115,7 +115,7 @@ function Test-RealtimeMetricsEndpoints {
 # Test adaptive policy changes endpoints
 function Test-AdaptivePolicyChangesEndpoints {
     Write-Info "`n=== Testing Adaptive Policy Changes Endpoints ==="
-    
+
     # Get adaptive policy changes
     $changes = Test-Endpoint -Method "GET" -Endpoint "/api/admin/email/adaptive-policy-changes" -Description "Get adaptive policy changes"
     if ($changes) {
@@ -125,7 +125,7 @@ function Test-AdaptivePolicyChangesEndpoints {
             Write-Info "  Latest change: $($changes.data[0].change_type) for policy $($changes.data[0].policy_id)"
         }
     }
-    
+
     # Get adaptive policy changes with filters
     $filteredChanges = Test-Endpoint -Method "GET" -Endpoint "/api/admin/email/adaptive-policy-changes?status=pending" -Description "Get pending adaptive policy changes"
     if ($filteredChanges) {
@@ -136,7 +136,7 @@ function Test-AdaptivePolicyChangesEndpoints {
 # Test adaptive policy enable/disable endpoints
 function Test-AdaptivePolicyControlEndpoints {
     Write-Info "`n=== Testing Adaptive Policy Control Endpoints ==="
-    
+
     # Enable adaptive policy for a test policy
     $enableConfig = @{
         policy_id = 1
@@ -150,17 +150,17 @@ function Test-AdaptivePolicyControlEndpoints {
         max_storage_impact_bytes = 1073741824
         max_archival_load_impact = 0.5
     }
-    
+
     $enableResult = Test-Endpoint -Method "POST" -Endpoint "/api/admin/email/adaptive-policy/enable" -Body $enableConfig -Description "Enable adaptive policy"
     if ($enableResult) {
         Write-Info "Adaptive policy enabled successfully"
     }
-    
+
     # Disable adaptive policy
     $disableConfig = @{
         policy_id = 1
     }
-    
+
     $disableResult = Test-Endpoint -Method "POST" -Endpoint "/api/admin/email/adaptive-policy/disable" -Body $disableConfig -Description "Disable adaptive policy"
     if ($disableResult) {
         Write-Info "Adaptive policy disabled successfully"
@@ -170,7 +170,7 @@ function Test-AdaptivePolicyControlEndpoints {
 # Test policy performance analysis
 function Test-PolicyPerformanceEndpoints {
     Write-Info "`n=== Testing Policy Performance Analysis Endpoints ==="
-    
+
     # Analyze policy performance
     $performance = Test-Endpoint -Method "GET" -Endpoint "/api/admin/email/policy-performance?policy_id=1" -Description "Analyze policy performance"
     if ($performance) {
@@ -186,7 +186,7 @@ function Test-PolicyPerformanceEndpoints {
 # Test adaptive recommendations generation
 function Test-AdaptiveRecommendationsEndpoints {
     Write-Info "`n=== Testing Adaptive Recommendations Endpoints ==="
-    
+
     # Generate adaptive recommendations
     $recommendations = Test-Endpoint -Method "POST" -Endpoint "/api/admin/email/adaptive-policy/generate-recommendations" -Description "Generate adaptive recommendations"
     if ($recommendations) {
@@ -201,20 +201,20 @@ function Test-AdaptiveRecommendationsEndpoints {
 # Test adaptive change application
 function Test-AdaptiveChangeApplication {
     Write-Info "`n=== Testing Adaptive Change Application ==="
-    
+
     # First, get some adaptive changes
     $changes = Test-Endpoint -Method "GET" -Endpoint "/api/admin/email/adaptive-policy-changes?status=pending&limit=1" -Description "Get pending adaptive changes for testing"
-    
+
     if ($changes -and $changes.data -and $changes.data.Count -gt 0) {
         $changeId = $changes.data[0].id
-        
+
         # Preview the change
         $previewConfig = @{
             change_id = $changeId
             preview = $true
             applied_by = "test-admin"
         }
-        
+
         $previewResult = Test-Endpoint -Method "POST" -Endpoint "/api/admin/email/adaptive-policy/apply" -Body $previewConfig -Description "Preview adaptive change"
         if ($previewResult) {
             Write-Info "Change preview generated successfully"
@@ -223,7 +223,7 @@ function Test-AdaptiveChangeApplication {
             Write-Info "  New value: $($previewResult.data.new_value)"
             Write-Info "  Expected savings: $($previewResult.data.expected_storage_savings) bytes"
         }
-        
+
         # Apply the change (if not in preview mode)
         if (-not $previewConfig.preview) {
             $applyConfig = @{
@@ -231,7 +231,7 @@ function Test-AdaptiveChangeApplication {
                 preview = $false
                 applied_by = "test-admin"
             }
-            
+
             $applyResult = Test-Endpoint -Method "POST" -Endpoint "/api/admin/email/adaptive-policy/apply" -Body $applyConfig -Description "Apply adaptive change"
             if ($applyResult) {
                 Write-Info "Change applied successfully"
@@ -246,31 +246,31 @@ function Test-AdaptiveChangeApplication {
 # Test data validation
 function Test-DataValidation {
     Write-Info "`n=== Testing Data Validation ==="
-    
+
     # Test invalid policy ID
     $invalidPerformance = Test-Endpoint -Method "GET" -Endpoint "/api/admin/email/policy-performance?policy_id=999999" -Description "Test invalid policy ID"
     if (-not $invalidPerformance) {
         Write-Success "Invalid policy ID correctly rejected"
     }
-    
+
     # Test invalid change ID
     $invalidChangeConfig = @{
         change_id = 999999
         preview = $true
         applied_by = "test-admin"
     }
-    
+
     $invalidChange = Test-Endpoint -Method "POST" -Endpoint "/api/admin/email/adaptive-policy/apply" -Body $invalidChangeConfig -Description "Test invalid change ID"
     if (-not $invalidChange) {
         Write-Success "Invalid change ID correctly rejected"
     }
-    
+
     # Test missing required fields
     $invalidConfig = @{
         # Missing policy_id
         max_change_percentage = 15.0
     }
-    
+
     $invalidConfigResult = Test-Endpoint -Method "POST" -Endpoint "/api/admin/email/adaptive-policy/enable" -Body $invalidConfig -Description "Test missing required fields"
     if (-not $invalidConfigResult) {
         Write-Success "Missing required fields correctly rejected"
@@ -280,11 +280,11 @@ function Test-DataValidation {
 # Test performance and load handling
 function Test-PerformanceAndLoad {
     Write-Info "`n=== Testing Performance and Load Handling ==="
-    
+
     # Test concurrent requests to real-time metrics
     Write-Info "Testing concurrent real-time metrics requests..."
     $jobs = @()
-    
+
     for ($i = 1; $i -le 5; $i++) {
         $jobs += Start-Job -ScriptBlock {
             param($ApiHost, $AdminToken)
@@ -297,13 +297,13 @@ function Test-PerformanceAndLoad {
             }
         } -ArgumentList $ApiHost, $AdminToken
     }
-    
+
     $results = $jobs | Wait-Job | Receive-Job
     $jobs | Remove-Job
-    
+
     $successCount = ($results | Where-Object { $_ -eq "Success" }).Count
     Write-Info "Concurrent requests completed: $successCount/5 successful"
-    
+
     if ($successCount -eq 5) {
         Write-Success "Concurrent request handling working correctly"
     } else {
@@ -317,11 +317,11 @@ function Main {
     Write-ColorOutput "API Host: $ApiHost" "White"
     Write-ColorOutput "Admin Token: $($AdminToken ? 'Provided' : 'Not provided')" "White"
     Write-ColorOutput "Verbose Mode: $($Verbose ? 'Enabled' : 'Disabled')" "White"
-    
+
     if (-not $AdminToken) {
         Write-Warning "No admin token provided. Some endpoints may fail authentication."
     }
-    
+
     # Run all test suites
     Test-RealtimeMetricsEndpoints
     Test-AdaptivePolicyChangesEndpoints
@@ -331,13 +331,15 @@ function Main {
     Test-AdaptiveChangeApplication
     Test-DataValidation
     Test-PerformanceAndLoad
-    
+
     Write-ColorOutput "`n🎉 Micro-Iteration 4.28 Tests Completed!" "Magenta"
     Write-Info "Check the output above for test results and any issues."
 }
 
 # Run the main function
 Main
+
+
 
 
 

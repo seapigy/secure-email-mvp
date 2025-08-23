@@ -20,7 +20,7 @@ func UploadToR2(blobID string, data []byte) error {
 	endpoint := os.Getenv("R2_ENDPOINT")
 
 	if accessKey == "" || secretKey == "" || bucket == "" || endpoint == "" {
-		return fmt.Errorf("Cloudflare R2 environment variables not set")
+		return fmt.Errorf("cloudflare R2 environment variables not set")
 	}
 
 	sess, err := session.NewSession(&aws.Config{

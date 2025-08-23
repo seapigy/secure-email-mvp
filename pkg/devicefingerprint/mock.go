@@ -36,11 +36,9 @@ func (m *MockDeviceFingerprintService) GenerateFingerprint(userAgent, clientIP s
 		components = append(components, "ip:"+clientIP)
 	}
 
-	if browserHints != nil {
-		for key, value := range browserHints {
-			if value != "" {
-				components = append(components, fmt.Sprintf("hint:%s:%s", key, value))
-			}
+	for key, value := range browserHints {
+		if value != "" {
+			components = append(components, fmt.Sprintf("hint:%s:%s", key, value))
 		}
 	}
 

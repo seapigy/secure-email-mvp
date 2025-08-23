@@ -140,11 +140,11 @@ const EmailSendForm: React.FC<EmailSendFormProps> = ({
       } else {
         navigate('/dashboard');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to send email:', error);
       
-      const errorMessage = error.response?.data?.error || 
-                          error.message || 
+      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || 
+                          (error as Error)?.message || 
                           'Failed to send email. Please try again.';
       
       toast.error(errorMessage);
@@ -154,7 +154,7 @@ const EmailSendForm: React.FC<EmailSendFormProps> = ({
   };
 
   // Handle input changes
-  const handleInputChange = (field: keyof EmailFormData, value: any) => {
+  const handleInputChange = (field: keyof EmailFormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Clear error when user starts typing

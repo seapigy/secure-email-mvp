@@ -17,14 +17,6 @@ import (
 
 var emailRegex = regexp.MustCompile(`^[^@]+@securesystem\.email$`)
 
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // ValidateEmail checks if email matches securesystem.email domain for tenant isolation and phishing prevention.
 // For development/testing, also allows example.com domain.
 func ValidateEmail(email string) bool {

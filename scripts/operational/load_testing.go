@@ -500,11 +500,7 @@ func (lt *LoadTester) calculateFinalMetrics() {
 			endpointResult.Throughput = float64(endpointResult.TotalRequests) / lt.results.Duration.Seconds()
 
 			// Calculate endpoint percentiles
-			endpointLatencies := make([]float64, 0)
-			for _, latency := range lt.latencies {
-				// This is a simplified approach - in a real implementation, you'd track latencies per endpoint
-				endpointLatencies = append(endpointLatencies, latency)
-			}
+			endpointLatencies := append([]float64{}, lt.latencies...)
 
 			if len(endpointLatencies) > 0 {
 				endpointResult.P50Latency = calculatePercentile(endpointLatencies, 50)
@@ -751,47 +747,4 @@ func writeFile(filename string, data []byte) error {
 	return nil // Simplified for this example
 }
 
-// Example usage function (not main to avoid conflicts)
-func runLoadTestExample() {
-	// Example usage
-	configPath := "scripts/operational/load_test_config.json"
 
-	lt, err := NewLoadTester(configPath)
-	if err != nil {
-		log.Fatalf("Failed to create load tester: %v", err)
-	}
-
-	// Run load test
-	results, err := lt.RunLoadTest()
-	if err != nil {
-		log.Fatalf("Load test failed: %v", err)
-	}
-
-	// Save results
-	if err := lt.SaveResults(); err != nil {
-		log.Printf("Warning: failed to save results: %v", err)
-	}
-
-	// Print summary
-	fmt.Printf("Load Test Results:\n")
-	fmt.Printf("Total Requests: %d\n", results.TotalRequests)
-	fmt.Printf("Error Rate: %.2f%%\n", results.ErrorRate)
-	fmt.Printf("Average Latency: %.2fms\n", results.AverageLatency)
-	fmt.Printf("P95 Latency: %.2fms\n", results.P95Latency)
-	fmt.Printf("Throughput: %.2f req/s\n", results.Throughput)
-
-	if len(results.ThresholdViolations) > 0 {
-		fmt.Printf("\nThreshold Violations:\n")
-		for _, violation := range results.ThresholdViolations {
-			fmt.Printf("- %s: %.2f (threshold: %.2f)\n",
-				violation.Metric, violation.ActualValue, violation.Threshold)
-		}
-	}
-
-	if len(results.Recommendations) > 0 {
-		fmt.Printf("\nRecommendations:\n")
-		for _, rec := range results.Recommendations {
-			fmt.Printf("- %s\n", rec)
-		}
-	}
-}

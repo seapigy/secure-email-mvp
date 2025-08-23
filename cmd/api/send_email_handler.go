@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -19,7 +20,12 @@ import (
 	"secure-email-mvp/pkg/geolocation"
 	"secure-email-mvp/pkg/geoverify"
 	"secure-email-mvp/pkg/mfa"
+	"secure-email-mvp/pkg/pqc"
+	"secure-email-mvp/pkg/securelinks"
+	"secure-email-mvp/pkg/securelinks/security"
 	"secure-email-mvp/pkg/storage"
+
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -84,6 +90,14 @@ type SendEmailRequest struct {
 
 	// Password protection settings (Micro-Iteration 4.14)
 	Password string `json:"password,omitempty"` // Optional password for email access
+
+	// Additional security features (Micro-Iteration 4.16)
+	TimeLock      bool   `json:"timeLock,omitempty"`      // Enable time-based access restrictions
+	UnlockAfter   string `json:"unlockAfter,omitempty"`   // Date/time when email becomes accessible
+	RemoteRevoke  bool   `json:"remoteRevoke,omitempty"`  // Enable remote revocation capability
+	DecoyMessage  bool   `json:"decoyMessage,omitempty"`  // Enable decoy message feature
+	StripMetadata bool   `json:"stripMetadata,omitempty"` // Strip metadata from email
+	TamperAlerts  bool   `json:"tamperAlerts,omitempty"`  // Enable tamper detection alerts
 }
 
 // SendEmailResponse represents the JSON response for email sending operations
@@ -96,6 +110,9 @@ type SendEmailResponse struct {
 	BurnAfterRead *bool `json:"burn_after_read,omitempty"` // Whether email will self-destruct after first read
 	AccessCount   *int  `json:"access_count,omitempty"`    // Current number of successful accesses
 	MaxAttempts   *int  `json:"max_attempts,omitempty"`    // Maximum allowed failed attempts before self-destruct
+
+	// Secure link fields (NEW)
+	SecureLinkURL *string `json:"secure_link_url,omitempty"` // URL for the secure link
 }
 
 // sendEmailHandler handles POST /api/email/send with comprehensive security features
@@ -396,18 +413,40 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 	gz.Close()
 	compressed := buf.Bytes()
 
-	// Step 14: Encrypt compressed content using AES-256-GCM
-	encryptedData, err := auth.EncryptAES256GCM(compressed)
+	// Step 14: Encrypt compressed content using PQC Hybrid Encryption (most secure)
+	// Use PQC service for quantum-resistant encryption
+	pqcConfig := pqc.LoadPQCConfigFromEnv()
+	pqcService, err := pqc.NewPQCService(pqcConfig)
 	if err != nil {
-		log.Printf("❌ Encryption failed: %v", err)
+		log.Printf("❌ PQC service initialization failed: %v", err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"Encryption failed"}`))
+		w.Write([]byte(`{"error":"PQC encryption service failed"}`))
 		return
 	}
 
-	// Combine ciphertext and auth tag for storage (nonce stored separately)
-	encrypted := append(encryptedData.Ciphertext, encryptedData.AuthTag...)
+	// Encrypt using PQC hybrid encryption (Kyber + AES-256-GCM)
+	hybridData, err := pqcService.EncryptHybrid(compressed, "email_send")
+	if err != nil {
+		log.Printf("❌ PQC encryption failed: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"PQC encryption failed"}`))
+		return
+	}
+
+	// Serialize hybrid encrypted data for storage
+	serializedData, err := pqcService.SerializeHybridData(hybridData)
+	if err != nil {
+		log.Printf("❌ PQC data serialization failed: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"PQC data serialization failed"}`))
+		return
+	}
+
+	// Convert serialized data to bytes for R2 storage
+	encrypted := []byte(serializedData)
 
 	// Step 15: Generate blobID for Cloudflare R2 storage
 	blobID := uuid.New().String() + ".blob"
@@ -450,10 +489,11 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 	// --- END SIMULATED DB FAILURE BLOCK ---
 
 	// Step 20: Prepare encryption metadata for database storage
-	// Store nonce and auth tag separately for decryption
-	nonceB64 := base64.StdEncoding.EncodeToString(encryptedData.Nonce)
-	authTagB64 := base64.StdEncoding.EncodeToString(encryptedData.AuthTag)
-	encryptedKeyB64 := base64.StdEncoding.EncodeToString(encryptedData.Key)
+	// Store PQC hybrid encrypted data as a single serialized blob
+	// The hybrid data contains all necessary components for decryption
+	encryptedKeyB64 := base64.StdEncoding.EncodeToString(hybridData.KyberCiphertext)
+	nonceB64 := base64.StdEncoding.EncodeToString(hybridData.AES256GCMData.Nonce)
+	authTagB64 := base64.StdEncoding.EncodeToString(hybridData.AES256GCMData.AuthTag)
 
 	// Step 21: Convert boolean values to integers for SQLite storage
 	selfDestructInt := 0
@@ -539,7 +579,71 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("✅ Database insert successful: emailID=%s", emailID)
 
-	// Step 28: Set password if provided (Micro-Iteration 4.14)
+	// Step 28: PQC + KT Validation and SES Handoff (NEW SECURITY LAYER)
+	if srv.sesHandler != nil {
+		log.Printf("🔐 Starting PQC + KT validation for email %s", emailID)
+
+		// Serialize hybrid data for validation
+		hybridDataBytes, err := json.Marshal(hybridData)
+		if err != nil {
+			log.Printf("❌ Failed to serialize hybrid data for email %s: %v", emailID, err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"error":"Failed to serialize encryption data"}`))
+			return
+		}
+
+		// Validate PQC encryption and Key Transparency
+		validationResult, validationErr := srv.sesHandler.ValidatePQCAndKT(r.Context(), emailID, userID, req.Recipient, hybridDataBytes)
+		if validationErr != nil {
+			log.Printf("❌ PQC + KT validation failed for email %s: %v", emailID, validationErr)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			errorResponse := map[string]string{
+				"error":      "Security validation failed",
+				"details":    validationErr.Error(),
+				"error_code": validationResult.ErrorCode,
+			}
+			json.NewEncoder(w).Encode(errorResponse)
+			return
+		}
+
+		if !validationResult.Valid {
+			log.Printf("❌ PQC + KT validation rejected email %s: %s", emailID, validationResult.ErrorMessage)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			errorResponse := map[string]string{
+				"error":      "Security validation rejected",
+				"details":    validationResult.ErrorMessage,
+				"error_code": validationResult.ErrorCode,
+			}
+			json.NewEncoder(w).Encode(errorResponse)
+			return
+		}
+
+		log.Printf("✅ PQC + KT validation successful for email %s", emailID)
+
+		// Send email via SES with retry logic and quota handling
+		log.Printf("📧 Sending email %s via SES", emailID)
+		transaction, sesErr := srv.sesHandler.SendEmailViaSES(r.Context(), emailID, userID, req.Recipient, req.Subject, req.Body)
+		if sesErr != nil {
+			log.Printf("❌ SES send failed for email %s: %v", emailID, sesErr)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			errorResponse := map[string]string{
+				"error":   "Email delivery failed",
+				"details": sesErr.Error(),
+			}
+			json.NewEncoder(w).Encode(errorResponse)
+			return
+		}
+
+		log.Printf("✅ Email %s sent successfully via SES, transaction ID: %s", emailID, transaction.TransactionID)
+	} else {
+		log.Printf("⚠️ SES handler not available, skipping PQC + KT validation and SES handoff")
+	}
+
+	// Step 29: Set password if provided (Micro-Iteration 4.14)
 	if req.Password != "" {
 		emailPasswordService := emailpassword.NewEmailPasswordService(srv.db)
 		if err := emailPasswordService.SetEmailPassword(emailID, req.Password); err != nil {
@@ -550,6 +654,45 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("✅ Email password set successfully")
+	}
+
+	// Step 30: Check if recipient is external and create secure link (NEW)
+	log.Printf("🔍 Checking if recipient %s is external...", req.Recipient)
+	isExternalRecipient, err := srv.isExternalRecipient(req.Recipient)
+	if err != nil {
+		log.Printf("❌ Failed to check if recipient is external: %v", err)
+		// Continue with normal flow if we can't determine
+	} else if isExternalRecipient {
+		log.Printf("🌐 Recipient %s is external - creating secure link", req.Recipient)
+
+		// Create secure link with all security features
+		secureLinkResponse, err := srv.createSecureLinkForExternalRecipient(emailID, req, userID)
+		if err != nil {
+			log.Printf("❌ Failed to create secure link for external recipient: %v", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"error":"Failed to create secure link for external recipient"}`))
+			return
+		}
+
+		log.Printf("✅ Secure link created for external recipient: %s", secureLinkResponse.SecureURL)
+
+		// Return the secure link instead of the email blob
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		// Set default access count for new secure links
+		zero := 0
+		json.NewEncoder(w).Encode(SendEmailResponse{
+			BlobID:        secureLinkResponse.LinkID, // Use link ID as blob ID for consistency
+			Status:        "success",
+			SecureLinkURL: &secureLinkResponse.SecureURL, // Add secure link URL to response
+			BurnAfterRead: &req.BurnAfterRead,
+			AccessCount:   &zero, // New secure links start with 0 accesses
+			MaxAttempts:   &req.MaxFailedAttempts,
+		})
+		return
+	} else {
+		log.Printf("✅ Recipient %s is internal - proceeding with normal email flow", req.Recipient)
 	}
 
 	// Step 29: Return success response with tracking fields (Micro-Iteration 4.21)
@@ -583,4 +726,121 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 		AccessCount:   accessCountInt,
 		MaxAttempts:   maxAttemptsInt,
 	})
+}
+
+// =============================================================================
+// EXTERNAL RECIPIENT SECURE LINK INTEGRATION
+// =============================================================================
+
+// isExternalRecipient checks if the recipient email is external (not a registered user)
+func (srv *Server) isExternalRecipient(recipientEmail string) (bool, error) {
+	// Check if the recipient exists in our users table
+	var userID string
+	err := srv.db.QueryRow("SELECT id FROM users WHERE email = ?", recipientEmail).Scan(&userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// User not found - this is an external recipient
+			return true, nil
+		}
+		// Database error
+		return false, fmt.Errorf("failed to check if recipient is external: %w", err)
+	}
+
+	// User found - this is an internal recipient
+	return false, nil
+}
+
+// createSecureLinkForExternalRecipient creates a secure link for an external recipient
+// with all the security features from the original email request
+func (srv *Server) createSecureLinkForExternalRecipient(emailID string, req SendEmailRequest, senderID string) (*securelinks.CreateSecureLinkResponse, error) {
+	// Convert email security settings to secure link security settings
+	securitySettings := securelinks.SecuritySettings{
+		// Password protection
+		RequirePassword:   req.Password != "",
+		PasswordHash:      nil, // Will be set if password provided
+		MaxAccessAttempts: req.MaxFailedAttempts,
+
+		// Geolocation restrictions
+		GeolocationRestriction: req.GeoVerificationType != "none",
+		AllowedCountries:       []string{},
+		AllowedCities:          []string{},
+
+		// Time-based restrictions
+		TimeLock:      req.TimeLock,
+		TimeLockUntil: nil, // Will be set if time lock provided
+
+		// Access controls
+		ReadOnce:     req.BurnAfterRead,
+		AutoDestruct: req.SelfDestructAfterAttempts,
+
+		// MFA settings
+		RequireMFA: req.RequireMFA,
+		MFAType:    req.MFAType,
+
+		// Expiration
+		ExpiresAt: nil,
+
+		// Additional security features
+		RemoteRevoke:  req.RemoteRevoke,
+		StripMetadata: req.StripMetadata,
+	}
+
+	// Set password hash if password is provided
+	if req.Password != "" {
+		passwordService := security.NewPasswordProtectionService(srv.db)
+		passwordHash, err := passwordService.HashPassword(req.Password)
+		if err != nil {
+			return nil, fmt.Errorf("failed to hash password for secure link: %w", err)
+		}
+		securitySettings.PasswordHash = &passwordHash
+	}
+
+	// Set geolocation restrictions
+	if req.GeoVerificationType != "none" {
+		if req.GeoCountry != "" {
+			securitySettings.AllowedCountries = []string{req.GeoCountry}
+		}
+		if req.GeoCity != "" {
+			securitySettings.AllowedCities = []string{req.GeoCity}
+		}
+	}
+
+	// Set time lock if provided
+	if req.TimeLock && req.UnlockAfter != "" {
+		unlockAt, err := time.Parse(time.RFC3339, req.UnlockAfter)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse unlock time: %w", err)
+		}
+		unlockAtUnix := unlockAt.Unix()
+		securitySettings.TimeLockUntil = &unlockAtUnix
+	}
+
+	// Set expiration if provided
+	if req.ExpiresAt != "" {
+		expiresAt, err := time.Parse(time.RFC3339, req.ExpiresAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse expiration time: %w", err)
+		}
+		expiresAtUnix := expiresAt.Unix()
+		securitySettings.ExpiresAt = &expiresAtUnix
+	}
+
+	// Create secure link request
+	secureLinkReq := securelinks.CreateSecureLinkRequest{
+		EmailID:          emailID,
+		RecipientEmail:   req.Recipient,
+		SecuritySettings: securitySettings,
+		CustomMessage:    nil, // Use default template
+	}
+
+	// Create the secure link
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	response, err := srv.secureLinksService.CreateSecureLink(ctx, secureLinkReq, senderID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create secure link: %w", err)
+	}
+
+	return response, nil
 }

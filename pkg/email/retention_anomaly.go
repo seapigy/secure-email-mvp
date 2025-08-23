@@ -220,7 +220,7 @@ func (rad *RetentionAnomalyDetector) detectSpikeDeletions(ctx context.Context, s
 			anomaly := &RetentionAnomaly{
 				AnomalyType:           "spike_deletion",
 				Severity:              rad.calculateSeverity(deviation),
-				Title:                 fmt.Sprintf("Unusual spike in email deletions detected"),
+				Title:                 "Unusual spike in email deletions detected",
 				Description:           fmt.Sprintf("Deletion count increased by %.1f%% compared to baseline", deviation),
 				DetectedAt:            time.Now(),
 				ScopeType:             scopeType,
@@ -266,7 +266,7 @@ func (rad *RetentionAnomalyDetector) detectDropPolicyMatches(ctx context.Context
 			anomaly := &RetentionAnomaly{
 				AnomalyType:           "drop_policy_matches",
 				Severity:              rad.calculateSeverity(deviation),
-				Title:                 fmt.Sprintf("Unusual drop in policy matches detected"),
+				Title:                 "Unusual drop in policy matches detected",
 				Description:           fmt.Sprintf("Policy matches decreased by %.1f%% compared to baseline", deviation),
 				DetectedAt:            time.Now(),
 				ScopeType:             scopeType,
@@ -313,7 +313,7 @@ func (rad *RetentionAnomalyDetector) detectForecastDeviation(ctx context.Context
 			anomaly := &RetentionAnomaly{
 				AnomalyType:           "forecast_deviation",
 				Severity:              rad.calculateSeverity(deviation),
-				Title:                 fmt.Sprintf("Forecast deviation detected"),
+				Title:                 "Forecast deviation detected",
 				Description:           fmt.Sprintf("Actual usage deviated by %.1f%% from forecast", deviation),
 				DetectedAt:            time.Now(),
 				ScopeType:             scopeType,
@@ -359,7 +359,7 @@ func (rad *RetentionAnomalyDetector) detectUnusualArchival(ctx context.Context, 
 			anomaly := &RetentionAnomaly{
 				AnomalyType:           "unusual_archival",
 				Severity:              rad.calculateSeverity(deviation),
-				Title:                 fmt.Sprintf("Unusual archival activity detected"),
+				Title:                 "Unusual archival activity detected",
 				Description:           fmt.Sprintf("Archival count increased by %.1f%% compared to baseline", deviation),
 				DetectedAt:            time.Now(),
 				ScopeType:             scopeType,

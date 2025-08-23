@@ -10,17 +10,19 @@ import (
 )
 
 // Mock context key for testing
-const userIDContextKey = "user_id"
+type testContextKey string
+
+const userIDContextKey testContextKey = "user_id"
 
 // Helper function to create request with user context
 func createAuthenticatedRequest(method, url string, body []byte, userID string) *http.Request {
 	req := httptest.NewRequest(method, url, bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	// Add user ID to context
 	ctx := context.WithValue(req.Context(), userIDContextKey, userID)
 	req = req.WithContext(ctx)
-	
+
 	return req
 }
 
@@ -185,11 +187,11 @@ func TestSendEmailHandler_RequiredFields(t *testing.T) {
 // Test validation logic directly
 func TestSelfDestructValidation(t *testing.T) {
 	tests := []struct {
-		name           string
-		selfDestruct   bool
-		maxAttempts    int
-		shouldBeValid  bool
-		expectedError  string
+		name          string
+		selfDestruct  bool
+		maxAttempts   int
+		shouldBeValid bool
+		expectedError string
 	}{
 		{
 			name:          "Valid self-destruct enabled",
@@ -204,18 +206,18 @@ func TestSelfDestructValidation(t *testing.T) {
 			shouldBeValid: true,
 		},
 		{
-			name:           "Invalid max attempts too low",
-			selfDestruct:   true,
-			maxAttempts:    0,
-			shouldBeValid:  false,
-			expectedError:  "maxFailedAttempts must be between 1 and 10",
+			name:          "Invalid max attempts too low",
+			selfDestruct:  true,
+			maxAttempts:   0,
+			shouldBeValid: false,
+			expectedError: "maxFailedAttempts must be between 1 and 10",
 		},
 		{
-			name:           "Invalid max attempts too high",
-			selfDestruct:   true,
-			maxAttempts:    11,
-			shouldBeValid:  false,
-			expectedError:  "maxFailedAttempts must be between 1 and 10",
+			name:          "Invalid max attempts too high",
+			selfDestruct:  true,
+			maxAttempts:   11,
+			shouldBeValid: false,
+			expectedError: "maxFailedAttempts must be between 1 and 10",
 		},
 		{
 			name:          "Self-destruct disabled",

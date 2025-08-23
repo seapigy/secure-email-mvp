@@ -6,10 +6,10 @@ param(
     [string]$Verbose = "false"
 )
 
-Write-Host "=== Sprint 8 Test Harness: Production Deployment & Enterprise Integration ===" -ForegroundColor Cyan
-Write-Host "Test Mode: $TestMode" -ForegroundColor Green
-Write-Host "Timestamp: $(Get-Date)" -ForegroundColor Green
-Write-Host ""
+Write-Output "=== Sprint 8 Test Harness: Production Deployment & Enterprise Integration ==="
+Write-Output "Test Mode: $TestMode"
+Write-Output "Timestamp: $(Get-Date)"
+Write-Output ""
 
 $ErrorActionPreference = "Continue"
 $TestResults = @()
@@ -18,33 +18,33 @@ $FailedTests = 0
 
 function Write-TestResult {
     param($TestName, $Result, $Details = "")
-    
+
     $global:TestResults += [PSCustomObject]@{
         Test = $TestName
         Result = $Result
         Details = $Details
         Timestamp = Get-Date
     }
-    
+
     if ($Result -eq "PASS") {
-        Write-Host "✅ $TestName" -ForegroundColor Green
+        Write-Output "✅ $TestName"
         $global:PassedTests++
     } else {
-        Write-Host "❌ $TestName" -ForegroundColor Red
+        Write-Output "❌ $TestName"
         if ($Details) {
-            Write-Host "   Details: $Details" -ForegroundColor Yellow
+            Write-Output "   Details: $Details"
         }
         $global:FailedTests++
     }
-    
+
     if ($Verbose -eq "true" -and $Details) {
-        Write-Host "   $Details" -ForegroundColor Gray
+        Write-Output "   $Details"
     }
 }
 
 function Test-FileExists {
     param($FilePath, $TestName)
-    
+
     if (Test-Path $FilePath) {
         Write-TestResult $TestName "PASS" "File exists: $FilePath"
         return $true
@@ -56,7 +56,7 @@ function Test-FileExists {
 
 function Test-StructDefinition {
     param($FilePath, $StructName, $TestName)
-    
+
     try {
         $content = Get-Content $FilePath -Raw
         if ($content -match "type\s+$StructName\s+struct") {
@@ -74,7 +74,7 @@ function Test-StructDefinition {
 
 function Test-FunctionDefinition {
     param($FilePath, $FunctionName, $TestName)
-    
+
     try {
         $content = Get-Content $FilePath -Raw
         if ($content -match "func\s+.*$FunctionName\s*\(") {
@@ -92,7 +92,7 @@ function Test-FunctionDefinition {
 
 function Test-InterfaceDefinition {
     param($FilePath, $InterfaceName, $TestName)
-    
+
     try {
         $content = Get-Content $FilePath -Raw
         if ($content -match "type\s+$InterfaceName\s+interface") {
@@ -110,7 +110,7 @@ function Test-InterfaceDefinition {
 
 function Test-ConstantDefinition {
     param($FilePath, $ConstantPattern, $TestName)
-    
+
     try {
         $content = Get-Content $FilePath -Raw
         if ($content -match $ConstantPattern) {
@@ -127,19 +127,19 @@ function Test-ConstantDefinition {
 }
 
 # Sprint 8 Core Tests
-Write-Host "📋 Testing Sprint 8 Core Components..." -ForegroundColor Blue
+Write-Output "📋 Testing Sprint 8 Core Components..."
 
 # Design Document Tests
-Write-Host "`n🔍 Design Document Validation..." -ForegroundColor Yellow
+Write-Output "`n🔍 Design Document Validation..."
 Test-FileExists "docs/sprint8_design.md" "Sprint 8 Design Document"
 
 # Deployment Automation Tests
 if ($TestMode -eq "all" -or $TestMode -eq "deployment") {
-    Write-Host "`n🚀 Deployment Automation Tests..." -ForegroundColor Yellow
-    
+    Write-Output "`n🚀 Deployment Automation Tests..."
+
     # File existence tests
     Test-FileExists "pkg/e2e/deployment_automation.go" "Deployment Automation File"
-    
+
     # Core structure tests
     Test-StructDefinition "pkg/e2e/deployment_automation.go" "DeploymentAutomationEngine" "DeploymentAutomationEngine Struct"
     Test-StructDefinition "pkg/e2e/deployment_automation.go" "DeploymentConfig" "DeploymentConfig Struct"
@@ -147,25 +147,25 @@ if ($TestMode -eq "all" -or $TestMode -eq "deployment") {
     Test-StructDefinition "pkg/e2e/deployment_automation.go" "KubernetesDeployer" "KubernetesDeployer Struct"
     Test-StructDefinition "pkg/e2e/deployment_automation.go" "CIPipeline" "CIPipeline Struct"
     Test-StructDefinition "pkg/e2e/deployment_automation.go" "SecurityScanner" "SecurityScanner Struct"
-    
+
     # Configuration structure tests
     Test-StructDefinition "pkg/e2e/deployment_automation.go" "ContainerRegistry" "ContainerRegistry Struct"
     Test-StructDefinition "pkg/e2e/deployment_automation.go" "KubernetesConfig" "KubernetesConfig Struct"
     Test-StructDefinition "pkg/e2e/deployment_automation.go" "CIPipelineConfig" "CIPipelineConfig Struct"
     Test-StructDefinition "pkg/e2e/deployment_automation.go" "DeploymentSecurity" "DeploymentSecurity Struct"
-    
+
     # Function tests
     Test-FunctionDefinition "pkg/e2e/deployment_automation.go" "NewDeploymentAutomationEngine" "NewDeploymentAutomationEngine Function"
     Test-FunctionDefinition "pkg/e2e/deployment_automation.go" "Deploy" "Deploy Method"
     Test-FunctionDefinition "pkg/e2e/deployment_automation.go" "GetDeployment" "GetDeployment Method"
     Test-FunctionDefinition "pkg/e2e/deployment_automation.go" "ListDeployments" "ListDeployments Method"
-    
+
     # Build and deployment result tests
     Test-StructDefinition "pkg/e2e/deployment_automation.go" "BuildResult" "BuildResult Struct"
     Test-StructDefinition "pkg/e2e/deployment_automation.go" "K8sDeployment" "K8sDeployment Struct"
     Test-StructDefinition "pkg/e2e/deployment_automation.go" "PipelineExecution" "PipelineExecution Struct"
     Test-StructDefinition "pkg/e2e/deployment_automation.go" "ScanResult" "ScanResult Struct"
-    
+
     # Constants and enums tests
     Test-ConstantDefinition "pkg/e2e/deployment_automation.go" "DeploymentStatusPending.*DeploymentStatus" "Deployment Status Constants"
     Test-ConstantDefinition "pkg/e2e/deployment_automation.go" "PipelineStatusPending.*PipelineStatus" "Pipeline Status Constants"
@@ -174,11 +174,11 @@ if ($TestMode -eq "all" -or $TestMode -eq "deployment") {
 
 # Enterprise APIs Tests
 if ($TestMode -eq "all" -or $TestMode -eq "enterprise") {
-    Write-Host "`n🏢 Enterprise APIs Tests..." -ForegroundColor Yellow
-    
+    Write-Output "`n🏢 Enterprise APIs Tests..."
+
     # File existence tests
     Test-FileExists "pkg/e2e/enterprise_apis.go" "Enterprise APIs File"
-    
+
     # Core structure tests
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "EnterpriseManager" "EnterpriseManager Struct"
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "EnterpriseConfig" "EnterpriseConfig Struct"
@@ -186,37 +186,37 @@ if ($TestMode -eq "all" -or $TestMode -eq "enterprise") {
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "SSOManager" "SSOManager Struct"
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "RBACManager" "RBACManager Struct"
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "OrganizationManager" "OrganizationManager Struct"
-    
+
     # Configuration structure tests
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "AdminAPIConfig" "AdminAPIConfig Struct"
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "SSOConfig" "SSOConfig Struct"
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "RBACConfig" "RBACConfig Struct"
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "OrganizationConfig" "OrganizationConfig Struct"
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "AuditConfig" "AuditConfig Struct"
-    
+
     # SSO and authentication tests
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "SSOProvider" "SSOProvider Struct"
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "Session" "Session Struct"
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "SSOSession" "SSOSession Struct"
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "APIKey" "APIKey Struct"
-    
+
     # RBAC tests
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "Role" "Role Struct"
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "Permission" "Permission Struct"
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "AuthorizationResult" "AuthorizationResult Struct"
-    
+
     # Organization and user management tests
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "Organization" "Organization Struct"
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "User" "User Struct"
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "UserLimits" "UserLimits Struct"
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "OrgLimits" "OrgLimits Struct"
-    
+
     # Function tests
     Test-FunctionDefinition "pkg/e2e/enterprise_apis.go" "NewEnterpriseManager" "NewEnterpriseManager Function"
     Test-FunctionDefinition "pkg/e2e/enterprise_apis.go" "Authenticate" "Authenticate Method"
     Test-FunctionDefinition "pkg/e2e/enterprise_apis.go" "Authorize" "Authorize Method"
     Test-FunctionDefinition "pkg/e2e/enterprise_apis.go" "CheckPermission" "CheckPermission Method"
-    
+
     # Audit and security tests
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "AuditLogger" "AuditLogger Struct"
     Test-StructDefinition "pkg/e2e/enterprise_apis.go" "AuditEvent" "AuditEvent Struct"
@@ -226,11 +226,11 @@ if ($TestMode -eq "all" -or $TestMode -eq "enterprise") {
 
 # Scaling Infrastructure Tests
 if ($TestMode -eq "all" -or $TestMode -eq "scaling") {
-    Write-Host "`nScaling Infrastructure Tests..." -ForegroundColor Yellow
-    
+    Write-Output "`nScaling Infrastructure Tests..."
+
     # File existence tests
     Test-FileExists "pkg/e2e/scaling_infrastructure.go" "Scaling Infrastructure File"
-    
+
     # Core structure tests
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "ScalingInfrastructureManager" "ScalingInfrastructureManager Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "ScalingInfrastructureConfig" "ScalingInfrastructureConfig Struct"
@@ -238,44 +238,44 @@ if ($TestMode -eq "all" -or $TestMode -eq "scaling") {
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "AutoScaler" "AutoScaler Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "ServiceMesh" "ServiceMesh Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "DatabaseScaler" "DatabaseScaler Struct"
-    
+
     # Load balancing tests
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "LoadBalancerConfig" "LoadBalancerConfig Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "Backend" "Backend Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "HealthCheckConfig" "HealthCheckConfig Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "RetryPolicyConfig" "RetryPolicyConfig Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "CircuitBreakerConfig" "CircuitBreakerConfig Struct"
-    
+
     # Auto-scaling tests
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "AutoScalerConfig" "AutoScalerConfig Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "HPAConfig" "HPAConfig Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "VPAConfig" "VPAConfig Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "ScalingGroup" "ScalingGroup Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "ServiceInstance" "ServiceInstance Struct"
-    
+
     # Service mesh tests
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "ServiceMeshConfig" "ServiceMeshConfig Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "TrafficSplitConfig" "TrafficSplitConfig Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "MeshService" "MeshService Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "MeshLoadBalancing" "MeshLoadBalancing Struct"
-    
+
     # Database scaling tests
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "DatabaseScalingConfig" "DatabaseScalingConfig Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "ReadReplicaConfig" "ReadReplicaConfig Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "ShardingConfig" "ShardingConfig Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "ConnectionPoolConfig" "ConnectionPoolConfig Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "DatabaseCachingConfig" "DatabaseCachingConfig Struct"
-    
+
     # Function tests
     Test-FunctionDefinition "pkg/e2e/scaling_infrastructure.go" "NewScalingInfrastructureManager" "NewScalingInfrastructureManager Function"
     Test-FunctionDefinition "pkg/e2e/scaling_infrastructure.go" "NewLoadBalancer" "NewLoadBalancer Function"
     Test-FunctionDefinition "pkg/e2e/scaling_infrastructure.go" "NewAutoScaler" "NewAutoScaler Function"
     Test-FunctionDefinition "pkg/e2e/scaling_infrastructure.go" "NewServiceMesh" "NewServiceMesh Function"
     Test-FunctionDefinition "pkg/e2e/scaling_infrastructure.go" "NewDatabaseScaler" "NewDatabaseScaler Function"
-    
+
     # Interface tests
     Test-InterfaceDefinition "pkg/e2e/scaling_infrastructure.go" "LoadBalancingAlgorithm" "LoadBalancingAlgorithm Interface"
-    
+
     # Monitoring and metrics tests
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "ScalingMonitor" "ScalingMonitor Struct"
     Test-StructDefinition "pkg/e2e/scaling_infrastructure.go" "ScalingMetrics" "ScalingMetrics Struct"
@@ -283,7 +283,7 @@ if ($TestMode -eq "all" -or $TestMode -eq "scaling") {
 }
 
 # Configuration Tests
-Write-Host "`nConfiguration Tests..." -ForegroundColor Yellow
+Write-Output "`nConfiguration Tests..."
 
 # Default configuration function tests
 $configTests = @(
@@ -297,7 +297,7 @@ foreach ($test in $configTests) {
 }
 
 # Compilation Tests
-Write-Host "`n🔨 Compilation Tests..." -ForegroundColor Yellow
+Write-Output "`n🔨 Compilation Tests..."
 try {
     $output = go build ./pkg/e2e/... 2>&1
     if ($LASTEXITCODE -eq 0) {
@@ -310,7 +310,7 @@ try {
 }
 
 # Integration Tests
-Write-Host "`n🔗 Integration Tests..." -ForegroundColor Yellow
+Write-Output "`n🔗 Integration Tests..."
 
 # Check if new components integrate with existing E2E system
 try {
@@ -319,24 +319,24 @@ try {
         # Check for integration readiness
         $integrationChecks = @(
             "DeploymentConfig",
-            "EnterpriseConfig", 
+            "EnterpriseConfig",
             "ScalingInfrastructureConfig"
         )
-        
+
         $integratedCount = 0
         foreach ($check in $integrationChecks) {
             # Check if these types exist (indicating readiness for integration)
             $deploymentContent = Get-Content "pkg/e2e/deployment_automation.go" -Raw -ErrorAction SilentlyContinue
             $enterpriseContent = Get-Content "pkg/e2e/enterprise_apis.go" -Raw -ErrorAction SilentlyContinue
             $scalingContent = Get-Content "pkg/e2e/scaling_infrastructure.go" -Raw -ErrorAction SilentlyContinue
-            
-            if (($deploymentContent -and $deploymentContent -match $check) -or 
-                ($enterpriseContent -and $enterpriseContent -match $check) -or 
+
+            if (($deploymentContent -and $deploymentContent -match $check) -or
+                ($enterpriseContent -and $enterpriseContent -match $check) -or
                 ($scalingContent -and $scalingContent -match $check)) {
                 $integratedCount++
             }
         }
-        
+
         if ($integratedCount -eq 3) {
             Write-TestResult "E2E Config Integration Readiness" "PASS" "All Sprint 8 config types defined"
         } elseif ($integratedCount -gt 0) {
@@ -353,8 +353,8 @@ try {
 
 # Production Readiness Assessment
 if ($TestMode -eq "all" -or $TestMode -eq "production") {
-    Write-Host "`n🏭 Production Readiness Assessment..." -ForegroundColor Yellow
-    
+    Write-Output "`n🏭 Production Readiness Assessment..."
+
     # Infrastructure components check
     $infrastructureComponents = @(
         @{ Name = "Container Orchestration"; File = "pkg/e2e/deployment_automation.go"; Pattern = "KubernetesDeployer" },
@@ -366,7 +366,7 @@ if ($TestMode -eq "all" -or $TestMode -eq "production") {
         @{ Name = "Service Mesh"; File = "pkg/e2e/scaling_infrastructure.go"; Pattern = "ServiceMesh" },
         @{ Name = "Database Scaling"; File = "pkg/e2e/scaling_infrastructure.go"; Pattern = "DatabaseScaler" }
     )
-    
+
     $readyComponents = 0
     foreach ($component in $infrastructureComponents) {
         try {
@@ -381,7 +381,7 @@ if ($TestMode -eq "all" -or $TestMode -eq "production") {
             Write-TestResult $component.Name "FAIL" "Failed to check component"
         }
     }
-    
+
     # Overall production readiness score
     $readinessPercentage = [math]::Round(($readyComponents / $infrastructureComponents.Count) * 100, 2)
     if ($readinessPercentage -ge 90) {
@@ -394,21 +394,21 @@ if ($TestMode -eq "all" -or $TestMode -eq "production") {
 }
 
 # Test Results Summary
-Write-Host "`n📊 Test Results Summary" -ForegroundColor Cyan
-Write-Host "=====================================" -ForegroundColor Cyan
+Write-Output "`n📊 Test Results Summary"
+Write-Output "====================================="
 
-Write-Host "✅ Passed Tests: $PassedTests" -ForegroundColor Green
-Write-Host "❌ Failed Tests: $FailedTests" -ForegroundColor Red
-Write-Host "📋 Total Tests: $($PassedTests + $FailedTests)" -ForegroundColor Blue
+Write-Output "✅ Passed Tests: $PassedTests"
+Write-Output "❌ Failed Tests: $FailedTests"
+Write-Output "📋 Total Tests: $($PassedTests + $FailedTests)"
 
-$PassRate = if ($PassedTests + $FailedTests -gt 0) { 
-    [math]::Round(($PassedTests / ($PassedTests + $FailedTests)) * 100, 2) 
-} else { 
-    0 
+$PassRate = if ($PassedTests + $FailedTests -gt 0) {
+    [math]::Round(($PassedTests / ($PassedTests + $FailedTests)) * 100, 2)
+} else {
+    0
 }
-Write-Host "📈 Pass Rate: $PassRate%" -ForegroundColor Yellow
+Write-Output "📈 Pass Rate: $PassRate%"
 
-Write-Host "`n🎯 Sprint 8 Component Status:" -ForegroundColor Cyan
+Write-Output "`n🎯 Sprint 8 Component Status:"
 $componentStatus = @{
     "Deployment Automation" = ($TestResults | Where-Object { $_.Test -like "*Deployment*" -and $_.Result -eq "PASS" }).Count
     "Enterprise APIs" = ($TestResults | Where-Object { $_.Test -like "*Enterprise*" -or $_.Test -like "*SSO*" -or $_.Test -like "*RBAC*" -and $_.Result -eq "PASS" }).Count
@@ -418,18 +418,18 @@ $componentStatus = @{
 
 foreach ($component in $componentStatus.GetEnumerator()) {
     $status = if ($component.Value -gt 0) { "✅ Implemented" } else { "❌ Missing" }
-    Write-Host "  $($component.Key): $status" -ForegroundColor White
+    Write-Output "  $($component.Key): $status"
 }
 
 if ($FailedTests -gt 0) {
-    Write-Host "`nFailed Tests Details:" -ForegroundColor Red
+    Write-Output "`nFailed Tests Details:"
     $TestResults | Where-Object { $_.Result -eq "FAIL" } | ForEach-Object {
-        Write-Host "  - $($_.Test): $($_.Details)" -ForegroundColor Yellow
+        Write-Output "  - $($_.Test): $($_.Details)"
     }
 }
 
 # Enterprise Features Assessment
-Write-Host "`nEnterprise Features Assessment:" -ForegroundColor Cyan
+Write-Output "`nEnterprise Features Assessment:"
 
 $enterpriseFeatures = @{
     "Container Orchestration" = ($TestResults | Where-Object { $_.Test -like "*Kubernetes*" -and $_.Result -eq "PASS" }).Count -gt 0
@@ -444,17 +444,17 @@ $enterpriseFeatures = @{
 
 foreach ($feature in $enterpriseFeatures.GetEnumerator()) {
     $status = if ($feature.Value) { "Ready" } else { "Needs Work" }
-    Write-Host "  $($feature.Key): $status" -ForegroundColor White
+    Write-Output "  $($feature.Key): $status"
 }
 
-Write-Host "`nSprint 8 Test Harness Completed!" -ForegroundColor Green
-Write-Host "Timestamp: $(Get-Date)" -ForegroundColor Gray
+Write-Output "`nSprint 8 Test Harness Completed!"
+Write-Output "Timestamp: $(Get-Date)"
 
 # Exit with appropriate code
 if ($FailedTests -eq 0) {
-    Write-Host "All tests passed! Sprint 8 is ready for production deployment." -ForegroundColor Green
+    Write-Output "All tests passed! Sprint 8 is ready for production deployment."
     exit 0
 } else {
-    Write-Host "Some tests failed. Please review and fix before proceeding to production." -ForegroundColor Yellow
+    Write-Output "Some tests failed. Please review and fix before proceeding to production."
     exit 1
 }

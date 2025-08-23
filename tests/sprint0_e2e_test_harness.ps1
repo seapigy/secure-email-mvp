@@ -1,8 +1,8 @@
 # Sprint 0 E2E Test Harness
 # Tests the design and initial implementation of the E2E PQC system
 
-Write-Host "Sprint 0 E2E Test Harness" -ForegroundColor Cyan
-Write-Host "=========================" -ForegroundColor Cyan
+Write-Output "Sprint 0 E2E Test Harness"
+Write-Output "========================="
 
 # Test configuration
 $TestResults = @{
@@ -18,34 +18,34 @@ function Write-TestResult {
         [bool]$Passed,
         [string]$Message
     )
-    
+
     $TestResults.TotalTests++
     if ($Passed) {
         $TestResults.PassedTests++
-        Write-Host "✅ $TestName" -ForegroundColor Green
+        Write-Output "✅ $TestName"
     } else {
         $TestResults.FailedTests++
-        Write-Host "❌ $TestName" -ForegroundColor Red
-        Write-Host "   $Message" -ForegroundColor Gray
+        Write-Output "❌ $TestName"
+        Write-Output "   $Message"
     }
 }
 
 # Test 1: Design Document Existence
-Write-Host "`nTest 1: Design Documentation" -ForegroundColor Yellow
+Write-Output "`nTest 1: Design Documentation"
 $designDoc = "docs/sprint0_e2e_pqc_design.md"
 if (Test-Path $designDoc) {
     Write-TestResult -TestName "Design Document Exists" -Passed $true -Message "Design document found"
-    
+
     # Check for key sections
     $content = Get-Content $designDoc -Raw
     $requiredSections = @(
         "System Architecture",
-        "Security Design", 
+        "Security Design",
         "Feature Flags",
         "Migration Strategy",
         "Testing Strategy"
     )
-    
+
     foreach ($section in $requiredSections) {
         if ($section -eq "Migration Strategy") {
             $hasSection = $content -match "Migration Strategy" -or $content -match "Migration & Rollback Strategy"
@@ -59,21 +59,21 @@ if (Test-Path $designDoc) {
 }
 
 # Test 2: Database Migration
-Write-Host "`nTest 2: Database Migration" -ForegroundColor Yellow
+Write-Output "`nTest 2: Database Migration"
 $migrationFile = "schema/migrate_add_e2e_system.sql"
 if (Test-Path $migrationFile) {
     Write-TestResult -TestName "Migration File Exists" -Passed $true -Message "Migration file found"
-    
+
     # Check for required tables
     $content = Get-Content $migrationFile -Raw
     $requiredTables = @(
         "e2e_messages",
-        "kt_public_keys", 
+        "kt_public_keys",
         "kt_log_entries",
         "hsm_key_operations",
         "e2e_feature_flags"
     )
-    
+
     foreach ($table in $requiredTables) {
         $hasTable = $content -match "CREATE TABLE.*$table"
         Write-TestResult -TestName "Migration Table: $table" -Passed $hasTable -Message "Table definition found"
@@ -83,66 +83,66 @@ if (Test-Path $migrationFile) {
 }
 
 # Test 3: E2E Configuration System
-Write-Host "`nTest 3: E2E Configuration" -ForegroundColor Yellow
+Write-Output "`nTest 3: E2E Configuration"
 $configFile = "pkg/e2e/config.go"
 if (Test-Path $configFile) {
     Write-TestResult -TestName "E2E Config Exists" -Passed $true -Message "Configuration file found"
-    
+
     # Check for required configuration components
     $content = Get-Content $configFile -Raw
     $requiredComponents = @(
         "E2EConfig",
-        "CryptoConfig", 
+        "CryptoConfig",
         "KTConfig",
         "HSMConfig",
         "SafetyConfig"
     )
-    
+
     foreach ($component in $requiredComponents) {
         $hasComponent = $content -match "type $component struct"
         Write-TestResult -TestName "Config Component: $component" -Passed $hasComponent -Message "Configuration component found"
     }
-    
+
     # Check for safety features
     $hasDemoPlaintextCheck = $content -match "DEMO_PLAINTEXT_MODE.*true.*production"
     Write-TestResult -TestName "Demo Plaintext Safety Check" -Passed $hasDemoPlaintextCheck -Message "Safety check for demo mode"
-    
+
 } else {
     Write-TestResult -TestName "E2E Config Exists" -Passed $false -Message "Configuration file not found"
 }
 
 # Test 4: Feature Flag System
-Write-Host "`nTest 4: Feature Flag System" -ForegroundColor Yellow
+Write-Output "`nTest 4: Feature Flag System"
 if (Test-Path $configFile) {
     $content = Get-Content $configFile -Raw
-    
+
     # Check for feature flag granularity
     $hasGlobalFlag = $content -match "E2E_ENABLED"
     Write-TestResult -TestName "Global Feature Flag" -Passed $hasGlobalFlag -Message "Global E2E flag"
-    
+
     $hasOrgFlag = $content -match "E2E_ORG_ENABLED_"
     Write-TestResult -TestName "Org Feature Flag" -Passed $hasOrgFlag -Message "Organization-specific flags"
-    
+
     $hasUserFlag = $content -match "E2E_USER_ENABLED_"
     Write-TestResult -TestName "User Feature Flag" -Passed $hasUserFlag -Message "User-specific flags"
-    
+
     # Check for safety defaults
     $hasDefaultDisabled = $content -match "Enabled: false.*// Disabled by default"
     Write-TestResult -TestName "Default Safety Setting" -Passed $hasDefaultDisabled -Message "E2E disabled by default"
 }
 
 # Test 5: Go Module Dependencies
-Write-Host "`nTest 5: Go Dependencies" -ForegroundColor Yellow
+Write-Output "`nTest 5: Go Dependencies"
 if (Test-Path "go.mod") {
     Write-TestResult -TestName "Go Module Exists" -Passed $true -Message "go.mod file found"
-    
+
     # Check for required dependencies
     $goModContent = Get-Content "go.mod" -Raw
     $requiredDeps = @(
         "github.com/gorilla/mux",
         "modernc.org/sqlite"
     )
-    
+
     foreach ($dep in $requiredDeps) {
         $hasDep = $goModContent -match $dep
         Write-TestResult -TestName "Go Dependency: $dep" -Passed $hasDep -Message "Dependency found in go.mod"
@@ -152,7 +152,7 @@ if (Test-Path "go.mod") {
 }
 
 # Test 6: Build Validation
-Write-Host "`nTest 6: Build Validation" -ForegroundColor Yellow
+Write-Output "`nTest 6: Build Validation"
 try {
     $buildResult = go build ./pkg/e2e 2>&1
     if ($LASTEXITCODE -eq 0) {
@@ -165,7 +165,7 @@ try {
 }
 
 # Test 7: Configuration Validation
-Write-Host "`nTest 7: Configuration Validation" -ForegroundColor Yellow
+Write-Output "`nTest 7: Configuration Validation"
 try {
     $testResult = go test ./pkg/e2e -run TestConfigValidation 2>&1
     if ($LASTEXITCODE -eq 0) {
@@ -178,7 +178,7 @@ try {
 }
 
 # Test 8: Safety Checks
-Write-Host "`nTest 8: Safety Checks" -ForegroundColor Yellow
+Write-Output "`nTest 8: Safety Checks"
 
 # Check for critical safety patterns
 $safetyChecks = @{
@@ -202,7 +202,7 @@ foreach ($check in $safetyChecks.GetEnumerator()) {
 }
 
 # Test 9: Documentation Completeness
-Write-Host "`nTest 9: Documentation" -ForegroundColor Yellow
+Write-Output "`nTest 9: Documentation"
 $docs = @(
     "docs/sprint0_e2e_pqc_design.md",
     "schema/migrate_add_e2e_system.sql"
@@ -219,7 +219,7 @@ foreach ($doc in $docs) {
 }
 
 # Test 10: Sprint 0 Readiness Assessment
-Write-Host "`nTest 10: Sprint 0 Readiness" -ForegroundColor Yellow
+Write-Output "`nTest 10: Sprint 0 Readiness"
 
 $readinessCriteria = @{
     "Design Document Complete" = Test-Path "docs/sprint0_e2e_pqc_design.md"
@@ -238,38 +238,38 @@ foreach ($criterion in $readinessCriteria.GetEnumerator()) {
 }
 
 # Final Summary
-Write-Host "`n" + "="*50 -ForegroundColor Cyan
-Write-Host "SPRINT 0 TEST SUMMARY" -ForegroundColor Cyan
-Write-Host "="*50 -ForegroundColor Cyan
+Write-Output "`n" + "="*50 -ForegroundColor Cyan
+Write-Output "SPRINT 0 TEST SUMMARY"
+Write-Output "="*50 -ForegroundColor Cyan
 
-Write-Host "Total Tests: $($TestResults.TotalTests)" -ForegroundColor White
-Write-Host "Passed: $($TestResults.PassedTests)" -ForegroundColor Green
-Write-Host "Failed: $($TestResults.FailedTests)" -ForegroundColor Red
+Write-Output "Total Tests: $($TestResults.TotalTests)"
+Write-Output "Passed: $($TestResults.PassedTests)"
+Write-Output "Failed: $($TestResults.FailedTests)"
 
-$successRate = if ($TestResults.TotalTests -gt 0) { 
-    [math]::Round(($TestResults.PassedTests / $TestResults.TotalTests) * 100, 2) 
+$successRate = if ($TestResults.TotalTests -gt 0) {
+    [math]::Round(($TestResults.PassedTests / $TestResults.TotalTests) * 100, 2)
 } else { 0 }
 
-Write-Host "Success Rate: $successRate%" -ForegroundColor $(if ($successRate -ge 90) { "Green" } elseif ($successRate -ge 75) { "Yellow" } else { "Red" })
+Write-Output "Success Rate: $successRate%" -ForegroundColor $(if ($successRate -ge 90) { "Green" } elseif ($successRate -ge 75) { "Yellow" } else { "Red" })
 
 if ($readyForSprint1) {
-    Write-Host "`n🎉 SPRINT 0 COMPLETE - READY FOR SPRINT 1" -ForegroundColor Green
-    Write-Host "All design and infrastructure components are in place." -ForegroundColor Green
-    Write-Host "Proceed to Sprint 1: Core KEM/DEM + Envelope + Client SDK" -ForegroundColor Green
+    Write-Output "`n🎉 SPRINT 0 COMPLETE - READY FOR SPRINT 1"
+    Write-Output "All design and infrastructure components are in place."
+    Write-Output "Proceed to Sprint 1: Core KEM/DEM + Envelope + Client SDK"
 } else {
-    Write-Host "`n⚠️  SPRINT 0 INCOMPLETE - ADDRESS ISSUES BEFORE SPRINT 1" -ForegroundColor Yellow
-    Write-Host "Some design or infrastructure components need attention." -ForegroundColor Yellow
+    Write-Output "`n⚠️  SPRINT 0 INCOMPLETE - ADDRESS ISSUES BEFORE SPRINT 1"
+    Write-Output "Some design or infrastructure components need attention."
 }
 
 if ($TestResults.Errors.Count -gt 0) {
-    Write-Host "`nDetailed Errors:" -ForegroundColor Red
+    Write-Output "`nDetailed Errors:"
     foreach ($error in $TestResults.Errors) {
-        Write-Host "  - $error" -ForegroundColor Gray
+        Write-Output "  - $error"
     }
 }
 
-Write-Host "`nNext Steps:" -ForegroundColor Cyan
-Write-Host "1. Review failed tests and address issues" -ForegroundColor White
-Write-Host "2. Complete any missing design components" -ForegroundColor White
-Write-Host "3. Validate configuration system" -ForegroundColor White
-Write-Host "4. Begin Sprint 1 implementation" -ForegroundColor White
+Write-Output "`nNext Steps:"
+Write-Output "1. Review failed tests and address issues"
+Write-Output "2. Complete any missing design components"
+Write-Output "3. Validate configuration system"
+Write-Output "4. Begin Sprint 1 implementation"

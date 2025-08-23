@@ -14,17 +14,6 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// testMiddleware is a simple middleware for testing that sets user context
-func testMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Simple test middleware that just passes through
-		ctx := context.WithValue(r.Context(), UserIDKey, "test-user-id")
-		ctx = context.WithValue(ctx, EmailKey, "test@example.com")
-		r = r.WithContext(ctx)
-		next.ServeHTTP(w, r)
-	})
-}
-
 // Helper function to generate JWT token for testing
 func generateTestToken(t *testing.T, userID, email string) string {
 	// Set JWT secrets for testing

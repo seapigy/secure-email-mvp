@@ -84,22 +84,10 @@ const UnlockModal: React.FC<UnlockModalProps> = ({
    * Handle escape key press to close modal
    */
   useEffect(() => {
-    const handleEscapeKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen) {
-        handleClose();
-      }
-    };
-
     if (isOpen) {
-      document.addEventListener('keydown', handleEscapeKey);
-      // Prevent body scroll when modal is open
-      document.body.style.overflow = 'hidden';
+      setPassword('');
+      setShowPassword(false);
     }
-
-    return () => {
-      document.removeEventListener('keydown', handleEscapeKey);
-      document.body.style.overflow = 'unset';
-    };
   }, [isOpen]);
 
   /**
@@ -273,7 +261,7 @@ const UnlockModal: React.FC<UnlockModalProps> = ({
 
               {/* Cancel Note */}
               <div className="text-xs text-secondary-500 dark:text-secondary-400 text-center">
-                You can cancel and return to the email list if you don't want to unlock this email now.
+                You can cancel and return to the email list if you don&apos;t want to unlock this email now.
               </div>
 
               {/* Action Buttons */}

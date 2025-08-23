@@ -190,7 +190,7 @@ func (ers *EmailRetentionService) GetEmailsPendingCleanup(ctx context.Context, f
 
 	// Add filters
 	if userID, ok := filters["user_id"]; ok && userID != "" {
-		query += fmt.Sprintf(" AND sender_id = ?")
+		query += " AND sender_id = ?"
 		args = append(args, userID)
 		argIndex++
 	}
@@ -207,13 +207,13 @@ func (ers *EmailRetentionService) GetEmailsPendingCleanup(ctx context.Context, f
 	}
 
 	if startDate, ok := filters["start_date"]; ok && startDate != "" {
-		query += fmt.Sprintf(" AND created_at >= ?")
+		query += " AND created_at >= ?"
 		args = append(args, startDate)
 		argIndex++
 	}
 
 	if endDate, ok := filters["end_date"]; ok && endDate != "" {
-		query += fmt.Sprintf(" AND created_at <= ?")
+		query += " AND created_at <= ?"
 		args = append(args, endDate)
 		argIndex++
 	}

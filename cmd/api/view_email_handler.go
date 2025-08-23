@@ -222,7 +222,7 @@ func (srv *Server) viewEmailHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Check country restriction if set
 		if allowedCountry != "" {
-			if strings.ToLower(strings.TrimSpace(location.Country)) != strings.ToLower(strings.TrimSpace(allowedCountry)) {
+			if !strings.EqualFold(strings.TrimSpace(location.Country), strings.TrimSpace(allowedCountry)) {
 				accessAllowed = false
 				log.Printf("Country mismatch for IP %s: expected %s, got %s", clientIP, allowedCountry, location.Country)
 			}

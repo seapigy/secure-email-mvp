@@ -200,13 +200,6 @@ func createUserWithTOTP(db *sql.DB, email, passwordHash, totpSecret, fallbackEma
 	return err
 }
 
-// createUserWithFallback inserts a new user with fallback email and token into the database. Used for account recovery security.
-func createUserWithFallback(db *sql.DB, email, hashedPassword, fallbackEmail, fallbackToken string, fallbackExpiration time.Time) error {
-	query := `INSERT INTO users (email, password_hash, fallback_email, fallback_token, fallback_confirmed, fallback_token_expiration, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
-	_, err := db.Exec(query, email, hashedPassword, fallbackEmail, fallbackToken, false, fallbackExpiration, time.Now())
-	return err
-}
-
 // createUser inserts a new user into the database (legacy function, not used in fallback flow).
 func createUser(db *sql.DB, email, hashedPassword string) error {
 	query := `INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)`

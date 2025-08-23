@@ -109,7 +109,7 @@ export interface AdminActionApproval {
   action_type: string;
   requested_by: string;
   requested_at: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   status: 'pending' | 'approved' | 'rejected';
   approved_by?: string;
   approved_at?: string;
@@ -437,7 +437,7 @@ export interface Alert {
   acknowledged_at?: string;
   resolved: boolean;
   resolved_at?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   
   // Enhanced Alert Properties
   source_component?: 'zkid' | 'pqc' | 'email' | 'database' | 'authentication' | 'api';
@@ -471,7 +471,7 @@ export interface AuditLogEntry {
   user_id: string;
   action: string;
   resource: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   ip_address: string;
   user_agent: string;
   success: boolean;
@@ -498,14 +498,14 @@ export interface RealTimeUpdate {
   timestamp: string;
   type: 'metric_update' | 'alert' | 'status_change' | 'performance_data';
   component: 'zkid' | 'pqc' | 'email' | 'database' | 'authentication' | 'api';
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   severity?: 'info' | 'warning' | 'error' | 'critical';
 }
 
 export interface WebSocketMessage {
   type: 'metric_update' | 'alert' | 'status_change' | 'heartbeat';
   timestamp: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   component?: string;
 }
 
@@ -598,7 +598,7 @@ export interface APIResponse<T> {
 
 export interface SystemEvent {
   type: 'metric_update' | 'alert' | 'log_entry' | 'system_event';
-  data: any;
+  data: Record<string, unknown>;
   timestamp: string;
 }
 
@@ -807,7 +807,7 @@ export interface ChartDataPoint {
   timestamp: string;
   value: number;
   label?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ChartConfig {
@@ -897,7 +897,7 @@ export interface ThreatRule {
   }>;
   actions: Array<{
     type: 'alert' | 'block' | 'log' | 'email' | 'webhook';
-    parameters: Record<string, any>;
+    parameters: Record<string, unknown>;
   }>;
   created_at: string;
   updated_at: string;

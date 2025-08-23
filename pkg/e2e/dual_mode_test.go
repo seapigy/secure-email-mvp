@@ -166,9 +166,10 @@ func (ts *DualModeTestSuite) TestMixedModeMessageHandling(t *testing.T) {
 	e2eCount := 0
 	legacyCount := 0
 	for _, msg := range messages {
-		if msg.Type == "e2e" {
+		switch msg.Type {
+		case "e2e":
 			e2eCount++
-		} else if msg.Type == "legacy" {
+		case "legacy":
 			legacyCount++
 		}
 	}
@@ -328,6 +329,7 @@ func (ts *DualModeTestSuite) TestConcurrentAccess(t *testing.T) {
 // Helper methods
 
 func (ts *DualModeTestSuite) setupTestDatabase(t *testing.T) error {
+	t.Helper() // Mark this as a test helper function
 	// Create test tables if they don't exist
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS test_users (
@@ -365,6 +367,7 @@ func (ts *DualModeTestSuite) setupTestDatabase(t *testing.T) error {
 }
 
 func (ts *DualModeTestSuite) cleanupTestDatabase(t *testing.T) error {
+	t.Helper() // Mark this as a test helper function
 	// Clean up test data
 	queries := []string{
 		"DELETE FROM test_messages",
@@ -451,12 +454,16 @@ func (ts *DualModeTestSuite) createE2EMessage(t *testing.T, senderID, recipientI
 }
 
 func (ts *DualModeTestSuite) enableE2EForUser(t *testing.T, userID string) error {
+	t.Helper() // Mark this as a test helper function
+	t.Logf("Enabling E2E for user: %s", userID) // Log the operation
 	query := `UPDATE test_users SET e2e_enabled = TRUE WHERE id = ?`
 	_, err := ts.testDB.Exec(query, userID)
 	return err
 }
 
 func (ts *DualModeTestSuite) disableE2EForUser(t *testing.T, userID string) error {
+	t.Helper() // Mark this as a test helper function
+	t.Logf("Disabling E2E for user: %s", userID) // Log the operation
 	query := `UPDATE test_users SET e2e_enabled = FALSE WHERE id = ?`
 	_, err := ts.testDB.Exec(query, userID)
 	return err
@@ -485,12 +492,15 @@ func (ts *DualModeTestSuite) startMigration(t *testing.T, migrationType string, 
 }
 
 func (ts *DualModeTestSuite) waitForMigrationCompletion(t *testing.T, jobID string) error {
+	t.Helper() // Mark this as a test helper function
+	t.Logf("Waiting for migration completion for job: %s", jobID) // Use jobID parameter
 	// Simulate waiting for migration
 	time.Sleep(200 * time.Millisecond)
 	return nil
 }
 
 func (ts *DualModeTestSuite) getE2EMessage(t *testing.T, messageID string) *DualModeTestMessage {
+	t.Helper() // Mark this as a test helper function
 	query := `SELECT id, sender_id, recipient_id, content, subject, type, created_at FROM test_messages WHERE id = ? AND type = 'e2e'`
 	row := ts.testDB.QueryRow(query, messageID)
 
@@ -504,6 +514,7 @@ func (ts *DualModeTestSuite) getE2EMessage(t *testing.T, messageID string) *Dual
 }
 
 func (ts *DualModeTestSuite) getLegacyMessage(t *testing.T, messageID string) *DualModeTestMessage {
+	t.Helper() // Mark this as a test helper function
 	query := `SELECT id, sender_id, recipient_id, content, subject, type, created_at FROM test_messages WHERE id = ? AND type = 'legacy'`
 	row := ts.testDB.QueryRow(query, messageID)
 
@@ -517,11 +528,15 @@ func (ts *DualModeTestSuite) getLegacyMessage(t *testing.T, messageID string) *D
 }
 
 func (ts *DualModeTestSuite) decryptE2EMessage(t *testing.T, msg *DualModeTestMessage) string {
+	t.Helper() // Mark this as a test helper function
+	t.Logf("Decrypting E2E message: %s", msg.ID) // Use msg parameter
 	// Simulate E2E decryption
 	return msg.Content
 }
 
 func (ts *DualModeTestSuite) attemptServerDecryption(t *testing.T, msg *DualModeTestMessage) error {
+	t.Helper() // Mark this as a test helper function
+	t.Logf("Attempting server decryption of E2E message: %s (should fail)", msg.ID) // Use msg parameter
 	// Simulate server decryption attempt (should fail)
 	return fmt.Errorf("server cannot decrypt E2E message")
 }
@@ -625,6 +640,11 @@ func (ts *DualModeTestSuite) createTestMessage(t *testing.T, senderID, recipient
 }
 
 func (ts *DualModeTestSuite) callLegacyAPI(t *testing.T, method, path string, body interface{}) *httptest.ResponseRecorder {
+	t.Helper() // Mark this as a test helper function
+	t.Logf("Calling legacy API: %s %s", method, path) // Use method and path parameters
+	if body != nil {
+		t.Logf("Request body: %+v", body) // Use body parameter
+	}
 	// Simulate legacy API call
 	_, err := http.NewRequest(method, path, nil)
 	require.NoError(t, err)
@@ -638,6 +658,11 @@ func (ts *DualModeTestSuite) callLegacyAPI(t *testing.T, method, path string, bo
 }
 
 func (ts *DualModeTestSuite) callE2EAPI(t *testing.T, method, path string, body interface{}) *httptest.ResponseRecorder {
+	t.Helper() // Mark this as a test helper function
+	t.Logf("Calling E2E API: %s %s", method, path) // Use method and path parameters
+	if body != nil {
+		t.Logf("Request body: %+v", body) // Use body parameter
+	}
 	// Simulate E2E API call
 	_, err := http.NewRequest(method, path, nil)
 	require.NoError(t, err)
@@ -651,6 +676,8 @@ func (ts *DualModeTestSuite) callE2EAPI(t *testing.T, method, path string, body 
 }
 
 func (ts *DualModeTestSuite) rollbackMigration(t *testing.T, jobID string) error {
+	t.Helper() // Mark this as a test helper function
+	t.Logf("Rolling back migration for job: %s", jobID) // Use jobID parameter
 	// Simulate rollback
 	query := `UPDATE test_migrations SET status = 'rolled_back' WHERE id = ?`
 	_, err := ts.testDB.Exec(query, jobID)

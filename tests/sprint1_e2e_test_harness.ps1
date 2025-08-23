@@ -1,7 +1,7 @@
 # Sprint 1 E2E Test Harness
 # Tests the core KEM/DEM + Envelope + Client SDK implementation
-Write-Host "Sprint 1 E2E Test Harness" -ForegroundColor Cyan
-Write-Host "=========================" -ForegroundColor Cyan
+Write-Output "Sprint 1 E2E Test Harness"
+Write-Output "========================="
 
 # Test configuration
 $TestResults = @{
@@ -17,20 +17,20 @@ function Write-TestResult {
         [bool]$Passed,
         [string]$Message
     )
-    
+
     $TestResults.TotalTests++
     if ($Passed) {
         $TestResults.PassedTests++
-        Write-Host "✅ $TestName" -ForegroundColor Green
+        Write-Output "✅ $TestName"
     } else {
         $TestResults.FailedTests++
-        Write-Host "❌ $TestName" -ForegroundColor Red
-        Write-Host "   $Message" -ForegroundColor Gray
+        Write-Output "❌ $TestName"
+        Write-Output "   $Message"
     }
 }
 
 # Test 1: Core Cryptographic Components
-Write-Host "`nTest 1: Core Cryptographic Components" -ForegroundColor Yellow
+Write-Output "`nTest 1: Core Cryptographic Components"
 
 # Check crypto.go file
 $cryptoFile = "pkg/e2e/crypto.go"
@@ -38,31 +38,31 @@ if (Test-Path $cryptoFile) {
     $content = Get-Content $cryptoFile -Raw
     $hasCryptoProvider = $content -match "type CryptoProvider struct"
     Write-TestResult -TestName "CryptoProvider Struct" -Passed $hasCryptoProvider -Message "Core cryptographic provider structure"
-    
+
     $hasEnvelope = $content -match "type Envelope struct"
     Write-TestResult -TestName "Envelope Struct" -Passed $hasEnvelope -Message "Message envelope structure"
-    
+
     $hasKeyPair = $content -match "type KeyPair struct"
     Write-TestResult -TestName "KeyPair Struct" -Passed $hasKeyPair -Message "Key pair structure"
-    
+
     $hasKEMAlgorithms = $content -match "kyber512.*kyber768.*kyber1024"
     Write-TestResult -TestName "KEM Algorithms" -Passed $hasKEMAlgorithms -Message "KEM algorithm support"
-    
+
     $hasDEMAlgorithms = $content -match "aes256gcm" -and $content -match "chacha20poly1305"
     Write-TestResult -TestName "DEM Algorithms" -Passed $hasDEMAlgorithms -Message "DEM algorithm support"
-    
+
     $hasSignatureAlgorithms = $content -match "dilithium2.*dilithium3.*dilithium5"
     Write-TestResult -TestName "Signature Algorithms" -Passed $hasSignatureAlgorithms -Message "Signature algorithm support"
-    
+
     $hasEncryptMessage = $content -match "func.*EncryptMessage"
     Write-TestResult -TestName "EncryptMessage Function" -Passed $hasEncryptMessage -Message "Message encryption function"
-    
+
     $hasDecryptMessage = $content -match "func.*DecryptMessage"
     Write-TestResult -TestName "DecryptMessage Function" -Passed $hasDecryptMessage -Message "Message decryption function"
-    
+
     $hasKeyDerivation = $content -match "func.*DeriveKey"
     Write-TestResult -TestName "Key Derivation" -Passed $hasKeyDerivation -Message "HKDF key derivation"
-    
+
     $hasSignatureVerification = $content -match "verifyEnvelopeSignature"
     Write-TestResult -TestName "Signature Verification" -Passed $hasSignatureVerification -Message "Envelope signature verification"
 } else {
@@ -70,50 +70,50 @@ if (Test-Path $cryptoFile) {
 }
 
 # Test 2: Client SDK
-Write-Host "`nTest 2: Client SDK" -ForegroundColor Yellow
+Write-Output "`nTest 2: Client SDK"
 
 $clientFile = "pkg/e2e/client.go"
 if (Test-Path $clientFile) {
     $content = Get-Content $clientFile -Raw
     $hasClient = $content -match "type Client struct"
     Write-TestResult -TestName "Client Struct" -Passed $hasClient -Message "E2E client structure"
-    
+
     $hasMessage = $content -match "type Message struct"
     Write-TestResult -TestName "Message Struct" -Passed $hasMessage -Message "Message structure"
-    
+
     $hasThread = $content -match "type Thread struct"
     Write-TestResult -TestName "Thread Struct" -Passed $hasThread -Message "Thread structure"
-    
+
     $hasNewClient = $content -match "func NewClient"
     Write-TestResult -TestName "NewClient Function" -Passed $hasNewClient -Message "Client creation function"
-    
+
     $hasEncryptMessage = $content -match "func.*EncryptMessage.*recipientPublicKey"
     Write-TestResult -TestName "Client EncryptMessage" -Passed $hasEncryptMessage -Message "Client message encryption"
-    
+
     $hasDecryptMessage = $content -match "func.*DecryptMessage.*senderPublicKey"
     Write-TestResult -TestName "Client DecryptMessage" -Passed $hasDecryptMessage -Message "Client message decryption"
-    
+
     $hasCreateThread = $content -match "func.*CreateThread"
     Write-TestResult -TestName "CreateThread Function" -Passed $hasCreateThread -Message "Thread creation function"
-    
+
     $hasThreadEncryption = $content -match "EncryptThreadMessage"
     Write-TestResult -TestName "Thread Encryption" -Passed $hasThreadEncryption -Message "Thread message encryption"
-    
+
     $hasThreadDecryption = $content -match "DecryptThreadMessage"
     Write-TestResult -TestName "Thread Decryption" -Passed $hasThreadDecryption -Message "Thread message decryption"
-    
+
     $hasKeyRotation = $content -match "func.*RotateKeys"
     Write-TestResult -TestName "Key Rotation" -Passed $hasKeyRotation -Message "Key rotation functionality"
-    
+
     $hasKeyExport = $content -match "func.*ExportKeyPair"
     Write-TestResult -TestName "Key Export" -Passed $hasKeyExport -Message "Key pair export functionality"
-    
+
     $hasKeyImport = $content -match "func.*ImportKeyPair"
     Write-TestResult -TestName "Key Import" -Passed $hasKeyImport -Message "Key pair import functionality"
-    
+
     $hasKeyInfo = $content -match "func.*GetKeyInfo"
     Write-TestResult -TestName "Key Info" -Passed $hasKeyInfo -Message "Key information retrieval"
-    
+
     $hasThreadManagement = $content -match "AddParticipant" -and $content -match "RemoveParticipant" -and $content -match "IsParticipant"
     Write-TestResult -TestName "Thread Management" -Passed $hasThreadManagement -Message "Thread participant management"
 } else {
@@ -121,32 +121,32 @@ if (Test-Path $clientFile) {
 }
 
 # Test 3: Unit Tests
-Write-Host "`nTest 3: Unit Tests" -ForegroundColor Yellow
+Write-Output "`nTest 3: Unit Tests"
 
 $cryptoTestFile = "pkg/e2e/crypto_test.go"
 if (Test-Path $cryptoTestFile) {
     $content = Get-Content $cryptoTestFile -Raw
     $hasCryptoTests = $content -match "TestCryptoProvider"
     Write-TestResult -TestName "Crypto Tests" -Passed $hasCryptoTests -Message "Cryptographic unit tests"
-    
+
     $hasKeyPairTests = $content -match "TestCryptoProvider_GenerateKeyPair"
     Write-TestResult -TestName "Key Pair Tests" -Passed $hasKeyPairTests -Message "Key pair generation tests"
-    
+
     $hasEncryptDecryptTests = $content -match "TestCryptoProvider_EncryptDecryptMessage"
     Write-TestResult -TestName "Encrypt/Decrypt Tests" -Passed $hasEncryptDecryptTests -Message "Message encryption/decryption tests"
-    
+
     $hasAlgorithmTests = $content -match "TestCryptoProvider_EncryptDecryptWithDifferentAlgorithms"
     Write-TestResult -TestName "Algorithm Tests" -Passed $hasAlgorithmTests -Message "Different algorithm combination tests"
-    
+
     $hasSignatureTests = $content -match "TestCryptoProvider_SignatureVerification"
     Write-TestResult -TestName "Signature Tests" -Passed $hasSignatureTests -Message "Signature verification tests"
-    
+
     $hasKeyDerivationTests = $content -match "TestCryptoProvider_KeyDerivation"
     Write-TestResult -TestName "Key Derivation Tests" -Passed $hasKeyDerivationTests -Message "Key derivation tests"
-    
+
     $hasExpiryTests = $content -match "TestCryptoProvider_EnvelopeExpiry"
     Write-TestResult -TestName "Expiry Tests" -Passed $hasExpiryTests -Message "Envelope and key expiry tests"
-    
+
     $hasIDGenerationTests = $content -match "TestCryptoProvider_EnvelopeIDGeneration"
     Write-TestResult -TestName "ID Generation Tests" -Passed $hasIDGenerationTests -Message "ID generation uniqueness tests"
 } else {
@@ -158,22 +158,22 @@ if (Test-Path $clientTestFile) {
     $content = Get-Content $clientTestFile -Raw
     $hasClientTests = $content -match "TestNewClient"
     Write-TestResult -TestName "Client Tests" -Passed $hasClientTests -Message "Client SDK unit tests"
-    
+
     $hasMessageTests = $content -match "TestClient_EncryptDecryptMessage"
     Write-TestResult -TestName "Client Message Tests" -Passed $hasMessageTests -Message "Client message encryption/decryption tests"
-    
+
     $hasThreadTests = $content -match "TestClient_CreateThread"
     Write-TestResult -TestName "Thread Tests" -Passed $hasThreadTests -Message "Thread creation and management tests"
-    
+
     $hasThreadMessageTests = $content -match "TestClient_EncryptDecryptThreadMessage"
     Write-TestResult -TestName "Thread Message Tests" -Passed $hasThreadMessageTests -Message "Thread message encryption/decryption tests"
-    
+
     $hasKeyManagementTests = $content -match "TestClient_RotateKeys"
     Write-TestResult -TestName "Key Management Tests" -Passed $hasKeyManagementTests -Message "Key rotation and management tests"
-    
+
     $hasKeyExportImportTests = $content -match "TestClient_ExportImportKeyPair"
     Write-TestResult -TestName "Key Export/Import Tests" -Passed $hasKeyExportImportTests -Message "Key pair export/import tests"
-    
+
     $hasThreadManagementTests = $content -match "TestThread_AddRemoveParticipant"
     Write-TestResult -TestName "Thread Management Tests" -Passed $hasThreadManagementTests -Message "Thread participant management tests"
 } else {
@@ -181,7 +181,7 @@ if (Test-Path $clientTestFile) {
 }
 
 # Test 4: Build Validation
-Write-Host "`nTest 4: Build Validation" -ForegroundColor Yellow
+Write-Output "`nTest 4: Build Validation"
 
 try {
     $buildResult = go build ./pkg/e2e 2>&1
@@ -195,7 +195,7 @@ try {
 }
 
 # Test 5: Test Execution
-Write-Host "`nTest 5: Test Execution" -ForegroundColor Yellow
+Write-Output "`nTest 5: Test Execution"
 
 try {
     $testResult = go test ./pkg/e2e -v 2>&1
@@ -209,7 +209,7 @@ try {
 }
 
 # Test 6: Code Quality
-Write-Host "`nTest 6: Code Quality" -ForegroundColor Yellow
+Write-Output "`nTest 6: Code Quality"
 
 # Check for TODO comments (placeholder implementations)
 $cryptoContent = if (Test-Path $cryptoFile) { Get-Content $cryptoFile -Raw } else { "" }
@@ -232,7 +232,7 @@ $hasRandomGeneration = $allContent -match "crypto/rand" -or $allContent -match "
 Write-TestResult -TestName "Secure Random Generation" -Passed $hasRandomGeneration -Message "Cryptographically secure random generation"
 
 # Test 7: Documentation
-Write-Host "`nTest 7: Documentation" -ForegroundColor Yellow
+Write-Output "`nTest 7: Documentation"
 
 $hasCryptoComments = $cryptoContent -match "//.*CryptoProvider" -and $cryptoContent -match "//.*Envelope" -and $cryptoContent -match "//.*KeyPair"
 Write-TestResult -TestName "Crypto Documentation" -Passed $hasCryptoComments -Message "Cryptographic component documentation"
@@ -244,7 +244,7 @@ $hasFunctionComments = $allContent -match "//.*[A-Z].*" -and ($allContent -match
 Write-TestResult -TestName "Function Documentation" -Passed $hasFunctionComments -Message "Function documentation and error descriptions"
 
 # Test 8: Sprint 1 Readiness Assessment
-Write-Host "`nTest 8: Sprint 1 Readiness" -ForegroundColor Yellow
+Write-Output "`nTest 8: Sprint 1 Readiness"
 
 $readinessCriteria = @{
     "Core Crypto Implementation" = Test-Path $cryptoFile
@@ -264,38 +264,38 @@ foreach ($criterion in $readinessCriteria.GetEnumerator()) {
 }
 
 # Final Summary
-Write-Host "`n" + "="*50 -ForegroundColor Cyan
-Write-Host "SPRINT 1 TEST SUMMARY" -ForegroundColor Cyan
-Write-Host "="*50 -ForegroundColor Cyan
+Write-Output "`n" + "="*50 -ForegroundColor Cyan
+Write-Output "SPRINT 1 TEST SUMMARY"
+Write-Output "="*50 -ForegroundColor Cyan
 
-Write-Host "Total Tests: $($TestResults.TotalTests)" -ForegroundColor White
-Write-Host "Passed: $($TestResults.PassedTests)" -ForegroundColor Green
-Write-Host "Failed: $($TestResults.FailedTests)" -ForegroundColor Red
+Write-Output "Total Tests: $($TestResults.TotalTests)"
+Write-Output "Passed: $($TestResults.PassedTests)"
+Write-Output "Failed: $($TestResults.FailedTests)"
 
-$successRate = if ($TestResults.TotalTests -gt 0) { 
-    [math]::Round(($TestResults.PassedTests / $TestResults.TotalTests) * 100, 2) 
+$successRate = if ($TestResults.TotalTests -gt 0) {
+    [math]::Round(($TestResults.PassedTests / $TestResults.TotalTests) * 100, 2)
 } else { 0 }
 
-Write-Host "Success Rate: $successRate%" -ForegroundColor $(if ($successRate -ge 90) { "Green" } elseif ($successRate -ge 75) { "Yellow" } else { "Red" })
+Write-Output "Success Rate: $successRate%" -ForegroundColor $(if ($successRate -ge 90) { "Green" } elseif ($successRate -ge 75) { "Yellow" } else { "Red" })
 
 if ($readyForSprint2) {
-    Write-Host "`n🎉 SPRINT 1 COMPLETE - READY FOR SPRINT 2" -ForegroundColor Green
-    Write-Host "Core KEM/DEM + Envelope + Client SDK are implemented and tested." -ForegroundColor Green
-    Write-Host "Proceed to Sprint 2: Key Transparency + Threshold HSM + Metadata Minimization" -ForegroundColor Green
+    Write-Output "`n🎉 SPRINT 1 COMPLETE - READY FOR SPRINT 2"
+    Write-Output "Core KEM/DEM + Envelope + Client SDK are implemented and tested."
+    Write-Output "Proceed to Sprint 2: Key Transparency + Threshold HSM + Metadata Minimization"
 } else {
-    Write-Host "`n⚠️  SPRINT 1 INCOMPLETE - ADDRESS ISSUES BEFORE SPRINT 2" -ForegroundColor Yellow
-    Write-Host "Some core components need attention before proceeding." -ForegroundColor Yellow
+    Write-Output "`n⚠️  SPRINT 1 INCOMPLETE - ADDRESS ISSUES BEFORE SPRINT 2"
+    Write-Output "Some core components need attention before proceeding."
 }
 
 if ($TestResults.Errors.Count -gt 0) {
-    Write-Host "`nDetailed Errors:" -ForegroundColor Red
-    foreach ($error in $TestResults.Errors) {
-        Write-Host "  - $error" -ForegroundColor Gray
+    Write-Output "`nDetailed Errors:"
+    foreach ($errorItem in $TestResults.Errors) {
+        Write-Output "  - $errorItem"
     }
 }
 
-Write-Host "`nNext Steps:" -ForegroundColor Cyan
-Write-Host "1. Review failed tests and address issues" -ForegroundColor White
-Write-Host "2. Complete any missing core components" -ForegroundColor White
-Write-Host "3. Validate cryptographic implementations" -ForegroundColor White
-Write-Host "4. Begin Sprint 2 implementation" -ForegroundColor White
+Write-Output "`nNext Steps:"
+Write-Output "1. Review failed tests and address issues"
+Write-Output "2. Complete any missing core components"
+Write-Output "3. Validate cryptographic implementations"
+Write-Output "4. Begin Sprint 2 implementation"

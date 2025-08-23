@@ -1,7 +1,5 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { toast } from 'react-toastify';
 import ComposeModal from './ComposeModal';
 
 // Mock dependencies
@@ -152,8 +150,8 @@ describe('ComposeModal - Enhanced Geolocation Verification', () => {
   });
 
   it('should include geolocation data in API request', async () => {
-    const { sendSecureEmail } = require('@/lib/api');
-    sendSecureEmail.mockResolvedValue({ status: 'success', blob_id: 'test-blob-id' });
+    const { sendSecureEmail } = await import('@/lib/api');
+    (sendSecureEmail as jest.Mock).mockResolvedValue({ status: 'success', blob_id: 'test-blob-id' });
     
     render(<ComposeModal {...mockProps} />);
     

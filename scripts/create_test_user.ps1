@@ -37,13 +37,13 @@ function Invoke-ApiRequest {
         [string]$Endpoint,
         [object]$Body = $null
     )
-    
+
     $headers = @{
         "Content-Type" = "application/json"
     }
-    
+
     $uri = "$BaseUrl$Endpoint"
-    
+
     try {
         if ($Body) {
             $jsonBody = $Body | ConvertTo-Json -Depth 10
@@ -99,6 +99,8 @@ if ($result.Success) {
     Write-Error "Failed to create test user: $($result.Error)"
     exit 1
 }
+
+
 
 
 

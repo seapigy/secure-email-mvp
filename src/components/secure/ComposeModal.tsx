@@ -1,27 +1,41 @@
 import React, { useState } from 'react';
-import { 
-  X, 
-  Send, 
-  Paperclip, 
-  Lock, 
-  Globe, 
-  Clock, 
-  Eye, 
-  AlertTriangle,
-  Shield,
-  FileText,
-  Copy,
-  EyeOff,
-  Trash2,
-  AlertCircle
-} from 'lucide-react';
+import {
+  XMarkIcon, PaperClipIcon, EyeIcon, EyeSlashIcon, LockClosedIcon,
+  GlobeAltIcon, ClockIcon, ExclamationTriangleIcon, ShieldCheckIcon,
+  DocumentTextIcon, TrashIcon, DocumentDuplicateIcon,
+} from '@heroicons/react/24/outline';
 import { sendSecureEmail, isApiError, getErrorMessage } from '@/lib/api';
 import { toast } from 'react-toastify';
-import { 
-  validateCountryCode, 
-  validateCityName, 
-  SUPPORTED_COUNTRIES
-} from '@/lib/geolocation';
+
+// Simple geolocation validation functions (replacing the removed geolocation module)
+const validateCountryCode = (countryCode: string): boolean => {
+  if (!countryCode || typeof countryCode !== 'string') return false;
+  const trimmed = countryCode.trim();
+  if (trimmed.length !== 2) return false;
+  const countryRegex = /^[A-Z]{2}$/;
+  return countryRegex.test(trimmed);
+};
+
+const validateCityName = (cityName: string): boolean => {
+  if (!cityName || typeof cityName !== 'string') return false;
+  const trimmed = cityName.trim();
+  if (trimmed.length < 2 || trimmed.length > 100) return false;
+  const cityRegex = /^[a-zA-Z\s\-']+$/;
+  return cityRegex.test(trimmed);
+};
+
+const SUPPORTED_COUNTRIES = [
+  { code: 'US', name: 'United States' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'FR', name: 'France' },
+  { code: 'JP', name: 'Japan' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'BR', name: 'Brazil' },
+  { code: 'IN', name: 'India' },
+  { code: 'CN', name: 'China' },
+];
 
 /**
  * Compose Form Data Interface
@@ -198,7 +212,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
    * @param setting - The security setting name
    * @param value - The new value for the setting
    */
-  const handleSecurityChange = (setting: string, value: any) => {
+  const handleSecurityChange = (setting: string, value: string | boolean | number) => {
     setFormData(prev => ({
       ...prev,
       securitySettings: {
@@ -470,7 +484,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
           <div className="flex items-center justify-between px-6 py-4 border-b border-secondary-200 dark:border-secondary-700">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900/20 rounded-lg flex items-center justify-center">
-                <Send className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                <DocumentTextIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
               </div>
               <div>
                 <h3 className="text-lg font-medium text-secondary-900 dark:text-white">
@@ -485,7 +499,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
               onClick={handleClose}
               className="p-2 text-secondary-600 hover:bg-secondary-100 dark:text-secondary-400 dark:hover:bg-secondary-700 rounded-lg transition-colors duration-200"
             >
-              <X className="w-5 h-5" />
+              <XMarkIcon className="w-5 h-5" />
             </button>
           </div>
 
@@ -548,7 +562,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                     Attachments
                   </label>
                   <div className="border-2 border-dashed border-secondary-300 dark:border-secondary-600 rounded-lg p-6 text-center">
-                    <Paperclip className="w-8 h-8 text-secondary-400 mx-auto mb-2" />
+                    <PaperClipIcon className="w-8 h-8 text-secondary-400 mx-auto mb-2" />
                     <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-2">
                       Drag and drop files here, or click to browse
                     </p>
@@ -573,7 +587,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                       {formData.attachments.map((file, index) => (
                         <div key={index} className="flex items-center justify-between p-3 bg-secondary-50 dark:bg-secondary-700 rounded-lg">
                           <div className="flex items-center space-x-3 min-w-0">
-                            <FileText className="w-4 h-4 text-secondary-600 dark:text-secondary-400 flex-shrink-0" />
+                            <DocumentTextIcon className="w-4 h-4 text-secondary-600 dark:text-secondary-400 flex-shrink-0" />
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium text-secondary-900 dark:text-white truncate">
                                 {file.name}
@@ -588,7 +602,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                             onClick={() => removeAttachment(index)}
                             className="p-1 text-secondary-400 hover:text-red-600 dark:hover:text-red-400"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <TrashIcon className="w-4 h-4" />
                           </button>
                         </div>
                       ))}
@@ -608,7 +622,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                     {/* Password Protection */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <Lock className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                        <LockClosedIcon className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
                         <span className="text-sm text-secondary-700 dark:text-secondary-300">Password Protection</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -642,7 +656,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                              onClick={() => setShowPassword(!showPassword)}
                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-200"
                            >
-                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                             {showPassword ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
                            </button>
                          </div>
                       </div>
@@ -651,11 +665,11 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                     {/* Enhanced Geolocation Verification */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <GlobeAltIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         <div>
                           <span className="text-sm text-secondary-700 dark:text-secondary-300">Enhanced Geolocation Verification</span>
                           <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
-                            Restrict access based on recipient's location
+                            Restrict access based on recipient&apos;s location
                           </p>
                         </div>
                       </div>
@@ -730,7 +744,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                       {/* Verification Info */}
                       {formData.securitySettings.geoVerificationType !== 'none' && (
                         <div className="flex items-start space-x-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                          <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                          <GlobeAltIcon className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                           <div className="text-xs text-blue-700 dark:text-blue-300">
                             <p className="font-medium">Geolocation Verification</p>
                             <p>
@@ -738,7 +752,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                               {formData.securitySettings.geoVerificationType === 'city' && 'Recipients must be in the specified city.'}
                               {formData.securitySettings.geoVerificationType === 'city_country' && 'Recipients must be in both the specified city AND country.'}
                             </p>
-                            <p className="mt-1">Location is determined by the recipient's IP address.</p>
+                            <p className="mt-1">Location is determined by the recipient&apos;s IP address.</p>
                           </div>
                         </div>
                       )}
@@ -747,7 +761,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                     {/* Time Lock */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <Clock className="w-4 h-4 text-green-600 dark:text-green-400" />
+                        <ClockIcon className="w-4 h-4 text-green-600 dark:text-green-400" />
                         <span className="text-sm text-secondary-700 dark:text-secondary-300">Time Lock</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -779,7 +793,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                     {/* Auto-Destruct */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                        <ExclamationTriangleIcon className="w-4 h-4 text-orange-600 dark:text-orange-400" />
                         <span className="text-sm text-secondary-700 dark:text-secondary-300">Auto-Destruct</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -812,7 +826,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                     {/* Read Once */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <Eye className="w-4 h-4 text-red-600 dark:text-red-400" />
+                        <EyeIcon className="w-4 h-4 text-red-600 dark:text-red-400" />
                         <span className="text-sm text-secondary-700 dark:text-secondary-300">Read Once</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -829,7 +843,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                     {/* Remote Revoke */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <Shield className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                        <ShieldCheckIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                         <span className="text-sm text-secondary-700 dark:text-secondary-300">Remote Revoke</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -846,7 +860,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                     {/* Decoy Message */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <AlertCircle className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                        <ExclamationTriangleIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                         <span className="text-sm text-secondary-700 dark:text-secondary-300">Decoy Message</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -863,7 +877,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                     {/* Strip Metadata */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <Copy className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                        <DocumentDuplicateIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                         <span className="text-sm text-secondary-700 dark:text-secondary-300">Strip Metadata</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -880,7 +894,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                                          {/* Tamper Alerts */}
                      <div className="flex items-center justify-between">
                        <div className="flex items-center space-x-2">
-                         <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                         <ExclamationTriangleIcon className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
                          <span className="text-sm text-secondary-700 dark:text-secondary-300">Tamper Alerts</span>
                        </div>
                        <label className="relative inline-flex items-center cursor-pointer">
@@ -897,7 +911,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                      {/* Self-Destruct After Failed Attempts */}
                      <div className="flex items-center justify-between">
                        <div className="flex items-center space-x-2">
-                         <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+                         <TrashIcon className="w-4 h-4 text-red-600 dark:text-red-400" />
                          <div>
                            <span className="text-sm text-secondary-700 dark:text-secondary-300">Self-destruct after failed attempts</span>
                            <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
@@ -934,7 +948,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                                placeholder="3"
                              />
                              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                               <AlertCircle className="w-4 h-4 text-secondary-400" />
+                               <ExclamationTriangleIcon className="w-4 h-4 text-secondary-400" />
                              </div>
                            </div>
                            <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">
@@ -944,7 +958,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                          
                          {/* Security Warning */}
                          <div className="flex items-start space-x-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                           <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                           <ExclamationTriangleIcon className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
                            <div className="text-xs text-yellow-700 dark:text-yellow-300">
                              <p className="font-medium">Security Warning</p>
                              <p>This message will be permanently deleted after failed access attempts. This action cannot be undone.</p>
@@ -956,7 +970,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                     {/* Email Expiration */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                        <ClockIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                         <span className="text-sm text-secondary-700 dark:text-secondary-300">Email Expiration</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -991,7 +1005,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                     {/* Multi-Factor Authentication */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <ShieldCheckIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         <div>
                           <span className="text-sm text-secondary-700 dark:text-secondary-300">Multi-Factor Authentication</span>
                           <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
@@ -1035,7 +1049,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                         
                         {/* MFA Info */}
                         <div className="flex items-start space-x-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                          <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                          <ShieldCheckIcon className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                           <div className="text-xs text-blue-700 dark:text-blue-300">
                             <p className="font-medium">MFA Security</p>
                             <p>Recipients will need to provide additional verification before accessing this email.</p>
@@ -1080,7 +1094,7 @@ const ComposeModal: React.FC<ComposeModalProps> = ({ isOpen, onClose }) => {
                   </>
                 ) : (
                   <>
-                    <Send className="w-4 h-4" />
+                    <PaperClipIcon className="w-4 h-4" />
                     <span>Send Securely</span>
                   </>
                 )}

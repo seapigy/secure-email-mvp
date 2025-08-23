@@ -9,7 +9,7 @@ param(
 
 function Get-TOTPCode {
     param([string]$Secret)
-    
+
     try {
         $totpCode = & .\totp_generator.exe $Secret
         return $totpCode.Trim()
@@ -37,6 +37,8 @@ if (-not $totpCode) {
 
 # Return the TOTP code
 Write-Output $totpCode
+
+
 
 
 

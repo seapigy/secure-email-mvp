@@ -17,27 +17,27 @@ $Reset = "`e[0m"
 
 function Write-Info {
     param([string]$Message)
-    Write-Host "[INFO] $Message" -ForegroundColor Blue
+    Write-Output "[INFO] $Message"
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Host "[SUCCESS] $Message" -ForegroundColor Green
+    Write-Output "[SUCCESS] $Message"
 }
 
 function Write-Warning {
     param([string]$Message)
-    Write-Host "[WARNING] $Message" -ForegroundColor Yellow
+    Write-Output "[WARNING] $Message"
 }
 
 function Write-Error {
     param([string]$Message)
-    Write-Host "[ERROR] $Message" -ForegroundColor Red
+    Write-Output "[ERROR] $Message"
 }
 
 function Test-APIHealth {
     Write-Info "Testing API health..."
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$ApiHost/health" -Method GET -TimeoutSec 10
         if ($response.status -eq "ok") {
@@ -55,13 +55,13 @@ function Test-APIHealth {
 
 function Test-UserSignup {
     Write-Info "Testing user signup with new authentication system..."
-    
+
     $signupData = @{
         email = $TestEmail
         password = $TestPassword
         fallback_email = "fallback@example.com"
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$ApiHost/api/auth/signup" -Method POST -Body ($signupData | ConvertTo-Json) -ContentType "application/json" -TimeoutSec 30
         Write-Success "User signup successful: $($response.message)"
@@ -79,16 +79,16 @@ function Test-UserSignup {
 
 function Test-UserLogin {
     Write-Info "Testing user login with new authentication system..."
-    
+
     $loginData = @{
         email = $TestEmail
         password = $TestPassword
         totp_code = $TestTOTP
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$ApiHost/api/auth/login" -Method POST -Body ($loginData | ConvertTo-Json) -ContentType "application/json" -TimeoutSec 30
-        
+
         if ($response.access_token -and $response.refresh_token) {
             Write-Success "User login successful"
             Write-Info "Access token: $($response.access_token.Substring(0, 20))..."
@@ -107,17 +107,17 @@ function Test-UserLogin {
 
 function Test-ProtectedEndpoint {
     param([string]$AccessToken)
-    
+
     Write-Info "Testing protected endpoint with JWT token..."
-    
+
     $headers = @{
         "Authorization" = "Bearer $AccessToken"
         "Content-Type" = "application/json"
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$ApiHost/api/auth/me" -Method GET -Headers $headers -TimeoutSec 10
-        
+
         if ($response.email -eq $TestEmail) {
             Write-Success "Protected endpoint access successful"
             Write-Info "User email: $($response.email)"
@@ -134,12 +134,12 @@ function Test-ProtectedEndpoint {
 
 function Test-Configuration {
     Write-Info "Testing authentication configuration..."
-    
+
     # Test environment variables
     $envVars = @(
         "AUTH_USE_NEW_FLOW",
         "ARGON2_MEMORY",
-        "ARGON2_ITERATIONS", 
+        "ARGON2_ITERATIONS",
         "ARGON2_PARALLELISM",
         "ARGON2_KEY_LENGTH",
         "TOTP_PERIOD",
@@ -147,7 +147,7 @@ function Test-Configuration {
         "TOTP_DIGITS",
         "TOTP_ALGORITHM"
     )
-    
+
     foreach ($var in $envVars) {
         $value = [Environment]::GetEnvironmentVariable($var)
         if ($value) {
@@ -160,7 +160,7 @@ function Test-Configuration {
 
 function Test-TemporaryTokenFallback {
     Write-Info "Testing temporary token generator fallback..."
-    
+
     try {
         # Test if temporary token generator still works
         $tempTokenScript = Join-Path $PSScriptRoot "generate_temp_token.ps1"
@@ -178,8 +178,8 @@ function Test-TemporaryTokenFallback {
 }
 
 # Main test execution
-Write-Host "`n=== SECURE EMAIL MVP - AUTHENTICATION FIXES TEST (Micro-Iteration 4.32) ===" -ForegroundColor Cyan
-Write-Host "Testing fixed Argon2 + TOTP authentication system`n" -ForegroundColor White
+Write-Output "`n=== SECURE EMAIL MVP - AUTHENTICATION FIXES TEST (Micro-Iteration 4.32) ==="
+Write-Output "Testing fixed Argon2 + TOTP authentication system`n"
 
 # Test configuration
 Test-Configuration
@@ -212,7 +212,7 @@ if (-not (Test-ProtectedEndpoint -AccessToken $accessToken)) {
 # Test temporary token fallback
 Test-TemporaryTokenFallback
 
-Write-Host "`n=== TEST SUMMARY ===" -ForegroundColor Cyan
+Write-Output "`n=== TEST SUMMARY ==="
 Write-Success "All authentication tests passed!"
 Write-Info "The new authentication system is working correctly with:"
 Write-Info "  ✓ Argon2 password hashing with configurable parameters"
@@ -222,4 +222,4 @@ Write-Info "  ✓ Protected endpoint access"
 Write-Info "  ✓ Backward compatibility support"
 Write-Info "  ✓ Temporary token generator fallback"
 
-Write-Host "`nMicro-Iteration 4.32 authentication fixes are working correctly!" -ForegroundColor Green
+Write-Output "`nMicro-Iteration 4.32 authentication fixes are working correctly!"

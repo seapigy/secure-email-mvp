@@ -32,16 +32,16 @@ function Test-HealthCheck {
 
 function Test-Signup {
     Write-Info "Testing user signup..."
-    
+
     $signupData = @{
         email = $TestEmail
         password = $TestPassword
         fallback_email = $FallbackEmail
     }
-    
+
     $jsonBody = $signupData | ConvertTo-Json
     Write-Info "Request body: $jsonBody"
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$BaseUrl/api/auth/signup" -Method POST -Headers @{"Content-Type"="application/json"} -Body $jsonBody
         Write-Success "Signup successful: $($response | ConvertTo-Json)"
@@ -59,16 +59,16 @@ function Test-Signup {
 
 function Test-Login {
     Write-Info "Testing user login..."
-    
+
     $loginData = @{
         email = $TestEmail
         password = $TestPassword
         totp_code = "123456"  # Test TOTP code
     }
-    
+
     $jsonBody = $loginData | ConvertTo-Json
     Write-Info "Request body: $jsonBody"
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$BaseUrl/api/auth/login" -Method POST -Headers @{"Content-Type"="application/json"} -Body $jsonBody
         Write-Success "Login successful: $($response | ConvertTo-Json)"
@@ -86,17 +86,17 @@ function Test-Login {
 
 function Test-DatabaseState {
     Write-Info "Checking database state..."
-    
+
     # Check if user exists
     $userQuery = "SELECT email, totp_secret IS NOT NULL as has_totp, password_hash IS NOT NULL as has_password_hash, password IS NOT NULL as has_password FROM users WHERE email = '$TestEmail';"
     $userResult = sqlite3 secure-email.db $userQuery
-    
+
     if ($userResult) {
         Write-Success "User found in database: $userResult"
     } else {
         Write-Warning "User not found in database"
     }
-    
+
     # Check table schema
     Write-Info "Users table schema:"
     $schemaResult = sqlite3 secure-email.db ".schema users"
@@ -105,9 +105,9 @@ function Test-DatabaseState {
 
 function Test-EnvironmentVariables {
     Write-Info "Checking environment variables..."
-    
+
     $requiredVars = @("JWT_SECRET", "SQLITE_DB", "DEBUG")
-    
+
     foreach ($var in $requiredVars) {
         $value = [Environment]::GetEnvironmentVariable($var)
         if ($value) {
@@ -148,7 +148,7 @@ Test-DatabaseState
 if ($signupSuccess) {
     Write-Info "=== Testing Login ==="
     $token = Test-Login
-    
+
     if ($token) {
         Write-Success "Authentication flow completed successfully!"
         Write-Info "Access token: $($token.Substring(0, [Math]::Min(20, $token.Length)))..."
@@ -160,6 +160,8 @@ if ($signupSuccess) {
 }
 
 Write-Info "=== Debug Complete ==="
+
+
 
 
 

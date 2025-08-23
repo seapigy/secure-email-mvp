@@ -29,7 +29,7 @@ type PQCConfig struct {
 // DefaultPQCConfig returns the default PQC configuration
 func DefaultPQCConfig() *PQCConfig {
 	return &PQCConfig{
-		EnablePQC:       false, // Disabled by default, controlled by feature flag
+		EnablePQC:       true,  // ✅ Enable by default for maximum security
 		KyberLevel:      768,   // Kyber-768 (recommended security level)
 		HybridMode:      true,  // Use hybrid classical + PQC
 		KeyRotationDays: 30,    // Rotate keys every 30 days
@@ -43,9 +43,9 @@ func DefaultPQCConfig() *PQCConfig {
 func LoadPQCConfigFromEnv() *PQCConfig {
 	config := DefaultPQCConfig()
 
-	// Check if PQC is enabled via feature flag
-	if os.Getenv("ENABLE_PQC_LAYER") == "true" {
-		config.EnablePQC = true
+	// Only disable if explicitly set to false (security-first approach)
+	if os.Getenv("ENABLE_PQC_LAYER") == "false" {
+		config.EnablePQC = false
 	}
 
 	// Load other configuration values
@@ -146,24 +146,18 @@ func (s *PQCService) EncryptHybrid(plaintext []byte, context string) (*HybridEnc
 		return nil, fmt.Errorf("failed to encapsulate key with Kyber: %w", err)
 	}
 
-	// Encrypt data with AES-256-GCM
+	// Encrypt data with AES-256-GCM (single algorithm for better performance)
 	aesData, err := s.encryptAES256GCM(plaintext, symmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt with AES-256-GCM: %w", err)
 	}
 
-	// Encrypt data with ChaCha20-Poly1305
-	chachaData, err := s.encryptChaCha20(plaintext, symmetricKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt with ChaCha20-Poly1305: %w", err)
-	}
-
-	// Create hybrid encrypted data
+	// Create hybrid encrypted data with single algorithm
 	hybridData := &HybridEncryptedData{
 		KyberCiphertext: kyberCiphertext,
 		KyberLevel:      s.config.KyberLevel,
 		AES256GCMData:   aesData,
-		ChaCha20Data:    chachaData,
+		ChaCha20Data:    nil, // No dual encryption for better performance
 		EncryptionTime:  time.Now(),
 		HybridMode:      s.config.HybridMode,
 		KeyID:           s.keyManager.GetCurrentKeyID(),
@@ -171,12 +165,13 @@ func (s *PQCService) EncryptHybrid(plaintext []byte, context string) (*HybridEnc
 	}
 
 	// Log encryption event
-	s.auditLog.LogEvent("HYBRID_ENCRYPT", "Data encrypted with hybrid PQC", map[string]interface{}{
+	s.auditLog.LogEvent("HYBRID_ENCRYPT", "Data encrypted with hybrid PQC (single algorithm)", map[string]interface{}{
 		"context":         context,
 		"plaintext_size":  len(plaintext),
 		"kyber_level":     s.config.KyberLevel,
 		"encryption_time": time.Since(startTime).Milliseconds(),
 		"key_id":          hybridData.KeyID,
+		"algorithm":       "AES-256-GCM",
 	})
 
 	return hybridData, nil
@@ -191,6 +186,11 @@ func (s *PQCService) DecryptHybrid(hybridData *HybridEncryptedData, context stri
 		return nil, fmt.Errorf("PQC layer is disabled")
 	}
 
+	// Add nil check to prevent panic
+	if hybridData == nil {
+		return nil, fmt.Errorf("hybrid data cannot be nil")
+	}
+
 	startTime := time.Now()
 
 	// Decapsulate the symmetric key using Kyber
@@ -199,34 +199,23 @@ func (s *PQCService) DecryptHybrid(hybridData *HybridEncryptedData, context stri
 		return nil, fmt.Errorf("failed to decapsulate key with Kyber: %w", err)
 	}
 
-	// Try to decrypt with AES-256-GCM first (primary method)
+	// Decrypt with AES-256-GCM (single algorithm)
+	if hybridData.AES256GCMData == nil {
+		return nil, fmt.Errorf("AES-256-GCM data is missing")
+	}
+
 	plaintext, err := s.decryptAES256GCM(hybridData.AES256GCMData, symmetricKey)
-	if err == nil {
-		// Log successful decryption
-		s.auditLog.LogEvent("HYBRID_DECRYPT", "Data decrypted with AES-256-GCM", map[string]interface{}{
-			"context":         context,
-			"plaintext_size":  len(plaintext),
-			"decryption_time": time.Since(startTime).Milliseconds(),
-			"key_id":          hybridData.KeyID,
-			"method":          "AES-256-GCM",
-		})
-		return plaintext, nil
-	}
-
-	// Fallback to ChaCha20-Poly1305 if AES-256-GCM fails
-	plaintext, err = s.decryptChaCha20(hybridData.ChaCha20Data, symmetricKey)
 	if err != nil {
-		return nil, fmt.Errorf("both AES-256-GCM and ChaCha20-Poly1305 decryption failed: %w", err)
+		return nil, fmt.Errorf("failed to decrypt with AES-256-GCM: %w", err)
 	}
 
-	// Log successful fallback decryption
-	s.auditLog.LogEvent("HYBRID_DECRYPT", "Data decrypted with ChaCha20-Poly1305 (fallback)", map[string]interface{}{
+	// Log successful decryption
+	s.auditLog.LogEvent("HYBRID_DECRYPT", "Data decrypted with AES-256-GCM", map[string]interface{}{
 		"context":         context,
 		"plaintext_size":  len(plaintext),
 		"decryption_time": time.Since(startTime).Milliseconds(),
 		"key_id":          hybridData.KeyID,
-		"method":          "ChaCha20-Poly1305",
-		"fallback":        true,
+		"method":          "AES-256-GCM",
 	})
 
 	return plaintext, nil

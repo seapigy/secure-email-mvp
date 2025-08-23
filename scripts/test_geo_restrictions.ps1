@@ -20,7 +20,7 @@ function Write-Info { param([string]$Message) Write-ColorOutput "[INFO] $Message
 
 function Get-TOTPCode {
     param([string]$Email)
-    
+
     try {
         $totpCode = & powershell -ExecutionPolicy Bypass -File "scripts/get_totp_code.ps1" -Email $Email
         return $totpCode.Trim()
@@ -93,7 +93,7 @@ function Test-UserSignup {
         password = $TestPassword
         fallback_email = "fallback@example.com"
     }
-    
+
     $result = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/signup" -Body $signupData
     if ($result.Success) {
         Write-Success "User signup successful"
@@ -111,22 +111,22 @@ function Test-UserSignup {
 
 function Test-UserLogin {
     Write-Info "Testing user login..."
-    
+
     # Get valid TOTP code
     $totpCode = Get-TOTPCode $TestEmail
     if (-not $totpCode) {
         Write-Error "Failed to get TOTP code for login"
         return $null
     }
-    
+
     Write-Info "Using TOTP code: $totpCode"
-    
+
     $loginData = @{
         email = $TestEmail
         password = $TestPassword
         totp_code = $totpCode
     }
-    
+
     $result = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/login" -Body $loginData
     if ($result.Success) {
         Write-Success "User login successful"
@@ -139,7 +139,7 @@ function Test-UserLogin {
 
 function Test-SendEmail {
     param([string]$Token)
-    
+
     Write-Info "Testing email sending..."
     $emailData = @{
         recipient_email = "recipient@example.com"
@@ -147,7 +147,7 @@ function Test-SendEmail {
         content = "This is a test email for geo-restriction testing."
         expires_in_hours = 24
     }
-    
+
     $result = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Body $emailData -Token $Token
     if ($result.Success) {
         Write-Success "Email sent successfully"
@@ -160,7 +160,7 @@ function Test-SendEmail {
 
 function Test-GetGeoRestrictionRules {
     param([string]$Token, [string]$EmailId)
-    
+
     Write-Info "Testing get geo-restriction rules..."
     $result = Invoke-ApiRequest -Method "GET" -Endpoint "/api/email/$EmailId/geo-restrictions" -Token $Token
     if ($result.Success) {
@@ -174,7 +174,7 @@ function Test-GetGeoRestrictionRules {
 
 function Test-CreateGeoRestrictionRule {
     param([string]$Token, [string]$EmailId)
-    
+
     Write-Info "Testing create geo-restriction rule..."
     $ruleData = @{
         type = "allow"
@@ -182,7 +182,7 @@ function Test-CreateGeoRestrictionRule {
         cities = @("New York", "Toronto")
         description = "Allow US and Canada access"
     }
-    
+
     $result = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/$EmailId/geo-restrictions" -Body $ruleData -Token $Token
     if ($result.Success) {
         Write-Success "Create geo-restriction rule successful"
@@ -195,7 +195,7 @@ function Test-CreateGeoRestrictionRule {
 
 function Test-CreateBlockRule {
     param([string]$Token, [string]$EmailId)
-    
+
     Write-Info "Testing create block geo-restriction rule..."
     $ruleData = @{
         type = "block"
@@ -203,7 +203,7 @@ function Test-CreateBlockRule {
         cities = @("BlockedCity")
         description = "Block specific countries"
     }
-    
+
     $result = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/$EmailId/geo-restrictions" -Body $ruleData -Token $Token
     if ($result.Success) {
         Write-Success "Create block geo-restriction rule successful"
@@ -216,7 +216,7 @@ function Test-CreateBlockRule {
 
 function Test-UpdateGeoRestrictionRule {
     param([string]$Token, [string]$EmailId, [string]$RuleId)
-    
+
     Write-Info "Testing update geo-restriction rule..."
     $ruleData = @{
         type = "allow"
@@ -224,7 +224,7 @@ function Test-UpdateGeoRestrictionRule {
         cities = @("New York", "Toronto", "London")
         description = "Updated: Allow US, Canada, and UK access"
     }
-    
+
     $result = Invoke-ApiRequest -Method "PUT" -Endpoint "/api/email/$EmailId/geo-restrictions/$RuleId" -Body $ruleData -Token $Token
     if ($result.Success) {
         Write-Success "Update geo-restriction rule successful"
@@ -237,7 +237,7 @@ function Test-UpdateGeoRestrictionRule {
 
 function Test-GetGeoRestrictionConfig {
     param([string]$Token, [string]$EmailId)
-    
+
     Write-Info "Testing get geo-restriction config..."
     $result = Invoke-ApiRequest -Method "GET" -Endpoint "/api/email/$EmailId/geo-restrictions/config" -Token $Token
     if ($result.Success) {
@@ -251,7 +251,7 @@ function Test-GetGeoRestrictionConfig {
 
 function Test-UpdateGeoRestrictionConfig {
     param([string]$Token, [string]$EmailId)
-    
+
     Write-Info "Testing update geo-restriction config..."
     $configData = @{
         enabled = $true
@@ -260,7 +260,7 @@ function Test-UpdateGeoRestrictionConfig {
         log_violations = $true
         block_on_geolocation_failure = $true
     }
-    
+
     $result = Invoke-ApiRequest -Method "PUT" -Endpoint "/api/email/$EmailId/geo-restrictions/config" -Body $configData -Token $Token
     if ($result.Success) {
         Write-Success "Update geo-restriction config successful"
@@ -273,7 +273,7 @@ function Test-UpdateGeoRestrictionConfig {
 
 function Test-GetGeoRestrictionStatus {
     param([string]$Token, [string]$EmailId)
-    
+
     Write-Info "Testing get geo-restriction status..."
     $result = Invoke-ApiRequest -Method "GET" -Endpoint "/api/email/$EmailId/geo-restrictions/status" -Token $Token
     if ($result.Success) {
@@ -287,7 +287,7 @@ function Test-GetGeoRestrictionStatus {
 
 function Test-DeleteGeoRestrictionRule {
     param([string]$Token, [string]$EmailId, [string]$RuleId)
-    
+
     Write-Info "Testing delete geo-restriction rule..."
     $result = Invoke-ApiRequest -Method "DELETE" -Endpoint "/api/email/$EmailId/geo-restrictions/$RuleId" -Token $Token
     if ($result.Success) {
@@ -301,7 +301,7 @@ function Test-DeleteGeoRestrictionRule {
 
 function Test-ViewEmailWithGeoRestrictions {
     param([string]$Token, [string]$EmailId)
-    
+
     Write-Info "Testing view email with geo-restrictions..."
     $result = Invoke-ApiRequest -Method "GET" -Endpoint "/api/email/$EmailId" -Token $Token
     if ($result.Success) {
@@ -358,7 +358,7 @@ $ruleId = Test-CreateGeoRestrictionRule $accessToken $emailId
 if ($ruleId) {
     # Test update geo-restriction rule
     Test-UpdateGeoRestrictionRule $accessToken $emailId $ruleId
-    
+
     # Test delete geo-restriction rule
     Test-DeleteGeoRestrictionRule $accessToken $emailId $ruleId
 }

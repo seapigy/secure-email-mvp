@@ -26,7 +26,9 @@ import (
 	"secure-email-mvp/pkg/humanverification"
 	"secure-email-mvp/pkg/iptracking"
 	"secure-email-mvp/pkg/notification"
+	"secure-email-mvp/pkg/pqc"
 	"secure-email-mvp/pkg/readreceipts"
+	"secure-email-mvp/pkg/securelinks"
 	"secure-email-mvp/pkg/sessiontokens"
 	"secure-email-mvp/pkg/storage"
 	"secure-email-mvp/pkg/suspicious"
@@ -210,7 +212,43 @@ func main() {
 
 		// Automated compliance and retention certification (Micro-Iteration 4.30)
 		complianceService: email.NewComplianceService(db),
+
+		// Post-Quantum Cryptography (Micro-Iteration 4.36)
+		pqcService:     nil, // Will be initialized after PQC config
+		pqcIntegration: nil, // Will be initialized after PQC service
+
+		// Secure Links External Email Flow (Phase 1)
+		secureLinksService: nil, // Will be initialized after secure links config
 	}
+
+	// Initialize PQC services (Micro-Iteration 4.36)
+	pqcConfig := pqc.LoadPQCConfigFromEnv()
+	pqcService, err := pqc.NewPQCService(pqcConfig)
+	if err != nil {
+		log.Printf("Warning: Failed to initialize PQC service: %v", err)
+		log.Printf("PQC features will not be available")
+	} else {
+		srv.pqcService = pqcService
+		log.Printf("PQC service initialized successfully")
+	}
+
+	pqcIntegration, err := pqc.NewPQCIntegration(db, pqcConfig)
+	if err != nil {
+		log.Printf("Warning: Failed to initialize PQC integration: %v", err)
+		log.Printf("PQC integration features will not be available")
+	} else {
+		srv.pqcIntegration = pqcIntegration
+		log.Printf("PQC integration initialized successfully")
+	}
+
+	// Initialize Secure Links service (Phase 1)
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = "https://securesystem.email"
+	}
+	secureLinksSvc := securelinks.NewService(db, r2Client, baseURL, nil) // TODO: Add audit service adapter
+	srv.secureLinksService = secureLinksSvc
+	log.Printf("Secure Links service initialized successfully")
 
 	// =============================================================================
 	// DATABASE MIGRATIONS - SECURITY FEATURES
@@ -1171,6 +1209,39 @@ func main() {
 		}
 	}
 
+	// Apply Secure Links External Email Flow migration (Phase 1)
+	log.Printf("Loading secure links migration...")
+	secureLinksMigrationPath := "schema/migrate_add_secure_links.sql"
+	log.Printf("Attempting to read secure links migration from: %s", secureLinksMigrationPath)
+
+	secureLinksMigration, err := os.ReadFile(secureLinksMigrationPath)
+	if err != nil {
+		log.Printf("Error reading secure links migration from %s: %v", secureLinksMigrationPath, err)
+		log.Printf("Attempting to read secure links migration from absolute path...")
+		absSecureLinksPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_secure_links.sql")
+		log.Printf("Trying absolute path: %s", absSecureLinksPath)
+		secureLinksMigration, err = os.ReadFile(absSecureLinksPath)
+		if err != nil {
+			log.Printf("Error reading secure links migration from absolute path: %v", err)
+		} else {
+			log.Printf("Secure links migration file loaded successfully, applying to database...")
+			if _, err := db.Exec(string(secureLinksMigration)); err != nil {
+				log.Printf("Error applying secure links migration: %v", err)
+				log.Printf("Secure links tables may already exist or have incompatible structure")
+			} else {
+				log.Printf("Successfully applied secure links migration")
+			}
+		}
+	} else {
+		log.Printf("Secure links migration file loaded successfully, applying to database...")
+		if _, err := db.Exec(string(secureLinksMigration)); err != nil {
+			log.Printf("Error applying secure links migration: %v", err)
+			log.Printf("Secure links tables may already exist or have incompatible structure")
+		} else {
+			log.Printf("Successfully applied secure links migration")
+		}
+	}
+
 	// Initialize per-IP rate limiter for signup and login
 	// Allow 20 requests per minute for login attempts (more reasonable for testing)
 	signupLoginLimiter := NewIPRateLimitMiddleware(20, time.Minute)
@@ -1438,6 +1509,35 @@ func main() {
 	r.Handle("/api/email/security/{id}", jwtMiddleware(http.HandlerFunc(srv.updateEmailSecurityHandler))).Methods("POST")
 	r.Handle("/api/email/security/{id}", jwtMiddleware(http.HandlerFunc(srv.getEmailSecurityHandler))).Methods("GET")
 
+	// Register Secure Links External Email Flow endpoints (Phase 1)
+	log.Printf("Registering /api/secure-links endpoints")
+	r.Handle("/api/secure-links", jwtMiddleware(http.HandlerFunc(srv.createSecureLinkHandler))).Methods("POST")
+	r.Handle("/api/secure-links", jwtMiddleware(http.HandlerFunc(srv.listSecureLinksHandler))).Methods("GET")
+	r.Handle("/api/secure-links/{linkID}/access", http.HandlerFunc(srv.accessSecureLinkHandler)).Methods("POST")
+	r.Handle("/api/secure-links/{linkID}", jwtMiddleware(http.HandlerFunc(srv.getSecureLinkInfoHandler))).Methods("GET")
+	r.Handle("/api/secure-links/{linkID}/revoke", jwtMiddleware(http.HandlerFunc(srv.revokeSecureLinkHandler))).Methods("POST")
+
+	// Register Phase 2 Security Enforcement endpoints
+	log.Printf("Registering Phase 2 security enforcement endpoints")
+	r.Handle("/api/secure-links/password/validate", http.HandlerFunc(srv.PasswordValidationHandler)).Methods("POST")
+	r.Handle("/api/secure-links/password/create", jwtMiddleware(http.HandlerFunc(srv.CreatePasswordProtectedLinkHandler))).Methods("POST")
+	r.Handle("/api/secure-links/password/attempts", jwtMiddleware(http.HandlerFunc(srv.GetPasswordAttemptsHandler))).Methods("GET")
+	r.Handle("/api/secure-links/password/clear-attempts", jwtMiddleware(http.HandlerFunc(srv.ClearPasswordAttemptsHandler))).Methods("POST")
+
+	// Geolocation verification endpoints
+	r.Handle("/api/secure-links/geolocation/verify", http.HandlerFunc(srv.GeolocationVerificationHandler)).Methods("POST")
+	r.Handle("/api/secure-links/geolocation/data", http.HandlerFunc(srv.GeolocationDataHandler)).Methods("GET")
+	r.Handle("/api/secure-links/geolocation/validate", http.HandlerFunc(srv.ValidateGeolocationRestrictionHandler)).Methods("POST")
+
+	// MFA endpoints
+	r.Handle("/api/secure-links/mfa/initiate", http.HandlerFunc(srv.MFAInitiationHandler)).Methods("POST")
+	r.Handle("/api/secure-links/mfa/verify", http.HandlerFunc(srv.MFAVerificationHandler)).Methods("POST")
+
+	// Decoy message endpoints
+	r.Handle("/api/secure-links/decoy/get", http.HandlerFunc(srv.DecoyMessageHandler)).Methods("POST")
+	r.Handle("/api/secure-links/decoy/create", jwtMiddleware(http.HandlerFunc(srv.CreateDecoyMessageHandler))).Methods("POST")
+	r.Handle("/api/secure-links/decoy/templates", http.HandlerFunc(srv.GetDecoyTemplatesHandler)).Methods("GET")
+
 	// Register MFA endpoints (require JWT authentication)
 	log.Printf("Registering /api/mfa/validate endpoint")
 	r.Handle("/api/mfa/validate", jwtMiddleware(http.HandlerFunc(srv.validateMFAHandler))).Methods("POST")
@@ -1647,6 +1747,52 @@ func main() {
 	// r.Handle("/api/admin/compliance/settings/user-transparency", jwtMiddleware(http.HandlerFunc(srv.adminGetUserTransparencySettingsHandler))).Methods("GET")
 	// r.Handle("/api/admin/compliance/settings/user-transparency", jwtMiddleware(http.HandlerFunc(srv.adminUpdateUserTransparencySettingsHandler))).Methods("PUT")
 
+	// Micro-Iteration 4.36: Post-Quantum Cryptography (PQC) Endpoints
+	if srv.pqcService != nil && srv.pqcIntegration != nil {
+		log.Printf("Registering PQC configuration endpoint")
+		r.Handle("/api/admin/pqc/config", jwtMiddleware(pqcConfigHandler(srv.pqcService, srv.pqcIntegration))).Methods("GET", "PUT")
+		log.Printf("Registering PQC statistics endpoint")
+		r.Handle("/api/admin/pqc/stats", jwtMiddleware(pqcStatsHandler(srv.pqcService, srv.pqcIntegration))).Methods("GET")
+		log.Printf("Registering PQC health endpoint")
+		r.Handle("/api/admin/pqc/health", jwtMiddleware(pqcHealthHandler(srv.pqcService, srv.pqcIntegration))).Methods("GET")
+		log.Printf("Registering PQC key management endpoints")
+		r.Handle("/api/admin/pqc/keys", jwtMiddleware(pqcKeyHandler(srv.pqcService))).Methods("GET", "POST")
+		log.Printf("Registering PQC migration endpoints")
+		r.Handle("/api/admin/pqc/migration", jwtMiddleware(pqcMigrationHandler(srv.pqcIntegration))).Methods("GET", "POST")
+	} else {
+		log.Printf("PQC services not available - skipping PQC endpoints")
+	}
+
+	// Micro-Iteration 4.30: Automated Compliance & Retention Certification Endpoints
+	log.Printf("Registering /api/admin/compliance/status endpoint")
+	r.Handle("/api/admin/compliance/status", jwtMiddleware(getComplianceSummaryHandler(db))).Methods("GET")
+	log.Printf("Registering /api/admin/compliance/reports endpoint")
+	r.Handle("/api/admin/compliance/reports", jwtMiddleware(getComplianceLogsHandler(db))).Methods("GET")
+	log.Printf("Registering /api/admin/compliance/violations endpoint")
+	r.Handle("/api/admin/compliance/violations", jwtMiddleware(getComplianceStatsHandler(db))).Methods("GET")
+	log.Printf("Registering /api/admin/compliance/certifications endpoint")
+	r.Handle("/api/admin/compliance/certifications", jwtMiddleware(exportComplianceLogsHandler(db))).Methods("GET")
+	log.Printf("Registering /api/admin/compliance/enterprise endpoint")
+	r.Handle("/api/admin/compliance/enterprise", jwtMiddleware(getComplianceActivityHandler(db))).Methods("GET")
+
+	// Enterprise Management Endpoints
+	log.Printf("Registering /api/admin/organizations endpoint")
+	r.Handle("/api/admin/organizations", jwtMiddleware(createOrganizationHandler(db))).Methods("POST")
+	r.Handle("/api/admin/organizations", jwtMiddleware(listOrganizationsHandler(db))).Methods("GET")
+	log.Printf("Registering /api/admin/organizations/{id} endpoint")
+	r.Handle("/api/admin/organizations/{id}", jwtMiddleware(getOrganizationHandler(db))).Methods("GET")
+	r.Handle("/api/admin/organizations/{id}", jwtMiddleware(updateOrganizationHandler(db))).Methods("PUT")
+	r.Handle("/api/admin/organizations/{id}", jwtMiddleware(deleteOrganizationHandler(db))).Methods("DELETE")
+	log.Printf("Registering /api/admin/organizations/{id}/users endpoint")
+	r.Handle("/api/admin/organizations/{id}/users", jwtMiddleware(addUserToOrganizationHandler(db))).Methods("POST")
+	r.Handle("/api/admin/organizations/{id}/users/{user_id}", jwtMiddleware(removeUserFromOrganizationHandler(db))).Methods("DELETE")
+
+	// Password Reset Endpoints
+	log.Printf("Registering /api/auth/password-reset/initiate endpoint")
+	r.Handle("/api/auth/password-reset/initiate", http.HandlerFunc(initiatePasswordResetHandler(db))).Methods("POST")
+	log.Printf("Registering /api/auth/password-reset/complete endpoint")
+	r.Handle("/api/auth/password-reset/complete", http.HandlerFunc(passwordResetHandler(db))).Methods("POST")
+
 	// TEST ONLY: Register self-destruct test endpoint
 	if os.Getenv("SIMULATE_SELF_DESTRUCT") == "1" {
 		log.Printf("Registering /test/self-destruct endpoint (TEST ONLY)")
@@ -1770,6 +1916,16 @@ type Server struct {
 
 	// Automated compliance and retention certification (Micro-Iteration 4.30)
 	complianceService *email.ComplianceService // Compliance and certification service
+
+	// Post-Quantum Cryptography (Micro-Iteration 4.36)
+	pqcService     *pqc.PQCService     // PQC service for quantum-resistant encryption
+	pqcIntegration *pqc.PQCIntegration // PQC integration with existing systems
+
+	// SES Handler with PQC + KT Enforcement (NEW SECURITY LAYER)
+	sesHandler *email.SESHandler // SES handler with security validation and retry logic
+
+	// Secure Links External Email Flow (Phase 1)
+	secureLinksService *securelinks.Service // Secure links service for external email access
 }
 
 // createEmailSecurityDB creates an EmailSecurityDB instance with R2 client if available

@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ChartBarIcon, ArrowTrendingUpIcon, DocumentChartBarIcon, CalendarIcon, FunnelIcon, EyeIcon, EyeSlashIcon,
 } from '@heroicons/react/24/outline';
 import {
   AnalyticsDashboard, AnalyticsTimeRange,
 } from '../../../types/admin';
+import { EnterpriseDashboardService } from '../../../services/enterpriseDashboardService';
 
 interface AnalyticsDashboardPanelProps {
-  dashboardService: any;
+  dashboardService: EnterpriseDashboardService;
   isReadOnly?: boolean;
 }
 
@@ -27,22 +28,23 @@ const AnalyticsDashboardPanel: React.FC<AnalyticsDashboardPanelProps> = ({
   const [showDetails, setShowDetails] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'email' | 'security' | 'zkid-pqc' | 'threats'>('overview');
 
-  useEffect(() => {
-    fetchAnalyticsData();
-  }, [selectedTimeRange]);
-
-  const fetchAnalyticsData = async () => {
+  const fetchAnalyticsData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       const data = await dashboardService.getAnalyticsDashboard({ time_range: selectedTimeRange });
       setAnalyticsData(data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch analytics data');
+    } catch (err: unknown) {
+      const error = err as Error;
+      setError(error.message || 'Failed to fetch analytics data');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedTimeRange, dashboardService]);
+
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, [fetchAnalyticsData]);
 
   const formatBytes = (bytes: number): string => {
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
@@ -154,7 +156,7 @@ const AnalyticsDashboardPanel: React.FC<AnalyticsDashboardPanelProps> = ({
             value={selectedTimeRange.granularity}
             onChange={(e) => setSelectedTimeRange({
               ...selectedTimeRange,
-              granularity: e.target.value as any
+              granularity: e.target.value as 'hour' | 'day' | 'week' | 'month'
             })}
             className="text-sm border border-gray-300 rounded-md px-3 py-1"
             disabled={isReadOnly}
@@ -179,7 +181,7 @@ const AnalyticsDashboardPanel: React.FC<AnalyticsDashboardPanelProps> = ({
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as 'overview' | 'email' | 'security' | 'zkid-pqc' | 'threats')}
               className={`flex items-center space-x-2 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                 activeTab === tab.id
                   ? 'text-blue-600 bg-blue-50'

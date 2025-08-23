@@ -21,6 +21,7 @@ const (
 	UserEmailKey      contextKey = "user_email"
 	UserRoleKey       contextKey = "user_role"
 	OrganizationIDKey contextKey = "organization_id"
+	FilterOrgIDKey    contextKey = "filter_organization_id"
 )
 
 // RBACMiddleware provides role-based access control
@@ -194,7 +195,7 @@ func (m *RBACMiddleware) ScopeToOrganization(next http.HandlerFunc) http.Handler
 
 		// For enterprise admins and users, scope to their organization
 		// Add organization filter to request context
-		ctx := context.WithValue(r.Context(), "filter_organization_id", orgID)
+		ctx := context.WithValue(r.Context(), FilterOrgIDKey, orgID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
 }
@@ -220,7 +221,7 @@ func GetUserFromContext(ctx context.Context) (userID, userEmail string, userRole
 
 // GetFilterOrganizationID gets the organization ID for filtering from context
 func GetFilterOrganizationID(ctx context.Context) (string, bool) {
-	orgID := ctx.Value("filter_organization_id")
+	orgID := ctx.Value(FilterOrgIDKey)
 	if orgID == nil {
 		return "", false
 	}

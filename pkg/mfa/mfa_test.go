@@ -180,7 +180,7 @@ func TestCheckMFALockout(t *testing.T) {
 	}
 
 	// Should not be locked
-	locked, lockedUntil, err = mfaService.CheckMFALockout(emailID)
+	locked, _, err = mfaService.CheckMFALockout(emailID)
 	if err != nil {
 		t.Fatalf("Failed to check MFA lockout: %v", err)
 	}

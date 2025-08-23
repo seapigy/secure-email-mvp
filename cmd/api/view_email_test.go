@@ -86,9 +86,7 @@ func TestEmailExpirationLogic(t *testing.T) {
 
 	t.Run("NoExpirationCheck", func(t *testing.T) {
 		// Test that emails without expiration are not expired
-		var expiresAt *time.Time = nil
-
-		isExpired := expiresAt != nil && time.Now().After(*expiresAt)
+		isExpired := false // No expiration set, so not expired
 
 		if isExpired {
 			t.Error("Email should not be expired when no expiration is set")

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,8 +11,8 @@ import (
 	"net/http"
 	"time"
 
-	"secure-email-mvp/pkg/auth"
 	"secure-email-mvp/pkg/email"
+	"secure-email-mvp/pkg/pqc"
 	"secure-email-mvp/pkg/storage"
 )
 
@@ -69,18 +68,16 @@ func (srv *Server) getEmailHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 1. Retrieve email metadata from database
 	var (
-		blobID, encryptedKeyB64, nonceB64, authTagB64, compressionAlgo string
-		senderID, recipient, subject                                   string
-		createdAt                                                      time.Time
+		blobID, compressionAlgo      string
+		senderID, recipient, subject string
+		createdAt                    time.Time
 	)
 
 	err := srv.db.QueryRow(`
-		SELECT encrypted_blob_url, encrypted_key, encryption_nonce, encryption_auth_tag, 
-		       compression_algo, sender_id, recipient, subject, created_at
+		SELECT encrypted_blob_url, compression_algo, sender_id, recipient, subject, created_at
 		FROM emails WHERE email_id = ?`,
 		req.EmailID,
-	).Scan(&blobID, &encryptedKeyB64, &nonceB64, &authTagB64, &compressionAlgo,
-		&senderID, &recipient, &subject, &createdAt)
+	).Scan(&blobID, &compressionAlgo, &senderID, &recipient, &subject, &createdAt)
 
 	if err != nil {
 		log.Printf("Database query failed: %v", err)
@@ -164,35 +161,7 @@ func (srv *Server) getEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. Decode base64 fields
-	encryptedKey, err := base64.StdEncoding.DecodeString(encryptedKeyB64)
-	if err != nil {
-		log.Printf("Failed to decode encrypted key: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"Invalid encryption key"}`))
-		return
-	}
-
-	nonce, err := base64.StdEncoding.DecodeString(nonceB64)
-	if err != nil {
-		log.Printf("Failed to decode nonce: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"Invalid encryption nonce"}`))
-		return
-	}
-
-	authTag, err := base64.StdEncoding.DecodeString(authTagB64)
-	if err != nil {
-		log.Printf("Failed to decode auth tag: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"Invalid encryption auth tag"}`))
-		return
-	}
-
-	// 3. Retrieve encrypted blob from R2
+	// 3. Retrieve encrypted data from R2 storage
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -212,39 +181,32 @@ func (srv *Server) getEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 4. Separate ciphertext and auth tag
-	if len(encryptedBlob) < 16 {
-		log.Printf("Encrypted blob too short: %d bytes", len(encryptedBlob))
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"Invalid encrypted content"}`))
-		return
-	}
-
-	ciphertext := encryptedBlob[:len(encryptedBlob)-16]
-	blobAuthTag := encryptedBlob[len(encryptedBlob)-16:]
-
-	// 5. Verify auth tag matches
-	if !bytes.Equal(authTag, blobAuthTag) {
-		log.Printf("Auth tag mismatch")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"Content integrity check failed"}`))
-		return
-	}
-
-	// 6. Create EncryptedData struct for decryption
-	encryptedData := &auth.EncryptedData{
-		Ciphertext: ciphertext,
-		Key:        encryptedKey,
-		Nonce:      nonce,
-		AuthTag:    authTag,
-	}
-
-	// 7. Decrypt the content
-	compressed, err := auth.DecryptAES256GCM(encryptedData)
+	// 5. Initialize PQC service for hybrid decryption
+	pqcConfig := pqc.LoadPQCConfigFromEnv()
+	pqcService, err := pqc.NewPQCService(pqcConfig)
 	if err != nil {
-		log.Printf("Decryption failed: %v", err)
+		log.Printf("PQC service initialization failed: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"PQC decryption service failed"}`))
+		return
+	}
+
+	// 6. Deserialize and decrypt using PQC hybrid decryption
+	serializedData := string(encryptedBlob)
+	hybridData, err := pqcService.DeserializeHybridData(serializedData)
+	if err != nil {
+		log.Printf("PQC data deserialization failed: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"PQC data deserialization failed"}`))
+		return
+	}
+
+	// 7. Decrypt using PQC hybrid decryption
+	compressed, err := pqcService.DecryptHybrid(hybridData, "email_get")
+	if err != nil {
+		log.Printf("PQC decryption failed: %v", err)
 
 		// Handle failed access with new self-destruct logic (Micro-Iteration 4.8)
 		emailSecurityDB := srv.createEmailSecurityDB()
@@ -271,7 +233,7 @@ func (srv *Server) getEmailHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"Decryption failed"}`))
+		w.Write([]byte(`{"error":"PQC decryption failed"}`))
 		return
 	}
 
@@ -353,7 +315,7 @@ func (srv *Server) getEmailHandler(w http.ResponseWriter, r *http.Request) {
 		// Don't fail the request for tracking errors
 	}
 
-	// 10. Return decrypted email
+	// 11. Return decrypted email
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(GetEmailResponse{

@@ -6,10 +6,10 @@ param(
     [string]$Verbose = "false"
 )
 
-Write-Host "=== Sprint 7 Test Harness: Advanced PQC Features & Production Hardening ===" -ForegroundColor Cyan
-Write-Host "Test Mode: $TestMode" -ForegroundColor Green
-Write-Host "Timestamp: $(Get-Date)" -ForegroundColor Green
-Write-Host ""
+Write-Output "=== Sprint 7 Test Harness: Advanced PQC Features & Production Hardening ==="
+Write-Output "Test Mode: $TestMode"
+Write-Output "Timestamp: $(Get-Date)"
+Write-Output ""
 
 $ErrorActionPreference = "Continue"
 $TestResults = @()
@@ -18,33 +18,33 @@ $FailedTests = 0
 
 function Write-TestResult {
     param($TestName, $Result, $Details = "")
-    
+
     $global:TestResults += [PSCustomObject]@{
         Test = $TestName
         Result = $Result
         Details = $Details
         Timestamp = Get-Date
     }
-    
+
     if ($Result -eq "PASS") {
-        Write-Host "✅ $TestName" -ForegroundColor Green
+        Write-Output "✅ $TestName"
         $global:PassedTests++
     } else {
-        Write-Host "❌ $TestName" -ForegroundColor Red
+        Write-Output "❌ $TestName"
         if ($Details) {
-            Write-Host "   Details: $Details" -ForegroundColor Yellow
+            Write-Output "   Details: $Details"
         }
         $global:FailedTests++
     }
-    
+
     if ($Verbose -eq "true" -and $Details) {
-        Write-Host "   $Details" -ForegroundColor Gray
+        Write-Output "   $Details"
     }
 }
 
 function Test-FileExists {
     param($FilePath, $TestName)
-    
+
     if (Test-Path $FilePath) {
         Write-TestResult $TestName "PASS" "File exists: $FilePath"
         return $true
@@ -56,7 +56,7 @@ function Test-FileExists {
 
 function Test-GoSyntax {
     param($FilePath, $TestName)
-    
+
     try {
         $output = go run -o nul $FilePath 2>&1
         if ($LASTEXITCODE -eq 0) {
@@ -74,7 +74,7 @@ function Test-GoSyntax {
 
 function Test-StructDefinition {
     param($FilePath, $StructName, $TestName)
-    
+
     try {
         $content = Get-Content $FilePath -Raw
         if ($content -match "type\s+$StructName\s+struct") {
@@ -92,7 +92,7 @@ function Test-StructDefinition {
 
 function Test-FunctionDefinition {
     param($FilePath, $FunctionName, $TestName)
-    
+
     try {
         $content = Get-Content $FilePath -Raw
         if ($content -match "func\s+.*$FunctionName\s*\(") {
@@ -110,7 +110,7 @@ function Test-FunctionDefinition {
 
 function Test-InterfaceDefinition {
     param($FilePath, $InterfaceName, $TestName)
-    
+
     try {
         $content = Get-Content $FilePath -Raw
         if ($content -match "type\s+$InterfaceName\s+interface") {
@@ -128,7 +128,7 @@ function Test-InterfaceDefinition {
 
 function Test-ConstantDefinition {
     param($FilePath, $ConstantPattern, $TestName)
-    
+
     try {
         $content = Get-Content $FilePath -Raw
         if ($content -match $ConstantPattern) {
@@ -146,7 +146,7 @@ function Test-ConstantDefinition {
 
 function Test-ImportStatement {
     param($FilePath, $ImportPath, $TestName)
-    
+
     try {
         $content = Get-Content $FilePath -Raw
         if ($content -match "import.*`"$ImportPath`"" -or $content -match "_\s+`"$ImportPath`"" -or $content -match "import\s+`"$ImportPath`"" -or $content -match "`"$ImportPath`"") {
@@ -164,7 +164,7 @@ function Test-ImportStatement {
 
 function Test-GoCompilation {
     param($Directory, $TestName)
-    
+
     try {
         Push-Location $Directory
         $output = go build ./... 2>&1
@@ -186,7 +186,7 @@ function Test-GoCompilation {
 
 function Test-DesignDocument {
     param($FilePath, $TestName)
-    
+
     try {
         if (Test-Path $FilePath) {
             $content = Get-Content $FilePath -Raw
@@ -199,14 +199,14 @@ function Test-DesignDocument {
                 "### 3. Advanced Observability",
                 "### 4. Automated Compliance"
             )
-            
+
             $missingCount = 0
             foreach ($section in $requiredSections) {
                 if ($content -notmatch [regex]::Escape($section)) {
                     $missingCount++
                 }
             }
-            
+
             if ($missingCount -eq 0) {
                 Write-TestResult $TestName "PASS" "All required sections present"
                 return $true
@@ -225,20 +225,20 @@ function Test-DesignDocument {
 }
 
 # Sprint 7 Core Tests
-Write-Host "📋 Testing Sprint 7 Core Components..." -ForegroundColor Blue
+Write-Output "📋 Testing Sprint 7 Core Components..."
 
 # Design Document Tests
-Write-Host "`n🔍 Design Document Validation..." -ForegroundColor Yellow
+Write-Output "`n🔍 Design Document Validation..."
 Test-DesignDocument "docs/sprint7_design.md" "Sprint 7 Design Document"
 
 # Mixnet Routing System Tests
 if ($TestMode -eq "all" -or $TestMode -eq "mixnet") {
-    Write-Host "`n🌐 Mixnet Routing System Tests..." -ForegroundColor Yellow
-    
+    Write-Output "`n🌐 Mixnet Routing System Tests..."
+
     # File existence tests
     Test-FileExists "pkg/e2e/mixnet.go" "Mixnet Core File"
     Test-FileExists "pkg/e2e/mixnet_directory.go" "Mixnet Directory File"
-    
+
     # Core structure tests
     Test-StructDefinition "pkg/e2e/mixnet.go" "MixnetRouter" "MixnetRouter Struct"
     Test-StructDefinition "pkg/e2e/mixnet.go" "MixnetConfig" "MixnetConfig Struct"
@@ -246,23 +246,23 @@ if ($TestMode -eq "all" -or $TestMode -eq "mixnet") {
     Test-StructDefinition "pkg/e2e/mixnet.go" "MixnetRoute" "MixnetRoute Struct"
     Test-StructDefinition "pkg/e2e/mixnet.go" "MixnetMessage" "MixnetMessage Struct"
     Test-StructDefinition "pkg/e2e/mixnet.go" "OnionLayer" "OnionLayer Struct"
-    
+
     # Function tests
     Test-FunctionDefinition "pkg/e2e/mixnet.go" "NewMixnetRouter" "NewMixnetRouter Function"
     Test-FunctionDefinition "pkg/e2e/mixnet.go" "RouteMessage" "RouteMessage Method"
     Test-FunctionDefinition "pkg/e2e/mixnet.go" "ProcessMessage" "ProcessMessage Method"
     Test-FunctionDefinition "pkg/e2e/mixnet.go" "GenerateCoverTraffic" "GenerateCoverTraffic Method"
-    
+
     # Node Directory tests
     Test-StructDefinition "pkg/e2e/mixnet_directory.go" "NodeDirectory" "NodeDirectory Struct"
     Test-StructDefinition "pkg/e2e/mixnet_directory.go" "PathSelector" "PathSelector Struct"
     Test-StructDefinition "pkg/e2e/mixnet_directory.go" "MixnetCoverTrafficGenerator" "MixnetCoverTrafficGenerator Struct"
-    
+
     Test-FunctionDefinition "pkg/e2e/mixnet_directory.go" "NewNodeDirectory" "NewNodeDirectory Function"
     Test-FunctionDefinition "pkg/e2e/mixnet_directory.go" "NewPathSelector" "NewPathSelector Function"
     Test-FunctionDefinition "pkg/e2e/mixnet_directory.go" "RefreshNodes" "RefreshNodes Method"
     Test-FunctionDefinition "pkg/e2e/mixnet_directory.go" "SelectPath" "SelectPath Method"
-    
+
     # Import tests
     Test-ImportStatement "pkg/e2e/mixnet.go" "modernc.org/sqlite" "SQLite Import"
     Test-ImportStatement "pkg/e2e/mixnet.go" "context" "Context Import"
@@ -270,75 +270,75 @@ if ($TestMode -eq "all" -or $TestMode -eq "mixnet") {
 
 # Hardware-Backed Key Management Tests
 if ($TestMode -eq "all" -or $TestMode -eq "hardware") {
-    Write-Host "`n🔐 Hardware-Backed Key Management Tests..." -ForegroundColor Yellow
-    
+    Write-Output "`n🔐 Hardware-Backed Key Management Tests..."
+
     # File existence tests
     Test-FileExists "pkg/e2e/hardware_security.go" "Hardware Security File"
-    
+
     # Core structure tests
     Test-StructDefinition "pkg/e2e/hardware_security.go" "HardwareSecurityManager" "HardwareSecurityManager Struct"
     Test-StructDefinition "pkg/e2e/hardware_security.go" "HardwareSecurityConfig" "HardwareSecurityConfig Struct"
     Test-StructDefinition "pkg/e2e/hardware_security.go" "HardwareKey" "HardwareKey Struct"
     Test-StructDefinition "pkg/e2e/hardware_security.go" "AttestationReport" "AttestationReport Struct"
     Test-StructDefinition "pkg/e2e/hardware_security.go" "SecurityState" "SecurityState Struct"
-    
+
     # Interface tests
     Test-InterfaceDefinition "pkg/e2e/hardware_security.go" "HardwareSecurityProvider" "HardwareSecurityProvider Interface"
-    
+
     # Function tests
     Test-FunctionDefinition "pkg/e2e/hardware_security.go" "NewHardwareSecurityManager" "NewHardwareSecurityManager Function"
     Test-FunctionDefinition "pkg/e2e/hardware_security.go" "GenerateKey" "GenerateKey Function"
     Test-FunctionDefinition "pkg/e2e/hardware_security.go" "AttestKey" "AttestKey Function"
     Test-FunctionDefinition "pkg/e2e/hardware_security.go" "Sign" "Sign Function"
-    
+
     # Platform-specific tests
     Test-StructDefinition "pkg/e2e/hardware_security.go" "MockTPMProvider" "MockTPMProvider Struct"
     Test-StructDefinition "pkg/e2e/hardware_security.go" "MockSecureEnclaveProvider" "MockSecureEnclaveProvider Struct"
     Test-StructDefinition "pkg/e2e/hardware_security.go" "MockPKCS11Provider" "MockPKCS11Provider Struct"
-    
+
     # Constant tests
     Test-ConstantDefinition "pkg/e2e/hardware_security.go" "type\s+KeyProtectionMode\s+struct" "KeyProtectionMode Type"
 }
 
 # Advanced Observability Tests
 if ($TestMode -eq "all" -or $TestMode -eq "observability") {
-    Write-Host "`n📊 Advanced Observability Tests..." -ForegroundColor Yellow
-    
+    Write-Output "`n📊 Advanced Observability Tests..."
+
     # File existence tests
     Test-FileExists "pkg/e2e/observability.go" "Observability File"
-    
+
     # Core structure tests
     Test-StructDefinition "pkg/e2e/observability.go" "DistributedTracer" "DistributedTracer Struct"
     Test-StructDefinition "pkg/e2e/observability.go" "AdvancedAlertManager" "AdvancedAlertManager Struct"
     Test-StructDefinition "pkg/e2e/observability.go" "AnomalyDetector" "AnomalyDetector Struct"
     Test-StructDefinition "pkg/e2e/observability.go" "AdvancedObservabilityConfig" "AdvancedObservabilityConfig Struct"
-    
+
     # Tracing tests
     Test-StructDefinition "pkg/e2e/observability.go" "Span" "Span Struct"
     Test-StructDefinition "pkg/e2e/observability.go" "Trace" "Trace Struct"
     Test-StructDefinition "pkg/e2e/observability.go" "SpanLog" "SpanLog Struct"
-    
+
     # Alerting tests
     Test-StructDefinition "pkg/e2e/observability.go" "AlertRule" "AlertRule Struct"
     Test-StructDefinition "pkg/e2e/observability.go" "Alert" "Alert Struct"
     Test-StructDefinition "pkg/e2e/observability.go" "AlertCondition" "AlertCondition Struct"
-    
+
     # Anomaly detection tests
     Test-StructDefinition "pkg/e2e/observability.go" "AnomalyModel" "AnomalyModel Struct"
     Test-StructDefinition "pkg/e2e/observability.go" "Baseline" "Baseline Struct"
     Test-StructDefinition "pkg/e2e/observability.go" "Anomaly" "Anomaly Struct"
-    
+
     # Function tests
     Test-FunctionDefinition "pkg/e2e/observability.go" "NewDistributedTracer" "NewDistributedTracer Function"
     Test-FunctionDefinition "pkg/e2e/observability.go" "NewAdvancedAlertManager" "NewAdvancedAlertManager Function"
     Test-FunctionDefinition "pkg/e2e/observability.go" "NewAnomalyDetector" "NewAnomalyDetector Function"
     Test-FunctionDefinition "pkg/e2e/observability.go" "StartSpan" "StartSpan Method"
     Test-FunctionDefinition "pkg/e2e/observability.go" "DetectAnomalies" "DetectAnomalies Method"
-    
+
     # Interface tests
     Test-InterfaceDefinition "pkg/e2e/observability.go" "TraceExporter" "TraceExporter Interface"
     Test-InterfaceDefinition "pkg/e2e/observability.go" "AlertProcessor" "AlertProcessor Interface"
-    
+
     # Constant tests
     Test-ConstantDefinition "pkg/e2e/observability.go" "AlertSeverityCritical.*AlertSeverity" "Alert Severity Constants"
     Test-ConstantDefinition "pkg/e2e/observability.go" "SpanStatusOK.*SpanStatusCode" "Span Status Constants"
@@ -346,45 +346,45 @@ if ($TestMode -eq "all" -or $TestMode -eq "observability") {
 
 # Compliance Automation Tests
 if ($TestMode -eq "all" -or $TestMode -eq "compliance") {
-    Write-Host "`n✅ Compliance Automation Tests..." -ForegroundColor Yellow
-    
+    Write-Output "`n✅ Compliance Automation Tests..."
+
     # File existence tests
     Test-FileExists "pkg/e2e/compliance_automation.go" "Compliance Automation File"
-    
+
     # Core structure tests
     Test-StructDefinition "pkg/e2e/compliance_automation.go" "ComplianceAutomationEngine" "ComplianceAutomationEngine Struct"
     Test-StructDefinition "pkg/e2e/compliance_automation.go" "ComplianceConfig" "ComplianceConfig Struct"
     Test-StructDefinition "pkg/e2e/compliance_automation.go" "ComplianceResult" "ComplianceResult Struct"
     Test-StructDefinition "pkg/e2e/compliance_automation.go" "ComplianceControl" "ComplianceControl Struct"
     Test-StructDefinition "pkg/e2e/compliance_automation.go" "ComplianceViolation" "ComplianceViolation Struct"
-    
+
     # Validator interface tests
     Test-InterfaceDefinition "pkg/e2e/compliance_automation.go" "ComplianceValidator" "ComplianceValidator Interface"
-    
+
     # Standard-specific validator tests
     Test-StructDefinition "pkg/e2e/compliance_automation.go" "FIPS140Validator" "FIPS140Validator Struct"
     Test-StructDefinition "pkg/e2e/compliance_automation.go" "GDPRValidator" "GDPRValidator Struct"
     Test-StructDefinition "pkg/e2e/compliance_automation.go" "SOC2Validator" "SOC2Validator Struct"
     Test-StructDefinition "pkg/e2e/compliance_automation.go" "HIPAAValidator" "HIPAAValidator Struct"
-    
+
     # Function tests
     Test-FunctionDefinition "pkg/e2e/compliance_automation.go" "NewComplianceAutomationEngine" "NewComplianceAutomationEngine Function"
     Test-FunctionDefinition "pkg/e2e/compliance_automation.go" "ValidateCompliance" "ValidateCompliance Method"
     Test-FunctionDefinition "pkg/e2e/compliance_automation.go" "ValidateStandard" "ValidateStandard Method"
     Test-FunctionDefinition "pkg/e2e/compliance_automation.go" "GenerateComplianceReport" "GenerateComplianceReport Method"
-    
+
     # Evidence and remediation tests
     Test-StructDefinition "pkg/e2e/compliance_automation.go" "Evidence" "Evidence Struct"
     Test-StructDefinition "pkg/e2e/compliance_automation.go" "RemediationPlan" "RemediationPlan Struct"
     Test-StructDefinition "pkg/e2e/compliance_automation.go" "TestDetails" "TestDetails Struct"
-    
+
     # Constant tests
     Test-ConstantDefinition "pkg/e2e/compliance_automation.go" "ComplianceStatusCompliant.*ComplianceStatus" "Compliance Status Constants"
     Test-ConstantDefinition "pkg/e2e/compliance_automation.go" "ControlTypeTechnical.*ControlType" "Control Type Constants"
 }
 
 # Integration and Configuration Tests
-Write-Host "`n🔧 Integration and Configuration Tests..." -ForegroundColor Yellow
+Write-Output "`n🔧 Integration and Configuration Tests..."
 
 # Configuration tests
 $configTests = @(
@@ -419,11 +419,11 @@ foreach ($test in $schemaTests) {
 }
 
 # Compilation Tests
-Write-Host "`n🔨 Compilation Tests..." -ForegroundColor Yellow
+Write-Output "`n🔨 Compilation Tests..."
 Test-GoCompilation "pkg/e2e" "Sprint 7 Package Compilation"
 
 # Integration with Existing E2E System
-Write-Host "`n🔗 Integration Tests..." -ForegroundColor Yellow
+Write-Output "`n🔗 Integration Tests..."
 
 # Check if new components integrate with existing config
 try {
@@ -432,18 +432,18 @@ try {
         # Check for new configuration fields (these would be added in a real integration)
         $integrationChecks = @(
             "MixnetConfig",
-            "HardwareSecurityConfig", 
+            "HardwareSecurityConfig",
             "ObservabilityConfig",
             "ComplianceConfig"
         )
-        
+
         $integratedCount = 0
         foreach ($check in $integrationChecks) {
             if ($configContent -match $check) {
                 $integratedCount++
             }
         }
-        
+
         if ($integratedCount -gt 0) {
             Write-TestResult "E2E Config Integration" "PASS" "$integratedCount new config sections found"
         } else {
@@ -457,21 +457,21 @@ try {
 }
 
 # Test Results Summary
-Write-Host "`n📊 Test Results Summary" -ForegroundColor Cyan
-Write-Host "=====================================`n" -ForegroundColor Cyan
+Write-Output "`n📊 Test Results Summary"
+Write-Output "=====================================`n"
 
-Write-Host "✅ Passed Tests: $PassedTests" -ForegroundColor Green
-Write-Host "❌ Failed Tests: $FailedTests" -ForegroundColor Red
-Write-Host "📋 Total Tests: $($PassedTests + $FailedTests)" -ForegroundColor Blue
+Write-Output "✅ Passed Tests: $PassedTests"
+Write-Output "❌ Failed Tests: $FailedTests"
+Write-Output "📋 Total Tests: $($PassedTests + $FailedTests)"
 
-$PassRate = if ($PassedTests + $FailedTests -gt 0) { 
-    [math]::Round(($PassedTests / ($PassedTests + $FailedTests)) * 100, 2) 
-} else { 
-    0 
+$PassRate = if ($PassedTests + $FailedTests -gt 0) {
+    [math]::Round(($PassedTests / ($PassedTests + $FailedTests)) * 100, 2)
+} else {
+    0
 }
-Write-Host "📈 Pass Rate: $PassRate%" -ForegroundColor Yellow
+Write-Output "📈 Pass Rate: $PassRate%"
 
-Write-Host "`n🎯 Sprint 7 Component Status:" -ForegroundColor Cyan
+Write-Output "`n🎯 Sprint 7 Component Status:"
 $componentStatus = @{
     "Mixnet Routing" = ($TestResults | Where-Object { $_.Test -like "*Mixnet*" -and $_.Result -eq "PASS" }).Count
     "Hardware Security" = ($TestResults | Where-Object { $_.Test -like "*Hardware*" -and $_.Result -eq "PASS" }).Count
@@ -481,18 +481,18 @@ $componentStatus = @{
 
 foreach ($component in $componentStatus.GetEnumerator()) {
     $status = if ($component.Value -gt 0) { "✅ Implemented" } else { "❌ Missing" }
-    Write-Host "  $($component.Key): $status ($($component.Value) tests passed)" -ForegroundColor White
+    Write-Output "  $($component.Key): $status ($($component.Value) tests passed)"
 }
 
 if ($FailedTests -gt 0) {
-    Write-Host "`n❌ Failed Tests Details:" -ForegroundColor Red
+    Write-Output "`n❌ Failed Tests Details:"
     $TestResults | Where-Object { $_.Result -eq "FAIL" } | ForEach-Object {
-        Write-Host "  • $($_.Test): $($_.Details)" -ForegroundColor Yellow
+        Write-Output "  • $($_.Test): $($_.Details)"
     }
 }
 
 # Advanced Features Assessment
-Write-Host "`n🚀 Advanced Features Assessment:" -ForegroundColor Cyan
+Write-Output "`n🚀 Advanced Features Assessment:"
 
 $advancedFeatures = @{
     "Anonymous Mixnet Routing" = ($TestResults | Where-Object { $_.Test -like "*Mixnet*" -and $_.Result -eq "PASS" }).Count -gt 5
@@ -504,17 +504,17 @@ $advancedFeatures = @{
 
 foreach ($feature in $advancedFeatures.GetEnumerator()) {
     $status = if ($feature.Value) { "✅ Ready" } else { "⚠️ Needs Work" }
-    Write-Host "  $($feature.Key): $status" -ForegroundColor White
+    Write-Output "  $($feature.Key): $status"
 }
 
-Write-Host "`n🎉 Sprint 7 Test Harness Completed!" -ForegroundColor Green
-Write-Host "Timestamp: $(Get-Date)" -ForegroundColor Gray
+Write-Output "`n🎉 Sprint 7 Test Harness Completed!"
+Write-Output "Timestamp: $(Get-Date)"
 
 # Exit with appropriate code
 if ($FailedTests -eq 0) {
-    Write-Host "🎊 All tests passed! Sprint 7 is ready for validation." -ForegroundColor Green
+    Write-Output "🎊 All tests passed! Sprint 7 is ready for validation."
     exit 0
 } else {
-    Write-Host "⚠️ Some tests failed. Please review and fix before proceeding." -ForegroundColor Yellow
+    Write-Output "⚠️ Some tests failed. Please review and fix before proceeding."
     exit 1
 }

@@ -4,6 +4,7 @@ go 1.23
 
 require (
 	github.com/aws/aws-sdk-go v1.55.7
+	github.com/cloudflare/circl v1.3.3 // Post-Quantum Cryptography (Kyber + Dilithium)
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
@@ -13,6 +14,8 @@ require (
 	golang.org/x/crypto v0.21.0
 	modernc.org/sqlite v1.28.0
 )
+
+require github.com/mattn/go-sqlite3 v1.14.16
 
 require (
 	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect

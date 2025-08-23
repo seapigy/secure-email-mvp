@@ -35,6 +35,9 @@ type E2EConfig struct {
 
 // CryptoConfig holds cryptographic algorithm and parameter configuration
 type CryptoConfig struct {
+	// PQC Implementation
+	PQCImplementation string `json:"pqc_implementation"` // "liboqs", "circl", "placeholder"
+
 	// KEM (Key Encapsulation Mechanism)
 	KEMAlgorithm string `json:"kem_algorithm"` // "kyber512", "kyber768", "kyber1024"
 	KEMLevel     int    `json:"kem_level"`     // 512, 768, or 1024
@@ -204,15 +207,6 @@ func initTestDB(t interface{}) *sql.DB {
 		panic("Failed to create test database: " + err.Error())
 	}
 	return db
-}
-
-// registerTestUsers is a helper to register test users for message routing
-func registerTestUsers(users ...string) map[string]bool {
-	userMap := make(map[string]bool)
-	for _, user := range users {
-		userMap[user] = true
-	}
-	return userMap
 }
 
 // LoadE2EConfigFromEnv loads E2E configuration from environment variables
@@ -485,13 +479,6 @@ func getEnvInt(key string, defaultValue int) int {
 		if parsed, err := strconv.ParseInt(value, 10, 64); err == nil {
 			return int(parsed)
 		}
-	}
-	return defaultValue
-}
-
-func getEnvString(key string, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
 	}
 	return defaultValue
 }

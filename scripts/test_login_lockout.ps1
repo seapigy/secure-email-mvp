@@ -21,7 +21,7 @@ for ($i=1; $i -le 5; $i++) {
   try {
     Invoke-RestMethod -Uri $api -Method POST -ContentType "application/json" -Body $bad
   } catch {
-    Write-Host "Failed login $i $($_.Exception.Response.StatusCode) $($_.ErrorDetails.Message)"
+    Write-Output "Failed login $i $($_.Exception.Response.StatusCode) $($_.ErrorDetails.Message)"
   }
 }
 
@@ -33,5 +33,5 @@ $good = @{
 try {
   Invoke-RestMethod -Uri $api -Method POST -ContentType "application/json" -Body $good
 } catch {
-  Write-Host "Login after lockout: $($_.Exception.Response.StatusCode) $($_.ErrorDetails.Message)"
-} 
+  Write-Output "Login after lockout: $($_.Exception.Response.StatusCode) $($_.ErrorDetails.Message)"
+}

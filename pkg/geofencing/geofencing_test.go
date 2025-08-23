@@ -9,9 +9,6 @@ import (
 
 // MockDB is a mock database for testing
 type MockDB struct {
-	allowedCountries string
-	allowedIPRanges  string
-	geofenceViolations int
 }
 
 func (m *MockDB) QueryRow(query string, args ...interface{}) *sql.Row {
@@ -44,14 +41,14 @@ func (m *MockGeofencingService) CheckGeofenceAccess(emailID, clientIP string) (*
 func TestGeofencingService_CheckGeofenceAccess(t *testing.T) {
 	// Create mock geolocation service
 	mockGeo := geolocation.NewMockGeolocationService()
-	
+
 	// Set up test locations
 	mockGeo.SetLocation("192.168.1.1", &geolocation.Location{
 		Country: "US",
 		City:    "New York",
 		IP:      "192.168.1.1",
 	})
-	
+
 	mockGeo.SetLocation("10.0.0.1", &geolocation.Location{
 		Country: "CA",
 		City:    "Toronto",

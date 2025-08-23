@@ -7,13 +7,13 @@ param(
     [string]$RootAdminEmail = "cpigusch@gmail.com"
 )
 
-Write-Host "=== Admin Authentication System - Staging Deployment ===" -ForegroundColor Green
-Write-Host "Environment: $Environment" -ForegroundColor Cyan
-Write-Host "API URL: $ApiUrl" -ForegroundColor Cyan
-Write-Host "Root Admin Email: $RootAdminEmail" -ForegroundColor Cyan
+Write-Output "=== Admin Authentication System - Staging Deployment ==="
+Write-Output "Environment: $Environment"
+Write-Output "API URL: $ApiUrl"
+Write-Output "Root Admin Email: $RootAdminEmail"
 
 # Step 1: Validate Environment Variables
-Write-Host "`n1. Validating Environment Variables..." -ForegroundColor Yellow
+Write-Output "`n1. Validating Environment Variables..."
 $requiredEnvVars = @(
     "ROOT_ADMIN_EMAIL",
     "JWT_SECRET"
@@ -22,76 +22,76 @@ $requiredEnvVars = @(
 foreach ($var in $requiredEnvVars) {
     $value = [Environment]::GetEnvironmentVariable($var)
     if ([string]::IsNullOrEmpty($value)) {
-        Write-Host "❌ Missing required environment variable: $var" -ForegroundColor Red
+        Write-Output "❌ Missing required environment variable: $var"
         exit 1
     } else {
-        Write-Host "✅ $var is set" -ForegroundColor Green
+        Write-Output "✅ $var is set"
     }
 }
 
 # Step 2: Test API Connectivity
-Write-Host "`n2. Testing API Connectivity..." -ForegroundColor Yellow
+Write-Output "`n2. Testing API Connectivity..."
 try {
     $response = Invoke-RestMethod -Uri "$ApiUrl/health" -Method GET -TimeoutSec 10
     if ($response.status -eq "ok") {
-        Write-Host "✅ API is accessible and healthy" -ForegroundColor Green
+        Write-Output "✅ API is accessible and healthy"
     } else {
-        Write-Host "❌ API health check failed" -ForegroundColor Red
+        Write-Output "❌ API health check failed"
         exit 1
     }
 } catch {
-    Write-Host "❌ Failed to connect to API: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "❌ Failed to connect to API: $($_.Exception.Message)"
     exit 1
 }
 
 # Step 3: Check Admin Setup Status
-Write-Host "`n3. Checking Admin Setup Status..." -ForegroundColor Yellow
+Write-Output "`n3. Checking Admin Setup Status..."
 try {
     $response = Invoke-RestMethod -Uri "$ApiUrl/admin/check-setup" -Method GET -TimeoutSec 10
-    Write-Host "Setup required: $($response.setup_required)" -ForegroundColor Cyan
-    Write-Host "Root admin email: $($response.root_admin_email)" -ForegroundColor Cyan
-    
+    Write-Output "Setup required: $($response.setup_required)"
+    Write-Output "Root admin email: $($response.root_admin_email)"
+
     if ($response.setup_required) {
-        Write-Host "⚠️  Admin setup is required - will create root admin" -ForegroundColor Yellow
+        Write-Output "⚠️  Admin setup is required - will create root admin"
     } else {
-        Write-Host "✅ Admin already exists" -ForegroundColor Green
+        Write-Output "✅ Admin already exists"
     }
 } catch {
-    Write-Host "❌ Failed to check admin setup status: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "❌ Failed to check admin setup status: $($_.Exception.Message)"
     exit 1
 }
 
 # Step 4: Create Root Admin (if needed)
 if ($response.setup_required) {
-    Write-Host "`n4. Creating Root Admin..." -ForegroundColor Yellow
-    
+    Write-Output "`n4. Creating Root Admin..."
+
     # Generate a secure password for staging
     $stagingPassword = "StagingAdminPassword123!"
-    
+
     $setupData = @{
         email = $RootAdminEmail
         password = $stagingPassword
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$ApiUrl/admin/setup" -Method POST -Body ($setupData | ConvertTo-Json) -ContentType "application/json" -TimeoutSec 10
-        Write-Host "✅ Root admin created successfully" -ForegroundColor Green
-        Write-Host "Admin ID: $($response.admin_id)" -ForegroundColor Cyan
-        Write-Host "⚠️  IMPORTANT: Staging password is: $stagingPassword" -ForegroundColor Yellow
+        Write-Output "✅ Root admin created successfully"
+        Write-Output "Admin ID: $($response.admin_id)"
+        Write-Output "⚠️  IMPORTANT: Staging password is: $stagingPassword"
     } catch {
-        Write-Host "❌ Failed to create root admin: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Output "❌ Failed to create root admin: $($_.Exception.Message)"
         if ($_.Exception.Response) {
             $errorResponse = $_.Exception.Response.GetResponseStream()
             $reader = New-Object System.IO.StreamReader($errorResponse)
             $errorBody = $reader.ReadToEnd()
-            Write-Host "Error details: $errorBody" -ForegroundColor Red
+            Write-Output "Error details: $errorBody"
         }
         exit 1
     }
 }
 
 # Step 5: Test Admin Login
-Write-Host "`n5. Testing Admin Login..." -ForegroundColor Yellow
+Write-Output "`n5. Testing Admin Login..."
 $loginData = @{
     email = $RootAdminEmail
     password = if ($response.setup_required) { $stagingPassword } else { "SecureAdminPassword123!" }
@@ -100,84 +100,84 @@ $loginData = @{
 
 try {
     $response = Invoke-RestMethod -Uri "$ApiUrl/admin/login" -Method POST -Body ($loginData | ConvertTo-Json) -ContentType "application/json" -TimeoutSec 10
-    Write-Host "✅ Admin login successful" -ForegroundColor Green
-    Write-Host "Session token: $($response.session_token)" -ForegroundColor Cyan
-    Write-Host "Admin role: $($response.admin.role)" -ForegroundColor Cyan
-    
+    Write-Output "✅ Admin login successful"
+    Write-Output "Session token: $($response.session_token)"
+    Write-Output "Admin role: $($response.admin.role)"
+
     $sessionToken = $response.session_token
 } catch {
-    Write-Host "❌ Admin login failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "❌ Admin login failed: $($_.Exception.Message)"
     exit 1
 }
 
 # Step 6: Test Session Validation
-Write-Host "`n6. Testing Session Validation..." -ForegroundColor Yellow
+Write-Output "`n6. Testing Session Validation..."
 $headers = @{
     "Authorization" = "Bearer $sessionToken"
 }
 
 try {
     $response = Invoke-RestMethod -Uri "$ApiUrl/admin/session" -Method GET -Headers $headers -TimeoutSec 10
-    Write-Host "✅ Session validation successful" -ForegroundColor Green
-    Write-Host "Admin email: $($response.admin.email)" -ForegroundColor Cyan
-    Write-Host "Admin role: $($response.admin.role)" -ForegroundColor Cyan
+    Write-Output "✅ Session validation successful"
+    Write-Output "Admin email: $($response.admin.email)"
+    Write-Output "Admin role: $($response.admin.role)"
 } catch {
-    Write-Host "❌ Session validation failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "❌ Session validation failed: $($_.Exception.Message)"
     exit 1
 }
 
 # Step 7: Test Audit Logs
-Write-Host "`n7. Testing Audit Logs..." -ForegroundColor Yellow
+Write-Output "`n7. Testing Audit Logs..."
 try {
     $response = Invoke-RestMethod -Uri "$ApiUrl/admin/audit-logs" -Method GET -Headers $headers -TimeoutSec 10
-    Write-Host "✅ Audit logs retrieved successfully" -ForegroundColor Green
-    Write-Host "Number of logs: $($response.count)" -ForegroundColor Cyan
-    
+    Write-Output "✅ Audit logs retrieved successfully"
+    Write-Output "Number of logs: $($response.count)"
+
     if ($response.logs -and $response.logs.Count -gt 0) {
-        Write-Host "Recent actions:" -ForegroundColor Cyan
+        Write-Output "Recent actions:"
         $response.logs | Select-Object -First 3 | ForEach-Object {
-            Write-Host "  - $($_.action) at $($_.created_at) (Success: $($_.success))" -ForegroundColor White
+            Write-Output "  - $($_.action) at $($_.created_at) (Success: $($_.success))"
         }
     }
 } catch {
-    Write-Host "❌ Failed to retrieve audit logs: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "❌ Failed to retrieve audit logs: $($_.Exception.Message)"
     exit 1
 }
 
 # Step 8: Test Admin Logout
-Write-Host "`n8. Testing Admin Logout..." -ForegroundColor Yellow
+Write-Output "`n8. Testing Admin Logout..."
 $logoutData = @{
     session_token = $sessionToken
 }
 
 try {
     $response = Invoke-RestMethod -Uri "$ApiUrl/admin/logout" -Method POST -Body ($logoutData | ConvertTo-Json) -ContentType "application/json" -TimeoutSec 10
-    Write-Host "✅ Admin logout successful" -ForegroundColor Green
+    Write-Output "✅ Admin logout successful"
 } catch {
-    Write-Host "❌ Admin logout failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "❌ Admin logout failed: $($_.Exception.Message)"
     exit 1
 }
 
 # Step 9: Verify Session Invalidation
-Write-Host "`n9. Verifying Session Invalidation..." -ForegroundColor Yellow
+Write-Output "`n9. Verifying Session Invalidation..."
 try {
     $response = Invoke-RestMethod -Uri "$ApiUrl/admin/session" -Method GET -Headers $headers -TimeoutSec 10
-    Write-Host "❌ Session should have been invalidated" -ForegroundColor Red
+    Write-Output "❌ Session should have been invalidated"
     exit 1
 } catch {
     if ($_.Exception.Response.StatusCode -eq 401) {
-        Write-Host "✅ Session properly invalidated" -ForegroundColor Green
+        Write-Output "✅ Session properly invalidated"
     } else {
-        Write-Host "❌ Unexpected error during session validation: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Output "❌ Unexpected error during session validation: $($_.Exception.Message)"
         exit 1
     }
 }
 
 # Step 10: Security Validation
-Write-Host "`n10. Security Validation..." -ForegroundColor Yellow
+Write-Output "`n10. Security Validation..."
 
 # Test rate limiting (attempt multiple logins)
-Write-Host "Testing rate limiting..." -ForegroundColor Cyan
+Write-Output "Testing rate limiting..."
 $failedAttempts = 0
 for ($i = 1; $i -le 6; $i++) {
     try {
@@ -187,33 +187,33 @@ for ($i = 1; $i -le 6; $i++) {
             totp_code = ""
         }
         $response = Invoke-RestMethod -Uri "$ApiUrl/admin/login" -Method POST -Body ($badLoginData | ConvertTo-Json) -ContentType "application/json" -TimeoutSec 10
-        Write-Host "  Attempt ${i}: Login should have failed" -ForegroundColor Red
+        Write-Output "  Attempt ${i}: Login should have failed"
     } catch {
         if ($_.Exception.Response.StatusCode -eq 401) {
             $failedAttempts++
-            Write-Host "  Attempt ${i}: Login failed as expected" -ForegroundColor Green
+            Write-Output "  Attempt ${i}: Login failed as expected"
         } else {
-            Write-Host "  Attempt ${i}: Unexpected error: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Output "  Attempt ${i}: Unexpected error: $($_.Exception.Message)"
         }
     }
 }
 
 if ($failedAttempts -ge 5) {
-    Write-Host "✅ Rate limiting appears to be working" -ForegroundColor Green
+    Write-Output "✅ Rate limiting appears to be working"
 } else {
-    Write-Host "⚠️  Rate limiting may not be working correctly" -ForegroundColor Yellow
+    Write-Output "⚠️  Rate limiting may not be working correctly"
 }
 
-Write-Host "`n=== Staging Deployment Complete ===" -ForegroundColor Green
-Write-Host "✅ All admin authentication endpoints are working correctly" -ForegroundColor Green
-Write-Host "✅ Security features are properly implemented" -ForegroundColor Green
-Write-Host "✅ Audit logging is functional" -ForegroundColor Green
-Write-Host "✅ Session management is working" -ForegroundColor Green
+Write-Output "`n=== Staging Deployment Complete ==="
+Write-Output "✅ All admin authentication endpoints are working correctly"
+Write-Output "✅ Security features are properly implemented"
+Write-Output "✅ Audit logging is functional"
+Write-Output "✅ Session management is working"
 
-Write-Host "`n📋 Next Steps:" -ForegroundColor Cyan
-Write-Host "1. Configure frontend integration" -ForegroundColor White
-Write-Host "2. Set up monitoring and alerting" -ForegroundColor White
-Write-Host "3. Perform end-to-end testing" -ForegroundColor White
-Write-Host "4. Deploy to production" -ForegroundColor White
+Write-Output "`n📋 Next Steps:"
+Write-Output "1. Configure frontend integration"
+Write-Output "2. Set up monitoring and alerting"
+Write-Output "3. Perform end-to-end testing"
+Write-Output "4. Deploy to production"
 
-Write-Host "`n🎉 Admin Authentication System is ready for production!" -ForegroundColor Green
+Write-Output "`n🎉 Admin Authentication System is ready for production!"

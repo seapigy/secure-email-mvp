@@ -7,7 +7,10 @@ import (
 
 func TestCryptoProvider_GenerateKeyPair(t *testing.T) {
 	config := DefaultCryptoConfig()
-	provider := NewCryptoProvider(config)
+	provider, err := NewCryptoProvider(config)
+	if err != nil {
+		t.Fatalf("Failed to create crypto provider: %v", err)
+	}
 
 	tests := []struct {
 		name      string
@@ -54,17 +57,24 @@ func TestCryptoProvider_GenerateKeyPair(t *testing.T) {
 
 func TestCryptoProvider_EncryptDecryptMessage(t *testing.T) {
 	config := DefaultCryptoConfig()
-	provider := NewCryptoProvider(config)
-
-	// Generate key pairs
-	senderKeyPair, err := provider.GenerateKeyPair(config.KEMAlgorithm)
+	provider, err := NewCryptoProvider(config)
 	if err != nil {
-		t.Fatalf("Failed to generate sender key pair: %v", err)
+		t.Fatalf("Failed to create crypto provider: %v", err)
 	}
 
-	recipientKeyPair, err := provider.GenerateKeyPair(config.KEMAlgorithm)
+	// Generate KEM key pairs for encryption/decryption
+	recipientKEMKeyPair, err := provider.GenerateKeyPair(config.KEMAlgorithm)
 	if err != nil {
-		t.Fatalf("Failed to generate recipient key pair: %v", err)
+		t.Fatalf("Failed to generate recipient KEM key pair: %v", err)
+	}
+	if err != nil {
+		t.Fatalf("Failed to generate recipient KEM key pair: %v", err)
+	}
+
+	// Generate signature key pair for signing
+	senderSigKeyPair, err := provider.GenerateKeyPair(config.SignatureAlgorithm)
+	if err != nil {
+		t.Fatalf("Failed to generate sender signature key pair: %v", err)
 	}
 
 	tests := []struct {
@@ -82,8 +92,8 @@ func TestCryptoProvider_EncryptDecryptMessage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			plaintext := []byte(tt.plaintext)
 
-			// Encrypt message
-			envelope, err := provider.EncryptMessage(plaintext, recipientKeyPair.PublicKey, senderKeyPair.PrivateKey)
+			// Encrypt message using KEM keys for encryption and signature key for signing
+			envelope, err := provider.EncryptMessage(plaintext, recipientKEMKeyPair.PublicKey, senderSigKeyPair.PrivateKey)
 			if err != nil {
 				t.Fatalf("EncryptMessage() error = %v", err)
 			}
@@ -123,8 +133,8 @@ func TestCryptoProvider_EncryptDecryptMessage(t *testing.T) {
 				t.Error("Envelope expiry time is nil")
 			}
 
-			// Decrypt message
-			decrypted, err := provider.DecryptMessage(envelope, recipientKeyPair.PrivateKey, senderKeyPair.PublicKey)
+			// Decrypt message using KEM keys for decryption and signature key for verification
+			decrypted, err := provider.DecryptMessage(envelope, recipientKEMKeyPair.PrivateKey, senderSigKeyPair.PublicKey)
 			if err != nil {
 				t.Fatalf("DecryptMessage() error = %v", err)
 			}
@@ -157,29 +167,33 @@ func TestCryptoProvider_EncryptDecryptWithDifferentAlgorithms(t *testing.T) {
 				KeyRotationDays:    30,
 				PerformanceMode:    false,
 			}
-			provider := NewCryptoProvider(config)
-
-			// Generate key pairs
-			senderKeyPair, err := provider.GenerateKeyPair(config.KEMAlgorithm)
+			provider, err := NewCryptoProvider(config)
 			if err != nil {
-				t.Fatalf("Failed to generate sender key pair: %v", err)
+				t.Fatalf("Failed to create crypto provider: %v", err)
 			}
 
-			recipientKeyPair, err := provider.GenerateKeyPair(config.KEMAlgorithm)
+			// Generate KEM key pairs for encryption/decryption
+			recipientKEMKeyPair, err := provider.GenerateKeyPair(config.KEMAlgorithm)
 			if err != nil {
-				t.Fatalf("Failed to generate recipient key pair: %v", err)
+				t.Fatalf("Failed to generate recipient KEM key pair: %v", err)
+			}
+
+			// Generate signature key pairs for signing/verification
+			senderSigKeyPair, err := provider.GenerateKeyPair(config.SignatureAlgorithm)
+			if err != nil {
+				t.Fatalf("Failed to generate sender signature key pair: %v", err)
 			}
 
 			plaintext := []byte("Test message for " + alg.kem + " + " + alg.dem)
 
-			// Encrypt message
-			envelope, err := provider.EncryptMessage(plaintext, recipientKeyPair.PublicKey, senderKeyPair.PrivateKey)
+			// Encrypt message (use KEM public key for encryption, signature private key for signing)
+			envelope, err := provider.EncryptMessage(plaintext, recipientKEMKeyPair.PublicKey, senderSigKeyPair.PrivateKey)
 			if err != nil {
 				t.Fatalf("EncryptMessage() error = %v", err)
 			}
 
-			// Decrypt message
-			decrypted, err := provider.DecryptMessage(envelope, recipientKeyPair.PrivateKey, senderKeyPair.PublicKey)
+			// Decrypt message (use KEM private key for decryption, signature public key for verification)
+			decrypted, err := provider.DecryptMessage(envelope, recipientKEMKeyPair.PrivateKey, senderSigKeyPair.PublicKey)
 			if err != nil {
 				t.Fatalf("DecryptMessage() error = %v", err)
 			}
@@ -194,29 +208,33 @@ func TestCryptoProvider_EncryptDecryptWithDifferentAlgorithms(t *testing.T) {
 
 func TestCryptoProvider_SignatureVerification(t *testing.T) {
 	config := DefaultCryptoConfig()
-	provider := NewCryptoProvider(config)
-
-	// Generate key pairs
-	senderKeyPair, err := provider.GenerateKeyPair(config.KEMAlgorithm)
+	provider, err := NewCryptoProvider(config)
 	if err != nil {
-		t.Fatalf("Failed to generate sender key pair: %v", err)
+		t.Fatalf("Failed to create crypto provider: %v", err)
 	}
 
-	recipientKeyPair, err := provider.GenerateKeyPair(config.KEMAlgorithm)
+	// Generate KEM key pair for encryption/decryption
+	recipientKEMKeyPair, err := provider.GenerateKeyPair(config.KEMAlgorithm)
 	if err != nil {
-		t.Fatalf("Failed to generate recipient key pair: %v", err)
+		t.Fatalf("Failed to generate recipient KEM key pair: %v", err)
+	}
+
+	// Generate signature key pair for signing/verification
+	senderSigKeyPair, err := provider.GenerateKeyPair(config.SignatureAlgorithm)
+	if err != nil {
+		t.Fatalf("Failed to generate sender signature key pair: %v", err)
 	}
 
 	plaintext := []byte("Test message for signature verification")
 
-	// Encrypt message
-	envelope, err := provider.EncryptMessage(plaintext, recipientKeyPair.PublicKey, senderKeyPair.PrivateKey)
+	// Encrypt message (use KEM public key for encryption, signature private key for signing)
+	envelope, err := provider.EncryptMessage(plaintext, recipientKEMKeyPair.PublicKey, senderSigKeyPair.PrivateKey)
 	if err != nil {
 		t.Fatalf("EncryptMessage() error = %v", err)
 	}
 
-	// Test valid signature
-	err = provider.verifyEnvelopeSignature(envelope, senderKeyPair.PublicKey)
+	// Test valid signature (use signature public key for verification)
+	err = provider.verifyEnvelopeSignature(envelope, senderSigKeyPair.PublicKey)
 	if err != nil {
 		t.Errorf("Valid signature verification failed: %v", err)
 	}
@@ -224,7 +242,7 @@ func TestCryptoProvider_SignatureVerification(t *testing.T) {
 	// Test invalid signature (tampered)
 	originalSignature := envelope.Signature
 	envelope.Signature = "invalid_signature"
-	err = provider.verifyEnvelopeSignature(envelope, senderKeyPair.PublicKey)
+	err = provider.verifyEnvelopeSignature(envelope, senderSigKeyPair.PublicKey)
 	if err == nil {
 		t.Error("Invalid signature verification should have failed")
 	}
@@ -242,7 +260,10 @@ func TestCryptoProvider_SignatureVerification(t *testing.T) {
 }
 
 func TestCryptoProvider_KeyDerivation(t *testing.T) {
-	provider := NewCryptoProvider(DefaultCryptoConfig())
+	provider, err := NewCryptoProvider(DefaultCryptoConfig())
+	if err != nil {
+		t.Fatalf("Failed to create crypto provider: %v", err)
+	}
 
 	secret := []byte("test_secret")
 	salt := []byte("test_salt")
@@ -281,23 +302,27 @@ func TestCryptoProvider_KeyDerivation(t *testing.T) {
 }
 
 func TestCryptoProvider_EnvelopeExpiry(t *testing.T) {
-	provider := NewCryptoProvider(DefaultCryptoConfig())
-
-	// Generate key pairs
-	senderKeyPair, err := provider.GenerateKeyPair("kyber768")
+	provider, err := NewCryptoProvider(DefaultCryptoConfig())
 	if err != nil {
-		t.Fatalf("Failed to generate sender key pair: %v", err)
+		t.Fatalf("Failed to create crypto provider: %v", err)
 	}
 
-	recipientKeyPair, err := provider.GenerateKeyPair("kyber768")
+	// Generate KEM key pair for encryption/decryption
+	recipientKEMKeyPair, err := provider.GenerateKeyPair("kyber768")
 	if err != nil {
-		t.Fatalf("Failed to generate recipient key pair: %v", err)
+		t.Fatalf("Failed to generate recipient KEM key pair: %v", err)
+	}
+
+	// Generate signature key pair for signing/verification
+	senderSigKeyPair, err := provider.GenerateKeyPair("dilithium3")
+	if err != nil {
+		t.Fatalf("Failed to generate sender signature key pair: %v", err)
 	}
 
 	plaintext := []byte("Test message")
 
-	// Encrypt message
-	envelope, err := provider.EncryptMessage(plaintext, recipientKeyPair.PublicKey, senderKeyPair.PrivateKey)
+	// Encrypt message (use KEM public key for encryption, signature private key for signing)
+	envelope, err := provider.EncryptMessage(plaintext, recipientKEMKeyPair.PublicKey, senderSigKeyPair.PrivateKey)
 	if err != nil {
 		t.Fatalf("EncryptMessage() error = %v", err)
 	}
@@ -323,7 +348,10 @@ func TestCryptoProvider_EnvelopeExpiry(t *testing.T) {
 func TestCryptoProvider_KeyExpiry(t *testing.T) {
 	config := DefaultCryptoConfig()
 	config.KeyRotationDays = 7
-	provider := NewCryptoProvider(config)
+	provider, err := NewCryptoProvider(config)
+	if err != nil {
+		t.Fatalf("Failed to create crypto provider: %v", err)
+	}
 
 	// Generate key pair
 	keyPair, err := provider.GenerateKeyPair("kyber768")
@@ -352,7 +380,10 @@ func TestCryptoProvider_KeyExpiry(t *testing.T) {
 func TestCryptoProvider_NoKeyExpiry(t *testing.T) {
 	config := DefaultCryptoConfig()
 	config.KeyRotationDays = 0
-	provider := NewCryptoProvider(config)
+	provider, err := NewCryptoProvider(config)
+	if err != nil {
+		t.Fatalf("Failed to create crypto provider: %v", err)
+	}
 
 	// Generate key pair
 	keyPair, err := provider.GenerateKeyPair("kyber768")
@@ -367,7 +398,10 @@ func TestCryptoProvider_NoKeyExpiry(t *testing.T) {
 }
 
 func TestCryptoProvider_EnvelopeIDGeneration(t *testing.T) {
-	provider := NewCryptoProvider(DefaultCryptoConfig())
+	provider, err := NewCryptoProvider(DefaultCryptoConfig())
+	if err != nil {
+		t.Fatalf("Failed to create crypto provider: %v", err)
+	}
 
 	// Generate multiple envelope IDs
 	ids := make(map[string]bool)
@@ -389,7 +423,10 @@ func TestCryptoProvider_EnvelopeIDGeneration(t *testing.T) {
 }
 
 func TestCryptoProvider_KeyRotationIDGeneration(t *testing.T) {
-	provider := NewCryptoProvider(DefaultCryptoConfig())
+	provider, err := NewCryptoProvider(DefaultCryptoConfig())
+	if err != nil {
+		t.Fatalf("Failed to create crypto provider: %v", err)
+	}
 
 	// Generate multiple key rotation IDs
 	ids := make(map[string]bool)
@@ -413,6 +450,7 @@ func TestCryptoProvider_KeyRotationIDGeneration(t *testing.T) {
 // Helper function to create a default crypto config for testing
 func DefaultCryptoConfig() CryptoConfig {
 	return CryptoConfig{
+		PQCImplementation:  "circl", // Use real PQC implementation
 		KEMAlgorithm:       "kyber768",
 		DEMAlgorithm:       "aes256gcm",
 		SignatureAlgorithm: "dilithium3",

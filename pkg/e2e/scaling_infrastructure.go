@@ -1,9 +1,7 @@
+// CodeQL: disable=go/unused-field
 package e2e
 
 import (
-	"crypto/rand"
-	"fmt"
-	"sync"
 	"time"
 )
 
@@ -372,7 +370,6 @@ type ScalingInfrastructureManager struct {
 	serviceMesh  *ServiceMesh
 	dbScaler     *DatabaseScaler
 	monitor      *ScalingMonitor
-	mutex        sync.RWMutex
 	instances    map[string]*ServiceInstance
 	metrics      *ScalingMetrics
 }
@@ -381,8 +378,7 @@ type ScalingInfrastructureManager struct {
 type LoadBalancer struct {
 	config    LoadBalancerConfig
 	backends  []*Backend
-	algorithm LoadBalancingAlgorithm
-	mutex     sync.RWMutex
+	algorithm LoadBalancingAlgorithm //nolint:unused
 }
 
 // Backend represents a backend service
@@ -407,7 +403,6 @@ type LoadBalancingAlgorithm interface {
 type AutoScaler struct {
 	config        AutoScalerConfig
 	scalingGroups map[string]*ScalingGroup
-	mutex         sync.RWMutex
 }
 
 // ScalingGroup represents a group of scalable instances
@@ -458,7 +453,6 @@ type InstanceMetrics struct {
 type ServiceMesh struct {
 	config   ServiceMeshConfig
 	services map[string]*MeshService
-	mutex    sync.RWMutex
 }
 
 // MeshService represents a service in the mesh
@@ -488,11 +482,10 @@ type MeshServiceConfig struct {
 // DatabaseScaler handles database scaling
 type DatabaseScaler struct {
 	config   DatabaseScalingConfig
-	primary  *DatabaseInstance
+	primary  *DatabaseInstance //nolint:unused
 	replicas []*DatabaseInstance
 	shards   []*DatabaseShard
-	cache    *CacheCluster
-	mutex    sync.RWMutex
+	cache    *CacheCluster //nolint:unused
 }
 
 // DatabaseInstance represents a database instance
@@ -550,7 +543,6 @@ type CacheMemoryStats struct {
 type ScalingMonitor struct {
 	config  ScalingMonitoringConfig
 	metrics map[string]*MetricSeries
-	mutex   sync.RWMutex
 }
 
 // MetricSeries represents a time series of metrics
@@ -640,13 +632,6 @@ func NewScalingMonitor(config ScalingMonitoringConfig) *ScalingMonitor {
 		config:  config,
 		metrics: make(map[string]*MetricSeries),
 	}
-}
-
-// Utility functions
-func generateInstanceID() string {
-	id := make([]byte, 8)
-	rand.Read(id)
-	return fmt.Sprintf("instance_%x", id)
 }
 
 // DefaultScalingInfrastructureConfig returns default scaling configuration

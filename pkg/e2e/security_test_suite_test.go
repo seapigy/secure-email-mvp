@@ -315,8 +315,12 @@ func TestSecurityTestSuite_VulnerabilityDetection(t *testing.T) {
 
 	// Test plaintext leakage detection
 	plaintext := []byte("secret message")
-	recipientKey := make([]byte, 32)
-	message, err := suite.ProtocolAnalyzer.client.EncryptMessage(plaintext, recipientKey, "test_thread", "test_recipient")
+
+	// Generate proper PQC key pair
+	recipientKEMKeyPair, err := suite.CryptoValidator.cryptoProvider.GenerateKeyPair("kyber768")
+	require.NoError(t, err)
+
+	message, err := suite.ProtocolAnalyzer.client.EncryptMessage(plaintext, recipientKEMKeyPair.PublicKey, "test_thread", "test_recipient")
 	require.NoError(t, err)
 
 	err = suite.validateNoPlaintextLeakage(message, plaintext)

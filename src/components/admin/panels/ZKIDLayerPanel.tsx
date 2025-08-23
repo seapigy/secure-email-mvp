@@ -51,7 +51,7 @@ const ZKIDLayerPanel: React.FC<ZKIDLayerPanelProps> = ({
     );
   }
 
-  const getEndpointStatus = (metric: any) => {
+  const getEndpointStatus = (metric: { success_rate: number }) => {
     if (metric.success_rate >= 99) return 'healthy';
     if (metric.success_rate >= 95) return 'warning';
     return 'critical';

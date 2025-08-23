@@ -10,8 +10,8 @@ param(
     [string]$TestPassword = "TestPassword123!"
 )
 
-Write-Host "Starting Audit Log Integration Tests..." -ForegroundColor Green
-Write-Host "Base URL: $BaseUrl" -ForegroundColor Yellow
+Write-Output "Starting Audit Log Integration Tests..."
+Write-Output "Base URL: $BaseUrl"
 
 # Test data
 $testUser = @{
@@ -31,127 +31,127 @@ function Invoke-ApiRequest {
         [object]$Body = $null,
         [hashtable]$Headers = @{}
     )
-    
+
     $uri = "$BaseUrl$Endpoint"
     $headers["Content-Type"] = "application/json"
-    
+
     if ($global:authToken) {
         $headers["Authorization"] = "Bearer $global:authToken"
     }
-    
+
     $params = @{
         Method = $Method
         Uri = $uri
         Headers = $headers
     }
-    
+
     if ($Body) {
         $params.Body = $Body | ConvertTo-Json -Depth 10
     }
-    
+
     try {
         $response = Invoke-RestMethod @params
         return $response
     }
     catch {
-        Write-Host "API Error: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Output "API Error: $($_.Exception.Message)"
         if ($_.Exception.Response) {
             $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
             $errorBody = $reader.ReadToEnd()
-            Write-Host "Error Body: $errorBody" -ForegroundColor Red
+            Write-Output "Error Body: $errorBody"
         }
         throw
     }
 }
 
 # Test 1: User Registration
-Write-Host "`n1. Testing User Registration..." -ForegroundColor Cyan
+Write-Output "`n1. Testing User Registration..."
 try {
     $registerBody = @{
         email = $testUser.email
         password = $testUser.password
     }
-    
+
     $response = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/register" -Body $registerBody
-    Write-Host "✓ User registration successful" -ForegroundColor Green
+    Write-Output "✓ User registration successful"
 }
 catch {
-    Write-Host "✗ User registration failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "✗ User registration failed: $($_.Exception.Message)"
     # Continue if user already exists
 }
 
 # Test 2: User Login
-Write-Host "`n2. Testing User Login..." -ForegroundColor Cyan
+Write-Output "`n2. Testing User Login..."
 try {
     $loginBody = @{
         email = $testUser.email
         password = $testUser.password
         totp_code = "000000"  # Default TOTP for testing
     }
-    
+
     $response = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/login" -Body $loginBody
     $global:authToken = $response.token
     $global:userId = $response.user_id
-    Write-Host "✓ User login successful" -ForegroundColor Green
-    Write-Host "  User ID: $global:userId" -ForegroundColor Yellow
+    Write-Output "✓ User login successful"
+    Write-Output "  User ID: $global:userId"
 }
 catch {
-    Write-Host "✗ User login failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "✗ User login failed: $($_.Exception.Message)"
     exit 1
 }
 
 # Test 3: Get Audit Event Types
-Write-Host "`n3. Testing Get Audit Event Types..." -ForegroundColor Cyan
+Write-Output "`n3. Testing Get Audit Event Types..."
 try {
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/audit/event-types"
-    Write-Host "✓ Retrieved event types: $($response.event_types.Count) types" -ForegroundColor Green
-    $response.event_types | ForEach-Object { Write-Host "  - $_" -ForegroundColor Gray }
+    Write-Output "✓ Retrieved event types: $($response.event_types.Count) types"
+    $response.event_types | ForEach-Object { Write-Output "  - $_" }
 }
 catch {
-    Write-Host "✗ Get event types failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "✗ Get event types failed: $($_.Exception.Message)"
 }
 
 # Test 4: Get User Audit Events
-Write-Host "`n4. Testing Get User Audit Events..." -ForegroundColor Cyan
+Write-Output "`n4. Testing Get User Audit Events..."
 try {
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/audit/user-events?limit=10"
-    Write-Host "✓ Retrieved user events: $($response.total) events" -ForegroundColor Green
+    Write-Output "✓ Retrieved user events: $($response.total) events"
     if ($response.events.Count -gt 0) {
-        Write-Host "  Latest event: $($response.events[0].event_type) - $($response.events[0].outcome)" -ForegroundColor Gray
+        Write-Output "  Latest event: $($response.events[0].event_type) - $($response.events[0].outcome)"
     }
 }
 catch {
-    Write-Host "✗ Get user events failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "✗ Get user events failed: $($_.Exception.Message)"
 }
 
 # Test 5: Query Audit Logs
-Write-Host "`n5. Testing Query Audit Logs..." -ForegroundColor Cyan
+Write-Output "`n5. Testing Query Audit Logs..."
 try {
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/audit/logs?page=1&page_size=5"
-    Write-Host "✓ Retrieved audit logs: $($response.total) total, $($response.events.Count) on page" -ForegroundColor Green
+    Write-Output "✓ Retrieved audit logs: $($response.total) total, $($response.events.Count) on page"
     if ($response.events.Count -gt 0) {
-        Write-Host "  Sample event: $($response.events[0].event_type) by $($response.events[0].user_id)" -ForegroundColor Gray
+        Write-Output "  Sample event: $($response.events[0].event_type) by $($response.events[0].user_id)"
     }
 }
 catch {
-    Write-Host "✗ Query audit logs failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "✗ Query audit logs failed: $($_.Exception.Message)"
 }
 
 # Test 6: Get Retention Policies
-Write-Host "`n6. Testing Get Retention Policies..." -ForegroundColor Cyan
+Write-Output "`n6. Testing Get Retention Policies..."
 try {
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/audit/retention-policies"
-    Write-Host "✓ Retrieved retention policies: $($response.policies.Count) policies" -ForegroundColor Green
-    $response.policies | ForEach-Object { 
-        Write-Host "  - $($_.event_type): $($_.retention_days) days (auto-purge: $($_.auto_purge))" -ForegroundColor Gray 
+    Write-Output "✓ Retrieved retention policies: $($response.policies.Count) policies"
+    $response.policies | ForEach-Object {
+        Write-Output "  - $($_.event_type): $($_.retention_days) days (auto-purge: $($_.auto_purge))"
     }
 }
 catch {
-    Write-Host "✗ Get retention policies failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "✗ Get retention policies failed: $($_.Exception.Message)"
 }
 
 # Test 7: Create Export Request
-Write-Host "`n7. Testing Create Export Request..." -ForegroundColor Cyan
+Write-Output "`n7. Testing Create Export Request..."
 try {
     $exportBody = @{
         export_type = "json"
@@ -161,117 +161,119 @@ try {
             event_types = @("email_creation", "email_access", "login_attempt")
         }
     }
-    
+
     $response = Invoke-ApiRequest -Method "POST" -Endpoint "/api/audit/exports" -Body $exportBody
     $exportId = $response.export_id
-    Write-Host "✓ Created export request: $exportId" -ForegroundColor Green
-    Write-Host "  Status: $($response.status)" -ForegroundColor Yellow
+    Write-Output "✓ Created export request: $exportId"
+    Write-Output "  Status: $($response.status)"
 }
 catch {
-    Write-Host "✗ Create export failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "✗ Create export failed: $($_.Exception.Message)"
     $exportId = $null
 }
 
 # Test 8: Get Export Status
 if ($exportId) {
-    Write-Host "`n8. Testing Get Export Status..." -ForegroundColor Cyan
+    Write-Output "`n8. Testing Get Export Status..."
     try {
         Start-Sleep -Seconds 2  # Wait for processing
         $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/audit/exports/$exportId"
-        Write-Host "✓ Retrieved export status: $($response.status)" -ForegroundColor Green
+        Write-Output "✓ Retrieved export status: $($response.status)"
         if ($response.status -eq "completed") {
-            Write-Host "  File size: $($response.file_size) bytes" -ForegroundColor Yellow
+            Write-Output "  File size: $($response.file_size) bytes"
         }
     }
     catch {
-        Write-Host "✗ Get export status failed: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Output "✗ Get export status failed: $($_.Exception.Message)"
     }
 }
 
 # Test 9: Get User Exports
-Write-Host "`n9. Testing Get User Exports..." -ForegroundColor Cyan
+Write-Output "`n9. Testing Get User Exports..."
 try {
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/audit/exports?limit=5"
-    Write-Host "✓ Retrieved user exports: $($response.total) exports" -ForegroundColor Green
+    Write-Output "✓ Retrieved user exports: $($response.total) exports"
     if ($response.exports.Count -gt 0) {
-        Write-Host "  Latest export: $($response.exports[0].export_type) - $($response.exports[0].status)" -ForegroundColor Gray
+        Write-Output "  Latest export: $($response.exports[0].export_type) - $($response.exports[0].status)"
     }
 }
 catch {
-    Write-Host "✗ Get user exports failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "✗ Get user exports failed: $($_.Exception.Message)"
 }
 
 # Test 10: Download Export (if available)
 if ($exportId) {
-    Write-Host "`n10. Testing Download Export..." -ForegroundColor Cyan
+    Write-Output "`n10. Testing Download Export..."
     try {
         $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/audit/exports/$exportId"
         if ($response.status -eq "completed") {
-            Write-Host "✓ Export is ready for download" -ForegroundColor Green
-            Write-Host "  Download URL: $BaseUrl/api/audit/exports/$exportId/download" -ForegroundColor Yellow
+            Write-Output "✓ Export is ready for download"
+            Write-Output "  Download URL: $BaseUrl/api/audit/exports/$exportId/download"
         } else {
-            Write-Host "⚠ Export not ready yet: $($response.status)" -ForegroundColor Yellow
+            Write-Output "⚠ Export not ready yet: $($response.status)"
         }
     }
     catch {
-        Write-Host "✗ Check export status failed: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Output "✗ Check export status failed: $($_.Exception.Message)"
     }
 }
 
 # Test 11: Test Filtering
-Write-Host "`n11. Testing Audit Log Filtering..." -ForegroundColor Cyan
+Write-Output "`n11. Testing Audit Log Filtering..."
 try {
     # Test filtering by event type
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/audit/logs?event_types=email_creation,login_attempt&page_size=3"
-    Write-Host "✓ Filtered by event types: $($response.total) events" -ForegroundColor Green
-    
+    Write-Output "✓ Filtered by event types: $($response.total) events"
+
     # Test filtering by outcome
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/audit/logs?outcomes=success&page_size=3"
-    Write-Host "✓ Filtered by outcome: $($response.total) events" -ForegroundColor Green
-    
+    Write-Output "✓ Filtered by outcome: $($response.total) events"
+
     # Test date range filtering
     $dateFrom = (Get-Date).AddDays(-1).ToString("yyyy-MM-ddTHH:mm:ssZ")
     $dateTo = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/audit/logs?date_from=$dateFrom&date_to=$dateTo&page_size=3"
-    Write-Host "✓ Filtered by date range: $($response.total) events" -ForegroundColor Green
+    Write-Output "✓ Filtered by date range: $($response.total) events"
 }
 catch {
-    Write-Host "✗ Filtering tests failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "✗ Filtering tests failed: $($_.Exception.Message)"
 }
 
 # Test 12: Cleanup - Delete Export
 if ($exportId) {
-    Write-Host "`n12. Testing Delete Export..." -ForegroundColor Cyan
+    Write-Output "`n12. Testing Delete Export..."
     try {
         Invoke-ApiRequest -Method "DELETE" -Endpoint "/api/audit/exports/$exportId"
-        Write-Host "✓ Deleted export: $exportId" -ForegroundColor Green
+        Write-Output "✓ Deleted export: $exportId"
     }
     catch {
-        Write-Host "✗ Delete export failed: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Output "✗ Delete export failed: $($_.Exception.Message)"
     }
 }
 
 # Test 13: Admin Endpoints (if user has admin privileges)
-Write-Host "`n13. Testing Admin Endpoints..." -ForegroundColor Cyan
+Write-Output "`n13. Testing Admin Endpoints..."
 try {
     # Purge expired logs
     $response = Invoke-ApiRequest -Method "POST" -Endpoint "/api/audit/purge-expired"
-    Write-Host "✓ Purged expired logs" -ForegroundColor Green
-    
+    Write-Output "✓ Purged expired logs"
+
     # Cleanup expired exports
     $response = Invoke-ApiRequest -Method "POST" -Endpoint "/api/audit/cleanup-exports"
-    Write-Host "✓ Cleaned up expired exports" -ForegroundColor Green
+    Write-Output "✓ Cleaned up expired exports"
 }
 catch {
-    Write-Host "✗ Admin endpoints failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "✗ Admin endpoints failed: $($_.Exception.Message)"
 }
 
-Write-Host "`nAudit Log Integration Tests Completed!" -ForegroundColor Green
-Write-Host "`nNotes:" -ForegroundColor Yellow
-Write-Host "- Audit logs are automatically created for login, email operations, etc." -ForegroundColor Gray
-Write-Host "- Export files are automatically cleaned up after 24 hours" -ForegroundColor Gray
-Write-Host "- Retention policies control how long different event types are kept" -ForegroundColor Gray
-Write-Host "- The audit worker should be running to handle cleanup tasks" -ForegroundColor Gray
+Write-Output "`nAudit Log Integration Tests Completed!"
+Write-Output "`nNotes:"
+Write-Output "- Audit logs are automatically created for login, email operations, etc."
+Write-Output "- Export files are automatically cleaned up after 24 hours"
+Write-Output "- Retention policies control how long different event types are kept"
+Write-Output "- The audit worker should be running to handle cleanup tasks"
+
+
 
 
 

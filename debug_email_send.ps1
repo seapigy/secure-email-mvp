@@ -1,33 +1,33 @@
 # =============================================================================
 # MICRO-ITERATION 4.4: EMAIL SEND ENDPOINT DEBUGGING SCRIPT
 # =============================================================================
-# 
+#
 # PURPOSE:
 # This script tests the /api/email/send endpoint to verify that the foreign key
 # fix is working correctly and that emails can be sent end-to-end.
-# 
+#
 # TESTING FLOW:
 # 1. Wait for backend to be ready
 # 2. Get TOTP code for authentication
 # 3. Login to get JWT token
 # 4. Send test email via /api/email/send
 # 5. Verify response contains success status and blob_id
-# 
+#
 # DEBUGGING FEATURES:
 # - Detailed request/response logging
 # - Error handling with full error details
 # - Step-by-step progress indicators
 # - Environment variable configuration
-# 
+#
 # PREREQUISITES:
 # - Backend server running on http://localhost:8080
 # - Test user exists in database
 # - TOTP script available at scripts/get_totp_code.ps1
 # - PowerShell execution policy allows script execution
-# 
+#
 # USAGE:
 # .\debug_email_send.ps1
-# 
+#
 # EXPECTED OUTPUT:
 # - Login successful with JWT token
 # - Email send successful with blob_id
@@ -38,11 +38,11 @@
 $env:JWT_SECRET = "your-secret-key"
 $env:SQLITE_DB = "secure-email.db"
 
-Write-Host "=== MICRO-ITERATION 4.4: Email Send Endpoint Debugging ===" -ForegroundColor Green
-Write-Host "Testing foreign key fix and end-to-end email sending functionality" -ForegroundColor Gray
+Write-Output "=== MICRO-ITERATION 4.4: Email Send Endpoint Debugging ==="
+Write-Output "Testing foreign key fix and end-to-end email sending functionality"
 
 # Step 1: Prepare test email data
-Write-Host "`n=== Step 1: Preparing Test Data ===" -ForegroundColor Yellow
+Write-Output "`n=== Step 1: Preparing Test Data ==="
 $testEmail = @{
     recipient = "test@example.com"
     subject = "Micro-Iteration 4.4 Test Email"
@@ -54,11 +54,11 @@ $testEmail = @{
 # Convert to JSON for API request
 $jsonBody = $testEmail | ConvertTo-Json
 
-Write-Host "Request Body:" -ForegroundColor Cyan
+Write-Output "Request Body:"
 Write-Host $jsonBody -ForegroundColor Gray
 
 # Step 2: Test authentication flow
-Write-Host "`n=== Step 2: Testing Authentication ===" -ForegroundColor Yellow
+Write-Output "`n=== Step 2: Testing Authentication ==="
 
 # Prepare login data with test credentials
 $loginData = @{
@@ -68,26 +68,26 @@ $loginData = @{
 
 $loginJson = $loginData | ConvertTo-Json
 
-Write-Host "Login Request:" -ForegroundColor Cyan
+Write-Output "Login Request:"
 Write-Host $loginJson -ForegroundColor Gray
 
 # Execute login request
 try {
-    Write-Host "Attempting login..." -ForegroundColor Blue
+    Write-Output "Attempting login..."
     $loginResponse = Invoke-RestMethod -Uri "http://localhost:8080/api/auth/login" -Method POST -Body $loginJson -ContentType "application/json"
-    Write-Host "✅ Login successful!" -ForegroundColor Green
-    Write-Host "JWT Token: $($loginResponse.token)" -ForegroundColor Gray
-    
+    Write-Output "✅ Login successful!"
+    Write-Output "JWT Token: $($loginResponse.token)"
+
     $token = $loginResponse.token
 } catch {
-    Write-Host "❌ Login failed!" -ForegroundColor Red
-    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "Response: $($_.Exception.Response)" -ForegroundColor Red
+    Write-Output "❌ Login failed!"
+    Write-Output "Error: $($_.Exception.Message)"
+    Write-Output "Response: $($_.Exception.Response)"
     exit 1
 }
 
 # Step 3: Test email send endpoint
-Write-Host "`n=== Step 3: Testing Email Send ===" -ForegroundColor Yellow
+Write-Output "`n=== Step 3: Testing Email Send ==="
 
 # Prepare headers with JWT token
 $headers = @{
@@ -95,50 +95,50 @@ $headers = @{
     "Content-Type" = "application/json"
 }
 
-Write-Host "Email Send Request:" -ForegroundColor Cyan
+Write-Output "Email Send Request:"
 Write-Host $jsonBody -ForegroundColor Gray
 
 # Execute email send request
 try {
-    Write-Host "Attempting email send..." -ForegroundColor Blue
+    Write-Output "Attempting email send..."
     $response = Invoke-RestMethod -Uri "http://localhost:8080/api/email/send" -Method POST -Body $jsonBody -Headers $headers
-    Write-Host "✅ Email send successful!" -ForegroundColor Green
-    Write-Host "Response:" -ForegroundColor Cyan
+    Write-Output "✅ Email send successful!"
+    Write-Output "Response:"
     Write-Host ($response | ConvertTo-Json) -ForegroundColor Gray
-    
+
     # Verify response structure
     if ($response.status -eq "success" -and $response.blob_id) {
-        Write-Host "✅ Response validation passed: status=success, blob_id present" -ForegroundColor Green
+        Write-Output "✅ Response validation passed: status=success, blob_id present"
     } else {
-        Write-Host "⚠️ Response validation warning: unexpected response structure" -ForegroundColor Yellow
+        Write-Output "⚠️ Response validation warning: unexpected response structure"
     }
-    
+
 } catch {
-    Write-Host "❌ Email send failed!" -ForegroundColor Red
-    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
-    
+    Write-Output "❌ Email send failed!"
+    Write-Output "Error: $($_.Exception.Message)"
+
     # Extract detailed error information
     if ($_.Exception.Response) {
         $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
         $responseBody = $reader.ReadToEnd()
-        Write-Host "Response Body: $responseBody" -ForegroundColor Red
-        Write-Host "Status Code: $($_.Exception.Response.StatusCode)" -ForegroundColor Red
+        Write-Output "Response Body: $responseBody"
+        Write-Output "Status Code: $($_.Exception.Response.StatusCode)"
     }
 }
 
 # Step 4: Summary and next steps
-Write-Host "`n=== Step 4: Test Summary ===" -ForegroundColor Yellow
-Write-Host "If all steps completed successfully:" -ForegroundColor Gray
-Write-Host "1. ✅ Authentication working" -ForegroundColor Green
-Write-Host "2. ✅ Email send endpoint responding" -ForegroundColor Green
-Write-Host "3. ✅ Foreign key fix implemented" -ForegroundColor Green
-Write-Host "4. ✅ Database insert working" -ForegroundColor Green
-Write-Host "5. ✅ R2 storage integration working" -ForegroundColor Green
+Write-Output "`n=== Step 4: Test Summary ==="
+Write-Output "If all steps completed successfully:"
+Write-Output "1. ✅ Authentication working"
+Write-Output "2. ✅ Email send endpoint responding"
+Write-Output "3. ✅ Foreign key fix implemented"
+Write-Output "4. ✅ Database insert working"
+Write-Output "5. ✅ R2 storage integration working"
 
-Write-Host "`nNext steps for verification:" -ForegroundColor Cyan
-Write-Host "- Check database for email record: sqlite3 secure-email.db 'SELECT * FROM emails ORDER BY created_at DESC LIMIT 1;'" -ForegroundColor Gray
-Write-Host "- Verify foreign key integrity: sqlite3 secure-email.db 'SELECT e.email_id, e.sender_id, u.email FROM emails e JOIN users u ON e.sender_id = u.id ORDER BY e.created_at DESC LIMIT 1;'" -ForegroundColor Gray
-Write-Host "- Check R2 storage for blob: Verify blob_id exists in Cloudflare R2 bucket" -ForegroundColor Gray
+Write-Output "`nNext steps for verification:"
+Write-Output "- Check database for email record: sqlite3 secure-email.db 'SELECT * FROM emails ORDER BY created_at DESC LIMIT 1;'"
+Write-Output "- Verify foreign key integrity: sqlite3 secure-email.db 'SELECT e.email_id, e.sender_id, u.email FROM emails e JOIN users u ON e.sender_id = u.id ORDER BY e.created_at DESC LIMIT 1;'"
+Write-Output "- Check R2 storage for blob: Verify blob_id exists in Cloudflare R2 bucket"
 
-Write-Host "`n=== MICRO-ITERATION 4.4 Debugging Complete ===" -ForegroundColor Green
+Write-Output "`n=== MICRO-ITERATION 4.4 Debugging Complete ==="
 

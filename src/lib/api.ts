@@ -102,7 +102,7 @@ export interface AccessEvent {
 export interface NotificationResponse {
   success: boolean;
   message?: string;
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
 // API Client Configuration
@@ -283,11 +283,11 @@ export const getEmail = async (id: string) => {
 };
 
 // Utility functions
-export const isApiError = (error: any): error is ApiError => {
-  return error && typeof error.message === 'string';
+export const isApiError = (error: unknown): error is ApiError => {
+  return typeof error === 'object' && error !== null && 'message' in error && typeof (error as ApiError).message === 'string';
 };
 
-export const getErrorMessage = (error: any): string => {
+export const getErrorMessage = (error: unknown): string => {
   if (isApiError(error)) {
     return error.message;
   }

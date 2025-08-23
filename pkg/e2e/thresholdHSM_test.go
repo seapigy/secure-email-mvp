@@ -482,6 +482,7 @@ func TestThresholdHSM_HelperFunctions(t *testing.T) {
 	expiry := hsm.calculateKeyExpiry()
 	if expiry == nil {
 		t.Error("calculateKeyExpiry() returned nil")
+		return
 	}
 
 	if expiry.Before(time.Now()) {

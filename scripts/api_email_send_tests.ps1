@@ -8,10 +8,10 @@ function Invoke-ApiTest {
         [string]$Body = $null,
         [int]$ExpectedStatus = 200
     )
-    Write-Host "\n=== Running Test: $TestName ==="
-    Write-Host "Request URI: $Uri"
-    Write-Host "Request Method: $Method"
-    Write-Host "Request Body: $Body"
+    Write-Output "\n=== Running Test: $TestName ==="
+    Write-Output "Request URI: $Uri"
+    Write-Output "Request Method: $Method"
+    Write-Output "Request Body: $Body"
     try {
         $response = Invoke-WebRequest -Uri $Uri -Method $Method -ContentType "application/json" -Body $Body -ErrorAction Stop
         $status = $response.StatusCode
@@ -29,12 +29,12 @@ function Invoke-ApiTest {
             $respBody = $_.Exception.Message
         }
     }
-    Write-Host "Response Status: $status"
-    Write-Host "Response Body: $respBody"
+    Write-Output "Response Status: $status"
+    Write-Output "Response Body: $respBody"
     if ($status -eq $ExpectedStatus) {
-        Write-Host "Test passed"
+        Write-Output "Test passed"
     } else {
-        Write-Host "Test failed: Expected $ExpectedStatus, got $status"
+        Write-Output "Test failed: Expected $ExpectedStatus, got $status"
     }
 }
 
@@ -46,7 +46,7 @@ $validBody = @{
     body = "This is a test email body."
 } | ConvertTo-Json
 
-Invoke-ApiTest -TestName "Valid POST" -Uri "http://localhost:8080/api/email/send" -Body $validBody -ExpectedStatus 200 
+Invoke-ApiTest -TestName "Valid POST" -Uri "http://localhost:8080/api/email/send" -Body $validBody -ExpectedStatus 200
 
 # 2. Missing each required field
 $fields = @("sender_id", "recipient", "subject", "body")
@@ -73,7 +73,7 @@ foreach ($field in $fields) {
     $body[$field] = ""
     $jsonBody = $body | ConvertTo-Json
     Invoke-ApiTest -TestName "Empty value: $field" -Uri "http://localhost:8080/api/email/send" -Body $jsonBody -ExpectedStatus 400
-} 
+}
 
 # 4. Malformed JSON payloads
 $malformedJsons = @(
@@ -92,7 +92,7 @@ $invalidEmailBody = @{
     subject = "Test Subject"
     body = "This is a test email body."
 } | ConvertTo-Json
-Invoke-ApiTest -TestName "Invalid recipient email format" -Uri "http://localhost:8080/api/email/send" -Body $invalidEmailBody -ExpectedStatus 400 
+Invoke-ApiTest -TestName "Invalid recipient email format" -Uri "http://localhost:8080/api/email/send" -Body $invalidEmailBody -ExpectedStatus 400
 
 # =====================
 # Signup Endpoint Tests
@@ -237,21 +237,21 @@ $lockedLogin = @{
 Invoke-ApiTest -TestName "Lockout: Login during lockout" -Uri $loginUri -Body $lockedLogin -ExpectedStatus 429
 
 # 3. (Optional) Wait for lockout to expire and test login again
-Write-Host "If you want to test login after lockout expires, wait 15 minutes, then press Enter to continue."
+Write-Output "If you want to test login after lockout expires, wait 15 minutes, then press Enter to continue."
 Read-Host
 Invoke-ApiTest -TestName "Lockout: Login after lockout expires" -Uri $loginUri -Body $lockedLogin -ExpectedStatus 200
 
-Write-Host "\n=== Simulated DB Failure Test ==="
-Write-Host "To run this test, stop your API server, set the environment variable SIMULATE_DB_FAILURE=1, and restart the server."
-Write-Host "Example (PowerShell): $env:SIMULATE_DB_FAILURE = '1'"
-Write-Host "Then restart your API server, and press Enter to continue."
+Write-Output "\n=== Simulated DB Failure Test ==="
+Write-Output "To run this test, stop your API server, set the environment variable SIMULATE_DB_FAILURE=1, and restart the server."
+Write-Output "Example (PowerShell): $env:SIMULATE_DB_FAILURE = '1'"
+Write-Output "Then restart your API server, and press Enter to continue."
 Read-Host
 
 Invoke-ApiTest -TestName "Simulated DB insert failure" -Uri "http://localhost:8080/api/email/send" -Body $validBody -ExpectedStatus 500
 
-Write-Host "\nNow unset the environment variable and restart your API server to restore normal behavior."
-Write-Host "Example (PowerShell): Remove-Item Env:SIMULATE_DB_FAILURE"
-Write-Host "Press Enter after you have reverted and restarted the server."
+Write-Output "\nNow unset the environment variable and restart your API server to restore normal behavior."
+Write-Output "Example (PowerShell): Remove-Item Env:SIMULATE_DB_FAILURE"
+Write-Output "Press Enter after you have reverted and restarted the server."
 Read-Host
 
-Invoke-ApiTest -TestName "Post-DB failure revert (should succeed)" -Uri "http://localhost:8080/api/email/send" -Body $validBody -ExpectedStatus 200 
+Invoke-ApiTest -TestName "Post-DB failure revert (should succeed)" -Uri "http://localhost:8080/api/email/send" -Body $validBody -ExpectedStatus 200

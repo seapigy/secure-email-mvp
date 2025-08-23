@@ -10,8 +10,8 @@ $separatorLine = "=" * 60
 
 function Write-TestHeader {
     param([string]$TestName)
-    Write-Host "`n$separatorLine" -ForegroundColor Cyan
-    Write-Host "Testing: $TestName" -ForegroundColor Yellow
+    Write-Output "`n$separatorLine"
+    Write-Output "Testing: $TestName"
     Write-Host $separatorLine -ForegroundColor Cyan
 }
 
@@ -19,7 +19,7 @@ function Write-TestResult {
     param([string]$TestName, [string]$Message, [bool]$Passed)
     $status = if ($Passed) { "PASS" } else { "FAIL" }
     $color = if ($Passed) { "Green" } else { "Red" }
-    Write-Host "[$status] $TestName`: $Message" -ForegroundColor $color
+    Write-Output "[$status] $TestName`: $Message" -ForegroundColor $color
 }
 
 function Test-FileExists {
@@ -35,7 +35,7 @@ function Test-FileContent {
         Write-TestResult -TestName $TestName -Message "File not found: $FilePath" -Passed $false
         return $false
     }
-    
+
     $content = Get-Content $FilePath -Raw
     $matches = $content -match $Pattern
     Write-TestResult -TestName $TestName -Message "Pattern found: $Pattern" -Passed $matches
@@ -68,7 +68,7 @@ function Test-GoTest {
         $success = $LASTEXITCODE -eq 0
         Write-TestResult -TestName $TestName -Message "Go tests passed" -Passed $success
         if (-not $success -and $Verbose) {
-            Write-Host "Test output:" -ForegroundColor Yellow
+            Write-Output "Test output:"
             Write-Host $output -ForegroundColor Gray
         }
         return $success
@@ -100,8 +100,8 @@ function Update-TestResults {
 }
 
 # Main test execution
-Write-Host "Sprint 6: Canary Rollout + Monitoring + Runbooks Test Harness" -ForegroundColor Magenta
-Write-Host "Starting comprehensive validation..." -ForegroundColor White
+Write-Output "Sprint 6: Canary Rollout + Monitoring + Runbooks Test Harness"
+Write-Output "Starting comprehensive validation..."
 
 # Test 1: Design Document
 Write-TestHeader "Design Document Validation"
@@ -111,13 +111,13 @@ Update-TestResults -Passed $passed
 if ($passed) {
     $passed = Test-FileContent -FilePath "docs/sprint6_canary_rollout_design.md" -Pattern "Canary Rollout Strategy" -TestName "Canary Rollout Strategy Section"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "docs/sprint6_canary_rollout_design.md" -Pattern "Monitoring Architecture" -TestName "Monitoring Architecture Section"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "docs/sprint6_canary_rollout_design.md" -Pattern "Operational Runbooks" -TestName "Operational Runbooks Section"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "docs/sprint6_canary_rollout_design.md" -Pattern "A/B Testing Framework" -TestName "A/B Testing Framework Section"
     Update-TestResults -Passed $passed
 }
@@ -130,16 +130,16 @@ Update-TestResults -Passed $passed
 if ($passed) {
     $passed = Test-FileContent -FilePath "schema/migrate_add_canary_rollout.sql" -Pattern "canary_config" -TestName "Canary Config Table"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "schema/migrate_add_canary_rollout.sql" -Pattern "ab_test_results" -TestName "A/B Test Results Table"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "schema/migrate_add_canary_rollout.sql" -Pattern "rollback_events" -TestName "Rollback Events Table"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "schema/migrate_add_canary_rollout.sql" -Pattern "monitoring_alerts" -TestName "Monitoring Alerts Table"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "schema/migrate_add_canary_rollout.sql" -Pattern "runbook_executions" -TestName "Runbook Executions Table"
     Update-TestResults -Passed $passed
 }
@@ -152,19 +152,19 @@ Update-TestResults -Passed $passed
 if ($passed) {
     $passed = Test-FileContent -FilePath "pkg/e2e/canary_rollout.go" -Pattern "type CanaryRolloutManager struct" -TestName "CanaryRolloutManager Struct"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "pkg/e2e/canary_rollout.go" -Pattern "type ABTestEngine struct" -TestName "ABTestEngine Struct"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "pkg/e2e/canary_rollout.go" -Pattern "type TrafficRouter struct" -TestName "TrafficRouter Struct"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "pkg/e2e/canary_rollout.go" -Pattern "func NewCanaryRolloutManager" -TestName "NewCanaryRolloutManager Function"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "pkg/e2e/canary_rollout.go" -Pattern "func.*ShouldRouteToE2E" -TestName "ShouldRouteToE2E Function"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "pkg/e2e/canary_rollout.go" -Pattern "func.*TriggerRollback" -TestName "TriggerRollback Function"
     Update-TestResults -Passed $passed
 }
@@ -177,22 +177,22 @@ Update-TestResults -Passed $passed
 if ($passed) {
     $passed = Test-FileContent -FilePath "pkg/e2e/runbooks.go" -Pattern "type RunbookEngine struct" -TestName "RunbookEngine Struct"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "pkg/e2e/runbooks.go" -Pattern "type Procedure struct" -TestName "Procedure Struct"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "pkg/e2e/runbooks.go" -Pattern "type Step struct" -TestName "Step Struct"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "pkg/e2e/runbooks.go" -Pattern "func NewRunbookEngine" -TestName "NewRunbookEngine Function"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "pkg/e2e/runbooks.go" -Pattern "func.*ExecuteProcedure" -TestName "ExecuteProcedure Function"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "pkg/e2e/runbooks.go" -Pattern "canary_rollout" -TestName "Canary Rollout Procedure"
     Update-TestResults -Passed $passed
-    
+
     $passed = Test-FileContent -FilePath "pkg/e2e/runbooks.go" -Pattern "emergency_rollback" -TestName "Emergency Rollback Procedure"
     Update-TestResults -Passed $passed
 }
@@ -304,18 +304,18 @@ $passed = Test-FileContent -FilePath "docs/sprint6_canary_rollout_design.md" -Pa
 Update-TestResults -Passed $passed
 
 # Summary
-Write-Host "`n$separatorLine" -ForegroundColor Magenta
-Write-Host "Sprint 6 Test Results Summary" -ForegroundColor Yellow
+Write-Output "`n$separatorLine"
+Write-Output "Sprint 6 Test Results Summary"
 Write-Host $separatorLine -ForegroundColor Magenta
-Write-Host "Total Tests: $($testResults.Total)" -ForegroundColor White
-Write-Host "Passed: $($testResults.Passed)" -ForegroundColor Green
-Write-Host "Failed: $($testResults.Failed)" -ForegroundColor Red
-Write-Host "Success Rate: $([math]::Round(($testResults.Passed / $testResults.Total) * 100, 2))%" -ForegroundColor Cyan
+Write-Output "Total Tests: $($testResults.Total)"
+Write-Output "Passed: $($testResults.Passed)"
+Write-Output "Failed: $($testResults.Failed)"
+Write-Output "Success Rate: $([math]::Round(($testResults.Passed / $testResults.Total) * 100, 2))%"
 
 if ($testResults.Failed -eq 0) {
-    Write-Host "`n🎉 All Sprint 6 tests passed! The canary rollout system is ready for production deployment." -ForegroundColor Green
+    Write-Output "`n🎉 All Sprint 6 tests passed! The canary rollout system is ready for production deployment."
 } else {
-    Write-Host "`n⚠️  Some tests failed. Please review the failed tests above and fix any issues before proceeding." -ForegroundColor Yellow
+    Write-Output "`n⚠️  Some tests failed. Please review the failed tests above and fix any issues before proceeding."
 }
 
-Write-Host "`nSprint 6 Canary Rollout and Monitoring Test Harness Complete!" -ForegroundColor Cyan
+Write-Output "`nSprint 6 Canary Rollout and Monitoring Test Harness Complete!"

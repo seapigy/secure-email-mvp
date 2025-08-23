@@ -70,7 +70,7 @@ export interface EmailAttachment {
 }
 
 // API response types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -180,7 +180,7 @@ export interface UIState {
   viewMode: 'list' | 'grid';
   sortOrder: 'asc' | 'desc';
   searchQuery: string;
-  filters: any;
+  filters: EmailFilters;
   sidebarCollapsed: boolean;
   selectedFolder: string;
 }
@@ -210,7 +210,7 @@ export interface UIStore {
   viewMode?: 'list' | 'grid';
   sortOrder?: 'asc' | 'desc';
   searchQuery?: string;
-  filters?: any;
+  filters?: EmailFilters;
   sidebarCollapsed?: boolean;
   setSidebarCollapsed?: (collapsed: boolean) => void;
   selectedFolder?: string;
@@ -220,9 +220,26 @@ export interface UIStore {
   setSortBy?: (sortBy: string) => void;
   setSortOrder?: (order: 'asc' | 'desc') => void;
   setSearchQuery?: (query: string) => void;
-  setFilters?: (filters: any) => void;
+  setFilters?: (filters: EmailFilters) => void;
 }
 
 // Utility types
 export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
-export type MakeRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] }; 
+export type MakeRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] };
+
+// ============================================================================
+// ERROR TYPES
+// ============================================================================
+
+export interface APIError {
+  message: string;
+  code?: string;
+  status?: number;
+  details?: Record<string, unknown>;
+}
+
+export interface ErrorResponse {
+  error: string;
+  code?: string;
+  details?: Record<string, unknown>;
+} 

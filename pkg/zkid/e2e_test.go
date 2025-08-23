@@ -82,18 +82,6 @@ func setupE2ETestDB(t *testing.T) *sql.DB {
 	return db
 }
 
-// Mock admin context for testing
-type mockAdminContext struct {
-	userID string
-	email  string
-	role   string
-	orgID  string
-}
-
-func (m *mockAdminContext) GetUserFromContext() (string, string, string, string, error) {
-	return m.userID, m.email, m.role, m.orgID, nil
-}
-
 // TestE2EZKIDWorkflow tests the complete ZKID workflow from signup to admin operations
 func TestE2EZKIDWorkflow(t *testing.T) {
 	db := setupE2ETestDB(t)

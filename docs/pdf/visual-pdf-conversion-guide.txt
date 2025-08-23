@@ -1,0 +1,23 @@
+﻿Visual Flow Map PDF Conversion Guide
+
+Option 1: Browser Print to PDF (Recommended)
+1. Open the visual HTML file in your web browser
+2. Wait for all diagrams to load completely
+3. Press Ctrl+P (or Cmd+P on Mac)
+4. Select "Save as PDF" as the destination
+5. Choose your preferred settings:
+   - Page size: A4
+   - Margins: Default or Minimum
+   - Include background graphics: Yes
+6. Click "Save" and choose your file location
+
+Option 2: Online Converters
+1. Visit an online HTML to PDF converter
+2. Upload the HTML file: docs/pdf/visual-user-flow-map.html
+3. Convert and download the PDF
+
+File Locations
+- Visual HTML File: docs/pdf/visual-user-flow-map.html
+- Output Directory: docs/pdf
+
+Note: The visual HTML file includes Mermaid.js diagrams that will render as professional flowcharts.

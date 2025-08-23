@@ -103,7 +103,7 @@ const SecuritySettings: React.FC<SecuritySettingsProps> = ({
    * @param key - The setting key to update
    * @param value - The new value for the setting
    */
-  const handleSettingChange = (key: keyof SecuritySettingsType, value: any) => {
+  const handleSettingChange = (key: keyof SecuritySettingsType, value: string | boolean | number) => {
     const newSettings = { ...localSettings, [key]: value };
     setLocalSettings(newSettings);
     setHasChanges(true);

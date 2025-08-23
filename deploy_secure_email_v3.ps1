@@ -6,44 +6,44 @@ param(
     [string]$SSH_KEY = ".\ssh-key-v3.key"
 )
 
-Write-Host "=== Secure Email MVP v3 Deployment ===" -ForegroundColor Green
-Write-Host "Target VM: secure-email-api-v3" -ForegroundColor Cyan
-Write-Host "Deploying to: $VM_USER@$VM_IP" -ForegroundColor Yellow
-Write-Host "SSH Key: $SSH_KEY" -ForegroundColor Yellow
+Write-Output "=== Secure Email MVP v3 Deployment ==="
+Write-Output "Target VM: secure-email-api-v3"
+Write-Output "Deploying to: $VM_USER@$VM_IP"
+Write-Output "SSH Key: $SSH_KEY"
 
 # Check if SSH key exists
 if (-not (Test-Path $SSH_KEY)) {
-    Write-Host "ERROR: SSH key not found at $SSH_KEY" -ForegroundColor Red
+    Write-Output "ERROR: SSH key not found at $SSH_KEY"
     exit 1
 }
 
 # Test SSH connection first
-Write-Host "Testing SSH connection..." -ForegroundColor Yellow
+Write-Output "Testing SSH connection..."
 $testCmd = "ssh -i `"$SSH_KEY`" $($VM_USER)@$($VM_IP) 'echo SSH connection successful'"
 try {
     Invoke-Expression $testCmd
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "SSH connection successful!" -ForegroundColor Green
+        Write-Output "SSH connection successful!"
     } else {
-        Write-Host "ERROR: SSH connection failed" -ForegroundColor Red
+        Write-Output "ERROR: SSH connection failed"
         exit 1
     }
 } catch {
-    Write-Host "ERROR: SSH connection failed: $_" -ForegroundColor Red
+    Write-Output "ERROR: SSH connection failed: $_"
     exit 1
 }
 
 # Create project directory on VM
-Write-Host "Creating project directory on VM..." -ForegroundColor Yellow
+Write-Output "Creating project directory on VM..."
 $createDirCmd = "ssh -i `"$SSH_KEY`" $($VM_USER)@$($VM_IP) 'sudo mkdir -p /home/opc/secure-email-mvp && sudo chown opc:opc /home/opc/secure-email-mvp'"
 Invoke-Expression $createDirCmd
 
 # Copy files individually
-Write-Host "Copying files to VM..." -ForegroundColor Yellow
+Write-Output "Copying files to VM..."
 
 $filesToCopy = @(
     "cmd/",
-    "pkg/", 
+    "pkg/",
     "schema/",
     "go.mod",
     "go.sum",
@@ -58,19 +58,19 @@ $filesToCopy = @(
 
 foreach ($file in $filesToCopy) {
     if (Test-Path $file) {
-        Write-Host "Copying $file..." -ForegroundColor Gray
+        Write-Output "Copying $file..."
         $scpCmd = "scp -i `"$SSH_KEY`" -r $file $($VM_USER)@$($VM_IP):/home/opc/secure-email-mvp/"
         Invoke-Expression $scpCmd
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "Warning: Failed to copy $($file)" -ForegroundColor Yellow
+            Write-Output "Warning: Failed to copy $($file)"
         }
     } else {
-        Write-Host "Warning: $($file) not found" -ForegroundColor Yellow
+        Write-Output "Warning: $($file) not found"
     }
 }
 
 # Set up environment on VM
-Write-Host "Setting up environment on VM..." -ForegroundColor Yellow
+Write-Output "Setting up environment on VM..."
 $setupCmd = @"
 ssh -i `"$SSH_KEY`" $($VM_USER)@$($VM_IP) '
 set -e
@@ -111,7 +111,7 @@ echo "2. Run: ./vm_startup.sh"
 Invoke-Expression $setupCmd
 
 # Test Cloudflare R2 connectivity
-Write-Host "Testing Cloudflare R2 connectivity..." -ForegroundColor Yellow
+Write-Output "Testing Cloudflare R2 connectivity..."
 $r2TestCmd = @"
 ssh -i `"$SSH_KEY`" $($VM_USER)@$($VM_IP) '
 cd /home/opc/secure-email-mvp
@@ -123,9 +123,9 @@ echo "R2 connectivity test ready - run after .env is configured"
 
 Invoke-Expression $r2TestCmd
 
-Write-Host "=== Deployment Complete ===" -ForegroundColor Green
-Write-Host "Next steps:" -ForegroundColor Yellow
-Write-Host "1. SSH to VM: ssh -i `"$SSH_KEY`" $($VM_USER)@$($VM_IP)" -ForegroundColor Cyan
-Write-Host "2. Update .env: cd /home/opc/secure-email-mvp && nano .env" -ForegroundColor Cyan
-Write-Host "3. Start server: ./vm_startup.sh" -ForegroundColor Cyan
-Write-Host "4. Test R2 connectivity: ./setup_cloudflare.sh" -ForegroundColor Cyan 
+Write-Output "=== Deployment Complete ==="
+Write-Output "Next steps:"
+Write-Output "1. SSH to VM: ssh -i `"$SSH_KEY`" $($VM_USER)@$($VM_IP)" -ForegroundColor Cyan
+Write-Output "2. Update .env: cd /home/opc/secure-email-mvp && nano .env"
+Write-Output "3. Start server: ./vm_startup.sh"
+Write-Output "4. Test R2 connectivity: ./setup_cloudflare.sh"

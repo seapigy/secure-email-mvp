@@ -136,8 +136,14 @@ type FeatureStatusResponse struct {
 
 // NewE2EServer creates a new E2E server instance
 func NewE2EServer(config E2EConfig, db *sql.DB) *E2EServer {
+	crypto, err := NewCryptoProvider(config.Crypto)
+	if err != nil {
+		// For server initialization, we'll panic if crypto provider fails
+		panic(fmt.Sprintf("Failed to create crypto provider: %v", err))
+	}
+
 	return &E2EServer{
-		crypto:            NewCryptoProvider(config.Crypto),
+		crypto:            crypto,
 		keyTransparency:   NewKeyTransparency(config.KeyTransparency),
 		thresholdHSM:      NewThresholdHSM(config.HSM),
 		metadataMinimizer: NewMetadataMinimizer(config),
@@ -808,8 +814,22 @@ func (s *E2EServer) generateDeliveryToken() string {
 
 func (s *E2EServer) isE2EEnabledForUser(userID string) bool {
 	// Check feature flags for user
-	// This is a simplified implementation
-	return true // For now, assume E2E is enabled
+	if userID == "" {
+		log.Printf("Warning: Empty userID provided to isE2EEnabledForUser")
+		return false
+	}
+
+	// Query user-specific E2E settings from database
+	query := `SELECT e2e_enabled FROM users WHERE id = ?`
+	var e2eEnabled bool
+	err := s.db.QueryRow(query, userID).Scan(&e2eEnabled)
+	if err != nil {
+		log.Printf("Error checking E2E status for user %s: %v", userID, err)
+		return false // Default to disabled on error
+	}
+
+	log.Printf("E2E status for user %s: %t", userID, e2eEnabled)
+	return e2eEnabled
 }
 
 func (s *E2EServer) storeE2EMessage(messageID string, req E2EMessageRequest) error {
@@ -843,29 +863,70 @@ func (s *E2EServer) storeE2EMessage(messageID string, req E2EMessageRequest) err
 }
 
 func (s *E2EServer) getE2EMessage(messageID, userID string) (interface{}, error) {
-	// Get E2E message from database
-	// This is a simplified implementation
-	query := `SELECT * FROM e2e_messages WHERE id = ?`
-	row := s.db.QueryRow(query, messageID)
+	// Get E2E message from database with user authorization
+	if messageID == "" {
+		return nil, fmt.Errorf("messageID is required")
+	}
+	if userID == "" {
+		return nil, fmt.Errorf("userID is required for authorization")
+	}
+
+	// Query message with user authorization check
+	query := `SELECT id, thread_id, sender_uuid, recipient_uuid, envelope_hash, created_at 
+			  FROM e2e_messages 
+			  WHERE id = ? AND (sender_uuid = ? OR recipient_uuid = ?)`
+
+	row := s.db.QueryRow(query, messageID, userID, userID)
 
 	var message struct {
-		ID string `json:"id"`
-		// Add other fields as needed
+		ID            string    `json:"id"`
+		ThreadID      string    `json:"thread_id"`
+		SenderUUID    string    `json:"sender_uuid"`
+		RecipientUUID string    `json:"recipient_uuid"`
+		EnvelopeHash  string    `json:"envelope_hash"`
+		CreatedAt     time.Time `json:"created_at"`
 	}
 
-	err := row.Scan(&message.ID)
+	err := row.Scan(&message.ID, &message.ThreadID, &message.SenderUUID, &message.RecipientUUID, &message.EnvelopeHash, &message.CreatedAt)
 	if err != nil {
-		return nil, err
+		log.Printf("Error retrieving E2E message %s for user %s: %v", messageID, userID, err)
+		return nil, fmt.Errorf("message not found or access denied")
 	}
 
+	log.Printf("Successfully retrieved E2E message %s for user %s", messageID, userID)
 	return message, nil
 }
 
 func (s *E2EServer) deleteE2EMessage(messageID, userID string) error {
-	// Delete E2E message from database
-	query := `DELETE FROM e2e_messages WHERE id = ?`
-	_, err := s.db.Exec(query, messageID)
-	return err
+	// Delete E2E message from database with user authorization
+	if messageID == "" {
+		return fmt.Errorf("messageID is required")
+	}
+	if userID == "" {
+		return fmt.Errorf("userID is required for authorization")
+	}
+
+	// Delete message with user authorization check
+	query := `DELETE FROM e2e_messages WHERE id = ? AND (sender_uuid = ? OR recipient_uuid = ?)`
+	result, err := s.db.Exec(query, messageID, userID, userID)
+	if err != nil {
+		log.Printf("Error deleting E2E message %s for user %s: %v", messageID, userID, err)
+		return fmt.Errorf("failed to delete message: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected for message deletion %s: %v", messageID, err)
+		return fmt.Errorf("failed to verify deletion: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		log.Printf("No E2E message %s found for user %s or access denied", messageID, userID)
+		return fmt.Errorf("message not found or access denied")
+	}
+
+	log.Printf("Successfully deleted E2E message %s for user %s", messageID, userID)
+	return nil
 }
 
 func (s *E2EServer) listE2EMessages(userID string, limit, offset int) (interface{}, error) {
@@ -895,27 +956,125 @@ func (s *E2EServer) getMigrationStatus() (interface{}, error) {
 }
 
 func (s *E2EServer) startMigration(migrationType string, batchSize int) (string, error) {
-	// Start migration
-	// This is a simplified implementation
+	// Start migration with specified type and batch size
+	if migrationType == "" {
+		return "", fmt.Errorf("migrationType is required")
+	}
+	if batchSize <= 0 {
+		batchSize = 100 // Default batch size
+	}
+
+	// Validate migration type
+	validTypes := map[string]bool{
+		"legacy_to_e2e":         true,
+		"key_rotation":          true,
+		"metadata_minimization": true,
+		"compliance_cleanup":    true,
+	}
+
+	if !validTypes[migrationType] {
+		return "", fmt.Errorf("invalid migration type: %s", migrationType)
+	}
+
+	// Create migration job record
 	jobID := s.generateMessageID()
+	query := `INSERT INTO migration_jobs (id, type, batch_size, status, created_at, progress) 
+			  VALUES (?, ?, ?, ?, ?, ?)`
+
+	_, err := s.db.Exec(query, jobID, migrationType, batchSize, "pending", time.Now(), 0)
+	if err != nil {
+		log.Printf("Error creating migration job %s: %v", jobID, err)
+		return "", fmt.Errorf("failed to create migration job: %w", err)
+	}
+
+	log.Printf("Started migration job %s: type=%s, batchSize=%d", jobID, migrationType, batchSize)
 	return jobID, nil
 }
 
 func (s *E2EServer) pauseMigration(jobID string) error {
-	// Pause migration
-	// This is a simplified implementation
+	// Pause migration job
+	if jobID == "" {
+		return fmt.Errorf("jobID is required")
+	}
+
+	// Update migration job status to paused
+	query := `UPDATE migration_jobs SET status = ?, updated_at = ? WHERE id = ?`
+	result, err := s.db.Exec(query, "paused", time.Now(), jobID)
+	if err != nil {
+		log.Printf("Error pausing migration job %s: %v", jobID, err)
+		return fmt.Errorf("failed to pause migration job: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected for pause migration %s: %v", jobID, err)
+		return fmt.Errorf("failed to verify pause operation: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		log.Printf("No migration job %s found to pause", jobID)
+		return fmt.Errorf("migration job not found")
+	}
+
+	log.Printf("Successfully paused migration job %s", jobID)
 	return nil
 }
 
 func (s *E2EServer) resumeMigration(jobID string) error {
-	// Resume migration
-	// This is a simplified implementation
+	// Resume migration job
+	if jobID == "" {
+		return fmt.Errorf("jobID is required")
+	}
+
+	// Update migration job status to running
+	query := `UPDATE migration_jobs SET status = ?, updated_at = ? WHERE id = ?`
+	result, err := s.db.Exec(query, "running", time.Now(), jobID)
+	if err != nil {
+		log.Printf("Error resuming migration job %s: %v", jobID, err)
+		return fmt.Errorf("failed to resume migration job: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected for resume migration %s: %v", jobID, err)
+		return fmt.Errorf("failed to verify resume operation: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		log.Printf("No migration job %s found to resume", jobID)
+		return fmt.Errorf("migration job not found")
+	}
+
+	log.Printf("Successfully resumed migration job %s", jobID)
 	return nil
 }
 
 func (s *E2EServer) rollbackMigration(jobID string) error {
-	// Rollback migration
-	// This is a simplified implementation
+	// Rollback migration job
+	if jobID == "" {
+		return fmt.Errorf("jobID is required")
+	}
+
+	// Update migration job status to rollback
+	query := `UPDATE migration_jobs SET status = ?, updated_at = ? WHERE id = ?`
+	result, err := s.db.Exec(query, "rollback", time.Now(), jobID)
+	if err != nil {
+		log.Printf("Error initiating rollback for migration job %s: %v", jobID, err)
+		return fmt.Errorf("failed to initiate rollback: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting rows affected for rollback migration %s: %v", jobID, err)
+		return fmt.Errorf("failed to verify rollback operation: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		log.Printf("No migration job %s found to rollback", jobID)
+		return fmt.Errorf("migration job not found")
+	}
+
+	log.Printf("Successfully initiated rollback for migration job %s", jobID)
 	return nil
 }
 
@@ -932,13 +1091,104 @@ func (s *E2EServer) getFeatureStatus() (interface{}, error) {
 }
 
 func (s *E2EServer) enableFeature(scope, scopeID, feature string, percentage float64) error {
-	// Enable feature
-	// This is a simplified implementation
+	// Enable feature with specified scope and rollout percentage
+	if scope == "" {
+		return fmt.Errorf("scope is required")
+	}
+	if scopeID == "" {
+		return fmt.Errorf("scopeID is required")
+	}
+	if feature == "" {
+		return fmt.Errorf("feature is required")
+	}
+	if percentage < 0 || percentage > 100 {
+		return fmt.Errorf("percentage must be between 0 and 100")
+	}
+
+	// Validate scope types
+	validScopes := map[string]bool{
+		"global":       true,
+		"organization": true,
+		"user":         true,
+	}
+
+	if !validScopes[scope] {
+		return fmt.Errorf("invalid scope: %s", scope)
+	}
+
+	// Validate feature names
+	validFeatures := map[string]bool{
+		"e2e_enabled":           true,
+		"kt_enabled":            true,
+		"hsm_enabled":           true,
+		"metadata_minimization": true,
+		"advanced_encryption":   true,
+	}
+
+	if !validFeatures[feature] {
+		return fmt.Errorf("invalid feature: %s", feature)
+	}
+
+	// Update feature flag in database
+	query := `INSERT OR REPLACE INTO feature_flags (scope, scope_id, feature, enabled, percentage, updated_at) 
+			  VALUES (?, ?, ?, ?, ?, ?)`
+
+	_, err := s.db.Exec(query, scope, scopeID, feature, true, percentage, time.Now())
+	if err != nil {
+		log.Printf("Error enabling feature %s for scope %s:%s: %v", feature, scope, scopeID, err)
+		return fmt.Errorf("failed to enable feature: %w", err)
+	}
+
+	log.Printf("Successfully enabled feature %s for scope %s:%s with %f%% rollout", feature, scope, scopeID, percentage)
 	return nil
 }
 
 func (s *E2EServer) disableFeature(scope, scopeID, feature string) error {
-	// Disable feature
-	// This is a simplified implementation
+	// Disable feature for specified scope
+	if scope == "" {
+		return fmt.Errorf("scope is required")
+	}
+	if scopeID == "" {
+		return fmt.Errorf("scopeID is required")
+	}
+	if feature == "" {
+		return fmt.Errorf("feature is required")
+	}
+
+	// Validate scope types
+	validScopes := map[string]bool{
+		"global":       true,
+		"organization": true,
+		"user":         true,
+	}
+
+	if !validScopes[scope] {
+		return fmt.Errorf("invalid scope: %s", scope)
+	}
+
+	// Validate feature names
+	validFeatures := map[string]bool{
+		"e2e_enabled":           true,
+		"kt_enabled":            true,
+		"hsm_enabled":           true,
+		"metadata_minimization": true,
+		"advanced_encryption":   true,
+	}
+
+	if !validFeatures[feature] {
+		return fmt.Errorf("invalid feature: %s", feature)
+	}
+
+	// Update feature flag in database to disabled
+	query := `INSERT OR REPLACE INTO feature_flags (scope, scope_id, feature, enabled, percentage, updated_at) 
+			  VALUES (?, ?, ?, ?, ?, ?)`
+
+	_, err := s.db.Exec(query, scope, scopeID, feature, false, 0.0, time.Now())
+	if err != nil {
+		log.Printf("Error disabling feature %s for scope %s:%s: %v", feature, scope, scopeID, err)
+		return fmt.Errorf("failed to disable feature: %w", err)
+	}
+
+	log.Printf("Successfully disabled feature %s for scope %s:%s", feature, scope, scopeID)
 	return nil
 }

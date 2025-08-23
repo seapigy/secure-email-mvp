@@ -36,12 +36,12 @@ try {
 } catch {
     Write-Error "Signup failed: $($_.Exception.Message)"
     Write-Error "Status Code: $($_.Exception.Response.StatusCode)"
-    
+
     if ($_.Exception.Response) {
         $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
         $errorBody = $reader.ReadToEnd()
         Write-Error "Response body: '$errorBody'"
-        
+
         # Try to parse as JSON
         try {
             $errorJson = $errorBody | ConvertFrom-Json
@@ -55,6 +55,8 @@ try {
 # Restore original IP reputation API key
 $env:IP_REPUTATION_API_KEY = $originalIPRepKey
 Write-Info "Restored IP reputation API key"
+
+
 
 
 

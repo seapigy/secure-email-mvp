@@ -20,16 +20,16 @@ function Write-Info { param([string]$Message) Write-ColorOutput "[INFO] $Message
 
 function Test-SignupDetailed {
     Write-Info "Testing user signup with detailed error capture..."
-    
+
     $signupData = @{
         email = $TestEmail
         password = $TestPassword
         fallback_email = $FallbackEmail
     }
-    
+
     $jsonBody = $signupData | ConvertTo-Json
     Write-Info "Request body: $jsonBody"
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$BaseUrl/api/auth/signup" -Method POST -Headers @{"Content-Type"="application/json"} -Body $jsonBody
         Write-Success "Signup successful: $($response | ConvertTo-Json)"
@@ -37,12 +37,12 @@ function Test-SignupDetailed {
     } catch {
         Write-Error "Signup failed: $($_.Exception.Message)"
         Write-Error "Status Code: $($_.Exception.Response.StatusCode)"
-        
+
         if ($_.Exception.Response) {
             $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
             $errorBody = $reader.ReadToEnd()
             Write-Error "Response body: '$errorBody'"
-            
+
             # Try to parse as JSON
             try {
                 $errorJson = $errorBody | ConvertFrom-Json
@@ -58,13 +58,13 @@ function Test-SignupDetailed {
 # Test different email formats
 function Test-EmailFormats {
     Write-Info "=== Testing Different Email Formats ==="
-    
+
     $testEmails = @(
         "test@securesystem.email",
         "test@example.com",
         "test@test.com"
     )
-    
+
     foreach ($email in $testEmails) {
         Write-Info "Testing email: $email"
         $signupData = @{
@@ -72,9 +72,9 @@ function Test-EmailFormats {
             password = $TestPassword
             fallback_email = $FallbackEmail
         }
-        
+
         $jsonBody = $signupData | ConvertTo-Json
-        
+
         try {
             $response = Invoke-RestMethod -Uri "$BaseUrl/api/auth/signup" -Method POST -Headers @{"Content-Type"="application/json"} -Body $jsonBody
             Write-Success "Signup successful for $email"
@@ -93,14 +93,14 @@ function Test-EmailFormats {
 # Test different password formats
 function Test-PasswordFormats {
     Write-Info "=== Testing Different Password Formats ==="
-    
+
     $testPasswords = @(
         "TestPassword123!",
         "Password123!",
         "Test123!",
         "TestPassword123"
     )
-    
+
     foreach ($password in $testPasswords) {
         Write-Info "Testing password: $password"
         $signupData = @{
@@ -108,9 +108,9 @@ function Test-PasswordFormats {
             password = $password
             fallback_email = $FallbackEmail
         }
-        
+
         $jsonBody = $signupData | ConvertTo-Json
-        
+
         try {
             $response = Invoke-RestMethod -Uri "$BaseUrl/api/auth/signup" -Method POST -Headers @{"Content-Type"="application/json"} -Body $jsonBody
             Write-Success "Signup successful with password: $password"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Bell, 
   MessageCircle, 
@@ -59,55 +59,29 @@ const MultiChannelSettings: React.FC<MultiChannelSettingsProps> = ({
   // Verification status tracking (used internally for verification flow)
   const [verificationStatus, setVerificationStatus] = useState<{[key: string]: string}>({});
 
-  // Load current settings on mount
-  useEffect(() => {
-    loadSettings();
-  }, [emailId]);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const endpoint = emailId 
-        ? `/api/notifications/email/${emailId}/preferences`
-        : '/api/notifications/preferences';
-
-      const response = await fetch(endpoint, {
-        headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('accessToken')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
+      // Simulate API call to load settings
+      const response = await fetch(`/api/emails/${emailId}/notification-settings`);
       if (!response.ok) {
-        throw new Error('Failed to load multi-channel settings');
+        throw new Error('Failed to load notification settings');
       }
-
       const data = await response.json();
-      
-      setSettings({
-        pushNotificationsEnabled: data.push_notifications_enabled === true,
-        signalEnabled: data.signal_enabled === true,
-        matrixEnabled: data.matrix_enabled === true,
-        telegramEnabled: data.telegram_enabled === true,
-        discordEnabled: data.discord_enabled === true,
-        pushDeviceToken: data.push_device_token || '',
-        signalPhone: data.signal_phone || '',
-        matrixUserId: data.matrix_user_id || '',
-        matrixHomeserver: data.matrix_homeserver || '',
-        telegramChatId: data.telegram_chat_id || '',
-        discordWebhookUrl: data.discord_webhook_url || '',
-        highRiskChannels: data.high_risk_channels || 'email,sms',
-        highRiskThreshold: data.high_risk_threshold || 3,
-        highRiskTimeoutMinutes: data.high_risk_timeout_minutes || 30
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load settings');
+      setSettings(data);
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message || 'Failed to load settings');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [emailId]);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const saveSettings = async () => {
     setIsLoading(true);

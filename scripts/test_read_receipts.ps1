@@ -11,11 +11,11 @@ param(
     [string]$TestPassword = "testpassword123"
 )
 
-Write-Host "Starting Read Receipts and Expiration Alerts Test..." -ForegroundColor Green
-Write-Host "API URL: $ApiUrl" -ForegroundColor Yellow
+Write-Output "Starting Read Receipts and Expiration Alerts Test..."
+Write-Output "API URL: $ApiUrl"
 
 # Test 1: User Registration and Login
-Write-Host "`n=== Test 1: User Registration and Login ===" -ForegroundColor Cyan
+Write-Output "`n=== Test 1: User Registration and Login ==="
 
 $signupData = @{
     email = $TestEmail
@@ -23,7 +23,7 @@ $signupData = @{
 }
 
 $signupResponse = Invoke-RestMethod -Uri "$ApiUrl/api/auth/signup" -Method POST -Body ($signupData | ConvertTo-Json) -ContentType "application/json"
-Write-Host "Signup Response: $($signupResponse | ConvertTo-Json)" -ForegroundColor Gray
+Write-Output "Signup Response: $($signupResponse | ConvertTo-Json)"
 
 # Login to get JWT token
 $loginData = @{
@@ -36,10 +36,10 @@ $loginResponse = Invoke-RestMethod -Uri "$ApiUrl/api/auth/login" -Method POST -B
 $jwtToken = $loginResponse.token
 $userId = $loginResponse.user_id
 
-Write-Host "Login successful. User ID: $userId" -ForegroundColor Green
+Write-Output "Login successful. User ID: $userId"
 
 # Test 2: Get Read Receipt Preferences
-Write-Host "`n=== Test 2: Get Read Receipt Preferences ===" -ForegroundColor Cyan
+Write-Output "`n=== Test 2: Get Read Receipt Preferences ==="
 
 $headers = @{
     "Authorization" = "Bearer $jwtToken"
@@ -48,13 +48,13 @@ $headers = @{
 
 try {
     $prefsResponse = Invoke-RestMethod -Uri "$ApiUrl/api/read-receipts/preferences" -Method GET -Headers $headers
-    Write-Host "Read Receipt Preferences: $($prefsResponse | ConvertTo-Json)" -ForegroundColor Gray
+    Write-Output "Read Receipt Preferences: $($prefsResponse | ConvertTo-Json)"
 } catch {
-    Write-Host "Error getting preferences: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "Error getting preferences: $($_.Exception.Message)"
 }
 
 # Test 3: Update Read Receipt Preferences
-Write-Host "`n=== Test 3: Update Read Receipt Preferences ===" -ForegroundColor Cyan
+Write-Output "`n=== Test 3: Update Read Receipt Preferences ==="
 
 $updatePrefsData = @{
     enable_read_receipts = $true
@@ -65,13 +65,13 @@ $updatePrefsData = @{
 
 try {
     $updatePrefsResponse = Invoke-RestMethod -Uri "$ApiUrl/api/read-receipts/preferences" -Method PUT -Headers $headers -Body ($updatePrefsData | ConvertTo-Json)
-    Write-Host "Updated Preferences: $($updatePrefsResponse | ConvertTo-Json)" -ForegroundColor Gray
+    Write-Output "Updated Preferences: $($updatePrefsResponse | ConvertTo-Json)"
 } catch {
-    Write-Host "Error updating preferences: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "Error updating preferences: $($_.Exception.Message)"
 }
 
 # Test 4: Send Email with Read Receipt Settings
-Write-Host "`n=== Test 4: Send Email with Read Receipt Settings ===" -ForegroundColor Cyan
+Write-Output "`n=== Test 4: Send Email with Read Receipt Settings ==="
 
 $sendEmailData = @{
     recipient = "recipient@example.com"
@@ -83,24 +83,24 @@ $sendEmailData = @{
 try {
     $sendResponse = Invoke-RestMethod -Uri "$ApiUrl/api/email/send" -Method POST -Headers $headers -Body ($sendEmailData | ConvertTo-Json)
     $emailId = $sendResponse.blob_id
-    Write-Host "Email sent successfully. Email ID: $emailId" -ForegroundColor Green
+    Write-Output "Email sent successfully. Email ID: $emailId"
 } catch {
-    Write-Host "Error sending email: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "Error sending email: $($_.Exception.Message)"
     exit 1
 }
 
 # Test 5: Get Email Read Receipt Info
-Write-Host "`n=== Test 5: Get Email Read Receipt Info ===" -ForegroundColor Cyan
+Write-Output "`n=== Test 5: Get Email Read Receipt Info ==="
 
 try {
     $readReceiptInfo = Invoke-RestMethod -Uri "$ApiUrl/api/emails/$emailId/read-receipts" -Method GET -Headers $headers
-    Write-Host "Read Receipt Info: $($readReceiptInfo | ConvertTo-Json)" -ForegroundColor Gray
+    Write-Output "Read Receipt Info: $($readReceiptInfo | ConvertTo-Json)"
 } catch {
-    Write-Host "Error getting read receipt info: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "Error getting read receipt info: $($_.Exception.Message)"
 }
 
 # Test 6: Update Email Read Receipt Settings
-Write-Host "`n=== Test 6: Update Email Read Receipt Settings ===" -ForegroundColor Cyan
+Write-Output "`n=== Test 6: Update Email Read Receipt Settings ==="
 
 $updateEmailSettingsData = @{
     enable_read_receipts = $true
@@ -110,59 +110,61 @@ $updateEmailSettingsData = @{
 
 try {
     $updateSettingsResponse = Invoke-RestMethod -Uri "$ApiUrl/api/emails/$emailId/read-receipt-settings" -Method PUT -Headers $headers -Body ($updateEmailSettingsData | ConvertTo-Json)
-    Write-Host "Email settings updated successfully" -ForegroundColor Green
+    Write-Output "Email settings updated successfully"
 } catch {
-    Write-Host "Error updating email settings: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "Error updating email settings: $($_.Exception.Message)"
 }
 
 # Test 7: Simulate Email Read (if recipient access is implemented)
-Write-Host "`n=== Test 7: Simulate Email Read ===" -ForegroundColor Cyan
+Write-Output "`n=== Test 7: Simulate Email Read ==="
 
-Write-Host "Note: This test requires a recipient user to access the email." -ForegroundColor Yellow
-Write-Host "To test read receipts, you would need to:" -ForegroundColor Yellow
-Write-Host "1. Create a recipient user account" -ForegroundColor Yellow
-Write-Host "2. Access the email via /api/email/{id}/content endpoint" -ForegroundColor Yellow
-Write-Host "3. Check that read receipt was sent to sender" -ForegroundColor Yellow
+Write-Output "Note: This test requires a recipient user to access the email."
+Write-Output "To test read receipts, you would need to:"
+Write-Output "1. Create a recipient user account"
+Write-Output "2. Access the email via /api/email/{id}/content endpoint"
+Write-Output "3. Check that read receipt was sent to sender"
 
 # Test 8: Get Read Events
-Write-Host "`n=== Test 8: Get Read Events ===" -ForegroundColor Cyan
+Write-Output "`n=== Test 8: Get Read Events ==="
 
 try {
     $readEvents = Invoke-RestMethod -Uri "$ApiUrl/api/emails/$emailId/read-events?limit=10" -Method GET -Headers $headers
-    Write-Host "Read Events: $($readEvents | ConvertTo-Json)" -ForegroundColor Gray
+    Write-Output "Read Events: $($readEvents | ConvertTo-Json)"
 } catch {
-    Write-Host "Error getting read events: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "Error getting read events: $($_.Exception.Message)"
 }
 
 # Test 9: Test Expiration Worker (if running)
-Write-Host "`n=== Test 9: Test Expiration Worker ===" -ForegroundColor Cyan
+Write-Output "`n=== Test 9: Test Expiration Worker ==="
 
-Write-Host "To test expiration alerts, you would need to:" -ForegroundColor Yellow
-Write-Host "1. Start the expiration worker: go run cmd/expiration_worker/main.go" -ForegroundColor Yellow
-Write-Host "2. Create emails with short expiration times" -ForegroundColor Yellow
-Write-Host "3. Wait for expiration alerts to be sent" -ForegroundColor Yellow
+Write-Output "To test expiration alerts, you would need to:"
+Write-Output "1. Start the expiration worker: go run cmd/expiration_worker/main.go"
+Write-Output "2. Create emails with short expiration times"
+Write-Output "3. Wait for expiration alerts to be sent"
 
 # Test 10: Cleanup
-Write-Host "`n=== Test 10: Cleanup ===" -ForegroundColor Cyan
+Write-Output "`n=== Test 10: Cleanup ==="
 
 try {
     $deleteResponse = Invoke-RestMethod -Uri "$ApiUrl/api/email/$emailId" -Method DELETE -Headers $headers
-    Write-Host "Test email deleted successfully" -ForegroundColor Green
+    Write-Output "Test email deleted successfully"
 } catch {
-    Write-Host "Error deleting test email: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "Error deleting test email: $($_.Exception.Message)"
 }
 
-Write-Host "`n=== Test Summary ===" -ForegroundColor Green
-Write-Host "Read Receipts and Expiration Alerts functionality has been tested." -ForegroundColor White
-Write-Host "Key features tested:" -ForegroundColor White
-Write-Host "- User preference management" -ForegroundColor White
-Write-Host "- Email-specific settings" -ForegroundColor White
-Write-Host "- Read receipt info retrieval" -ForegroundColor White
-Write-Host "- Read events tracking" -ForegroundColor White
-Write-Host "`nNote: Actual read receipt sending and expiration alerts require:" -ForegroundColor Yellow
-Write-Host "- Recipient user to access emails" -ForegroundColor Yellow
-Write-Host "- Expiration worker to be running" -ForegroundColor Yellow
-Write-Host "- Email/SMS delivery integration" -ForegroundColor Yellow
+Write-Output "`n=== Test Summary ==="
+Write-Output "Read Receipts and Expiration Alerts functionality has been tested."
+Write-Output "Key features tested:"
+Write-Output "- User preference management"
+Write-Output "- Email-specific settings"
+Write-Output "- Read receipt info retrieval"
+Write-Output "- Read events tracking"
+Write-Output "`nNote: Actual read receipt sending and expiration alerts require:"
+Write-Output "- Recipient user to access emails"
+Write-Output "- Expiration worker to be running"
+Write-Output "- Email/SMS delivery integration"
+
+
 
 
 

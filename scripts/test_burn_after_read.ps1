@@ -8,7 +8,7 @@ param(
     [string]$TestTotp = "123456"
 )
 
-Write-Host "=== Testing Burn-After-Read Functionality ===" -ForegroundColor Cyan
+Write-Output "=== Testing Burn-After-Read Functionality ==="
 
 # Helper function to print colored output
 function Write-Status {
@@ -16,11 +16,11 @@ function Write-Status {
         [string]$Status,
         [string]$Message
     )
-    
+
     switch ($Status) {
-        "SUCCESS" { Write-Host "✓ $Message" -ForegroundColor Green }
-        "ERROR" { Write-Host "✗ $Message" -ForegroundColor Red }
-        "INFO" { Write-Host "ℹ $Message" -ForegroundColor Yellow }
+        "SUCCESS" { Write-Output "✓ $Message" }
+        "ERROR" { Write-Output "✗ $Message" }
+        "INFO" { Write-Output "ℹ $Message" }
     }
 }
 
@@ -45,7 +45,7 @@ $loginBody = @{
 try {
     $loginResponse = Invoke-RestMethod -Uri "$ApiBase/api/auth/login" -Method POST -Body $loginBody -ContentType "application/json"
     $token = $loginResponse.token
-    
+
     if (-not $token) {
         Write-Status "ERROR" "Failed to get JWT token. Login response: $($loginResponse | ConvertTo-Json)"
         exit 1
@@ -70,10 +70,10 @@ try {
         "Authorization" = "Bearer $token"
         "Content-Type" = "application/json"
     }
-    
+
     $sendResponse = Invoke-RestMethod -Uri "$ApiBase/api/email/send" -Method POST -Body $sendBody -Headers $headers
     $emailId = $sendResponse.blob_id -replace '\.blob$', ''
-    
+
     if (-not $emailId) {
         Write-Status "ERROR" "Failed to send email. Response: $($sendResponse | ConvertTo-Json)"
         exit 1
@@ -115,7 +115,7 @@ Write-Status "INFO" "Verifying email is marked as consumed in database..."
 try {
     $listResponse = Invoke-RestMethod -Uri "$ApiBase/api/email/list" -Method GET -Headers $headers
     $emailInList = $listResponse.emails | Where-Object { $_.email_id -eq $emailId }
-    
+
     if ($emailInList) {
         Write-Status "INFO" "Email still appears in list (metadata preserved)"
     } else {
@@ -126,15 +126,15 @@ try {
 }
 
 Write-Status "SUCCESS" "Burn-after-read functionality test completed successfully!"
-Write-Host ""
-Write-Host "Test Summary:" -ForegroundColor Cyan
-Write-Host "- ✓ API server running"
-Write-Host "- ✓ JWT authentication working"
-Write-Host "- ✓ Burn-after-read email sent successfully"
-Write-Host "- ✓ First access returned email content"
-Write-Host "- ✓ Second access returned 410 Gone (email consumed)"
-Write-Host "- ✓ Email properly deleted after first access"
+Write-Output ""
+Write-Output "Test Summary:"
+Write-Output "- ✓ API server running"
+Write-Output "- ✓ JWT authentication working"
+Write-Output "- ✓ Burn-after-read email sent successfully"
+Write-Output "- ✓ First access returned email content"
+Write-Output "- ✓ Second access returned 410 Gone (email consumed)"
+Write-Output "- ✓ Email properly deleted after first access"
 
-Write-Host ""
+Write-Output ""
 Write-Status "INFO" "Burn-after-read functionality is working correctly!"
 

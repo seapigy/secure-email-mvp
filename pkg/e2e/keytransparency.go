@@ -290,13 +290,6 @@ func (kt *KeyTransparency) getNextMerkleIndex() (int, error) {
 	return int(time.Now().Unix()) % 1000000, nil
 }
 
-// signLogEntry signs a log entry
-func (kt *KeyTransparency) signLogEntry(entryHash string) string {
-	// TODO: Implement actual signing
-	// For now, create a simple HMAC-based signature
-	return kt.hashString(fmt.Sprintf("signature_%s", entryHash))
-}
-
 // calculateKeyExpiry calculates when a key should expire
 func (kt *KeyTransparency) calculateKeyExpiry() *time.Time {
 	// Keys expire after 1 year by default

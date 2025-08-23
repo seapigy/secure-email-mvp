@@ -7,9 +7,9 @@ param(
     [string]$TestPassword = "testpassword123"
 )
 
-Write-Host "=== Testing Enhanced Geolocation Verification (Micro-Iteration 4.15) ===" -ForegroundColor Green
-Write-Host "API URL: $ApiUrl" -ForegroundColor Yellow
-Write-Host ""
+Write-Output "=== Testing Enhanced Geolocation Verification (Micro-Iteration 4.15) ==="
+Write-Output "API URL: $ApiUrl"
+Write-Output ""
 
 # Function to make API requests
 function Invoke-ApiRequest {
@@ -19,10 +19,10 @@ function Invoke-ApiRequest {
         [object]$Body = $null,
         [hashtable]$Headers = @{}
     )
-    
+
     $uri = "$ApiUrl$Endpoint"
     $headers["Content-Type"] = "application/json"
-    
+
     try {
         if ($Body) {
             $jsonBody = $Body | ConvertTo-Json -Depth 10
@@ -50,22 +50,22 @@ function Invoke-ApiRequest {
 }
 
 # Test 1: Login to get authentication token
-Write-Host "1. Testing authentication..." -ForegroundColor Cyan
+Write-Output "1. Testing authentication..."
 $loginResponse = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/login" -Body @{
     email = $TestEmail
     password = $TestPassword
 }
 
 if (-not $loginResponse.Success) {
-    Write-Host "❌ Login failed: $($loginResponse.Error)" -ForegroundColor Red
+    Write-Output "❌ Login failed: $($loginResponse.Error)"
     exit 1
 }
 
 $token = $loginResponse.Data.token
-Write-Host "✅ Login successful" -ForegroundColor Green
+Write-Output "✅ Login successful"
 
 # Test 2: Send email with country-only verification
-Write-Host "`n2. Testing country-only verification..." -ForegroundColor Cyan
+Write-Output "`n2. Testing country-only verification..."
 $countryOnlyEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - Country Only Verification"
@@ -75,15 +75,15 @@ $countryOnlyEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send"
 }
 
 if (-not $countryOnlyEmail.Success) {
-    Write-Host "❌ Failed to send country-only verification email: $($countryOnlyEmail.Error)" -ForegroundColor Red
+    Write-Output "❌ Failed to send country-only verification email: $($countryOnlyEmail.Error)"
     exit 1
 }
 
-Write-Host "✅ Country-only verification email sent successfully" -ForegroundColor Green
+Write-Output "✅ Country-only verification email sent successfully"
 $countryOnlyEmailId = $countryOnlyEmail.Data.blob_id
 
 # Test 3: Send email with city-only verification
-Write-Host "`n3. Testing city-only verification..." -ForegroundColor Cyan
+Write-Output "`n3. Testing city-only verification..."
 $cityOnlyEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - City Only Verification"
@@ -93,15 +93,15 @@ $cityOnlyEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -H
 }
 
 if (-not $cityOnlyEmail.Success) {
-    Write-Host "❌ Failed to send city-only verification email: $($cityOnlyEmail.Error)" -ForegroundColor Red
+    Write-Output "❌ Failed to send city-only verification email: $($cityOnlyEmail.Error)"
     exit 1
 }
 
-Write-Host "✅ City-only verification email sent successfully" -ForegroundColor Green
+Write-Output "✅ City-only verification email sent successfully"
 $cityOnlyEmailId = $cityOnlyEmail.Data.blob_id
 
 # Test 4: Send email with city+country verification
-Write-Host "`n4. Testing city+country verification..." -ForegroundColor Cyan
+Write-Output "`n4. Testing city+country verification..."
 $cityCountryEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - City+Country Verification"
@@ -112,15 +112,15 @@ $cityCountryEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send"
 }
 
 if (-not $cityCountryEmail.Success) {
-    Write-Host "❌ Failed to send city+country verification email: $($cityCountryEmail.Error)" -ForegroundColor Red
+    Write-Output "❌ Failed to send city+country verification email: $($cityCountryEmail.Error)"
     exit 1
 }
 
-Write-Host "✅ City+country verification email sent successfully" -ForegroundColor Green
+Write-Output "✅ City+country verification email sent successfully"
 $cityCountryEmailId = $cityCountryEmail.Data.blob_id
 
 # Test 5: Send email with no verification
-Write-Host "`n5. Testing no verification..." -ForegroundColor Cyan
+Write-Output "`n5. Testing no verification..."
 $noVerificationEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - No Verification"
@@ -129,15 +129,15 @@ $noVerificationEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/se
 }
 
 if (-not $noVerificationEmail.Success) {
-    Write-Host "❌ Failed to send no verification email: $($noVerificationEmail.Error)" -ForegroundColor Red
+    Write-Output "❌ Failed to send no verification email: $($noVerificationEmail.Error)"
     exit 1
 }
 
-Write-Host "✅ No verification email sent successfully" -ForegroundColor Green
+Write-Output "✅ No verification email sent successfully"
 $noVerificationEmailId = $noVerificationEmail.Data.blob_id
 
 # Test 6: Test validation with invalid verification type
-Write-Host "`n6. Testing invalid verification type..." -ForegroundColor Cyan
+Write-Output "`n6. Testing invalid verification type..."
 $invalidTypeEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - Invalid Type"
@@ -147,17 +147,17 @@ $invalidTypeEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send"
 }
 
 if ($invalidTypeEmail.Success) {
-    Write-Host "❌ Invalid verification type was accepted (should have failed)" -ForegroundColor Red
+    Write-Output "❌ Invalid verification type was accepted (should have failed)"
 } else {
-    Write-Host "✅ Invalid verification type correctly rejected" -ForegroundColor Green
-    Write-Host "   Status: $($invalidTypeEmail.StatusCode)" -ForegroundColor Yellow
+    Write-Output "✅ Invalid verification type correctly rejected"
+    Write-Output "   Status: $($invalidTypeEmail.StatusCode)"
     if ($invalidTypeEmail.StatusCode -eq 400) {
-        Write-Host "   ✅ Correct 400 Bad Request status" -ForegroundColor Green
+        Write-Output "   ✅ Correct 400 Bad Request status"
     }
 }
 
 # Test 7: Test validation with missing required fields
-Write-Host "`n7. Testing missing required fields..." -ForegroundColor Cyan
+Write-Output "`n7. Testing missing required fields..."
 $missingFieldsEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - Missing Fields"
@@ -167,17 +167,17 @@ $missingFieldsEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/sen
 }
 
 if ($missingFieldsEmail.Success) {
-    Write-Host "❌ Missing required fields were accepted (should have failed)" -ForegroundColor Red
+    Write-Output "❌ Missing required fields were accepted (should have failed)"
 } else {
-    Write-Host "✅ Missing required fields correctly rejected" -ForegroundColor Green
-    Write-Host "   Status: $($missingFieldsEmail.StatusCode)" -ForegroundColor Yellow
+    Write-Output "✅ Missing required fields correctly rejected"
+    Write-Output "   Status: $($missingFieldsEmail.StatusCode)"
     if ($missingFieldsEmail.StatusCode -eq 400) {
-        Write-Host "   ✅ Correct 400 Bad Request status" -ForegroundColor Green
+        Write-Output "   ✅ Correct 400 Bad Request status"
     }
 }
 
 # Test 8: Test validation with invalid city name
-Write-Host "`n8. Testing invalid city name..." -ForegroundColor Cyan
+Write-Output "`n8. Testing invalid city name..."
 $invalidCityEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - Invalid City"
@@ -187,17 +187,17 @@ $invalidCityEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send"
 }
 
 if ($invalidCityEmail.Success) {
-    Write-Host "❌ Invalid city name was accepted (should have failed)" -ForegroundColor Red
+    Write-Output "❌ Invalid city name was accepted (should have failed)"
 } else {
-    Write-Host "✅ Invalid city name correctly rejected" -ForegroundColor Green
-    Write-Host "   Status: $($invalidCityEmail.StatusCode)" -ForegroundColor Yellow
+    Write-Output "✅ Invalid city name correctly rejected"
+    Write-Output "   Status: $($invalidCityEmail.StatusCode)"
     if ($invalidCityEmail.StatusCode -eq 400) {
-        Write-Host "   ✅ Correct 400 Bad Request status" -ForegroundColor Green
+        Write-Output "   ✅ Correct 400 Bad Request status"
     }
 }
 
 # Test 9: Test validation with invalid country code
-Write-Host "`n9. Testing invalid country code..." -ForegroundColor Cyan
+Write-Output "`n9. Testing invalid country code..."
 $invalidCountryEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - Invalid Country"
@@ -208,63 +208,63 @@ $invalidCountryEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/se
 }
 
 if ($invalidCountryEmail.Success) {
-    Write-Host "❌ Invalid country code was accepted (should have failed)" -ForegroundColor Red
+    Write-Output "❌ Invalid country code was accepted (should have failed)"
 } else {
-    Write-Host "✅ Invalid country code correctly rejected" -ForegroundColor Green
-    Write-Host "   Status: $($invalidCountryEmail.StatusCode)" -ForegroundColor Yellow
+    Write-Output "✅ Invalid country code correctly rejected"
+    Write-Output "   Status: $($invalidCountryEmail.StatusCode)"
     if ($invalidCountryEmail.StatusCode -eq 400) {
-        Write-Host "   ✅ Correct 400 Bad Request status" -ForegroundColor Green
+        Write-Output "   ✅ Correct 400 Bad Request status"
     }
 }
 
 # Test 10: Test access to emails with different verification types
-Write-Host "`n10. Testing access to emails with different verification types..." -ForegroundColor Cyan
+Write-Output "`n10. Testing access to emails with different verification types..."
 
 # Note: These tests will likely fail due to geolocation restrictions
 # This is expected behavior as the tests are running from a different location
 # than the specified verification requirements
 
-Write-Host "   Testing access to country-only verification email..." -ForegroundColor Yellow
+Write-Output "   Testing access to country-only verification email..."
 $countryOnlyAccess = Invoke-ApiRequest -Method "GET" -Endpoint "/api/email/view/$countryOnlyEmailId" -Headers @{ "Authorization" = "Bearer $token" }
 
 if ($countryOnlyAccess.Success) {
-    Write-Host "   ✅ Country-only verification email access successful" -ForegroundColor Green
+    Write-Output "   ✅ Country-only verification email access successful"
 } else {
-    Write-Host "   ❌ Country-only verification email access failed: $($countryOnlyAccess.Error)" -ForegroundColor Red
-    Write-Host "   Note: This is expected if your location doesn't match 'US'" -ForegroundColor Yellow
+    Write-Output "   ❌ Country-only verification email access failed: $($countryOnlyAccess.Error)"
+    Write-Output "   Note: This is expected if your location doesn't match 'US'"
 }
 
-Write-Host "   Testing access to city-only verification email..." -ForegroundColor Yellow
+Write-Output "   Testing access to city-only verification email..."
 $cityOnlyAccess = Invoke-ApiRequest -Method "GET" -Endpoint "/api/email/view/$cityOnlyEmailId" -Headers @{ "Authorization" = "Bearer $token" }
 
 if ($cityOnlyAccess.Success) {
-    Write-Host "   ✅ City-only verification email access successful" -ForegroundColor Green
+    Write-Output "   ✅ City-only verification email access successful"
 } else {
-    Write-Host "   ❌ City-only verification email access failed: $($cityOnlyAccess.Error)" -ForegroundColor Red
-    Write-Host "   Note: This is expected if your location doesn't match 'New York'" -ForegroundColor Yellow
+    Write-Output "   ❌ City-only verification email access failed: $($cityOnlyAccess.Error)"
+    Write-Output "   Note: This is expected if your location doesn't match 'New York'"
 }
 
-Write-Host "   Testing access to city+country verification email..." -ForegroundColor Yellow
+Write-Output "   Testing access to city+country verification email..."
 $cityCountryAccess = Invoke-ApiRequest -Method "GET" -Endpoint "/api/email/view/$cityCountryEmailId" -Headers @{ "Authorization" = "Bearer $token" }
 
 if ($cityCountryAccess.Success) {
-    Write-Host "   ✅ City+country verification email access successful" -ForegroundColor Green
+    Write-Output "   ✅ City+country verification email access successful"
 } else {
-    Write-Host "   ❌ City+country verification email access failed: $($cityCountryAccess.Error)" -ForegroundColor Red
-    Write-Host "   Note: This is expected if your location doesn't match 'Los Angeles, US'" -ForegroundColor Yellow
+    Write-Output "   ❌ City+country verification email access failed: $($cityCountryAccess.Error)"
+    Write-Output "   Note: This is expected if your location doesn't match 'Los Angeles, US'"
 }
 
-Write-Host "   Testing access to no verification email..." -ForegroundColor Yellow
+Write-Output "   Testing access to no verification email..."
 $noVerificationAccess = Invoke-ApiRequest -Method "GET" -Endpoint "/api/email/view/$noVerificationEmailId" -Headers @{ "Authorization" = "Bearer $token" }
 
 if ($noVerificationAccess.Success) {
-    Write-Host "   ✅ No verification email access successful" -ForegroundColor Green
+    Write-Output "   ✅ No verification email access successful"
 } else {
-    Write-Host "   ❌ No verification email access failed: $($noVerificationAccess.Error)" -ForegroundColor Red
+    Write-Output "   ❌ No verification email access failed: $($noVerificationAccess.Error)"
 }
 
 # Test 11: Test case-insensitive and whitespace handling
-Write-Host "`n11. Testing case-insensitive and whitespace handling..." -ForegroundColor Cyan
+Write-Output "`n11. Testing case-insensitive and whitespace handling..."
 $caseInsensitiveEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - Case Insensitive"
@@ -275,23 +275,23 @@ $caseInsensitiveEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/s
 }
 
 if (-not $caseInsensitiveEmail.Success) {
-    Write-Host "❌ Failed to send case-insensitive test email: $($caseInsensitiveEmail.Error)" -ForegroundColor Red
+    Write-Output "❌ Failed to send case-insensitive test email: $($caseInsensitiveEmail.Error)"
 } else {
-    Write-Host "✅ Case-insensitive test email sent successfully" -ForegroundColor Green
-    Write-Host "   Note: The system should normalize '  NEW YORK  ' to 'new york' and 'us' to 'us'" -ForegroundColor Yellow
+    Write-Output "✅ Case-insensitive test email sent successfully"
+    Write-Output "   Note: The system should normalize '  NEW YORK  ' to 'new york' and 'us' to 'us'"
 }
 
-Write-Host "`n=== Test Summary ===" -ForegroundColor Green
-Write-Host "✅ Enhanced geolocation verification tests completed" -ForegroundColor Green
-Write-Host "🔒 Verification type validation working correctly" -ForegroundColor Yellow
-Write-Host "🛡️ Field validation working correctly" -ForegroundColor Yellow
-Write-Host "🌐 Integration with existing security layers working" -ForegroundColor Yellow
-Write-Host "📧 Email sending with verification types working" -ForegroundColor Yellow
+Write-Output "`n=== Test Summary ==="
+Write-Output "✅ Enhanced geolocation verification tests completed"
+Write-Output "🔒 Verification type validation working correctly"
+Write-Output "🛡️ Field validation working correctly"
+Write-Output "🌐 Integration with existing security layers working"
+Write-Output "📧 Email sending with verification types working"
 
-Write-Host "`nNote: The enhanced geolocation verification feature is now active with:" -ForegroundColor Cyan
-Write-Host "- Four verification types: 'none', 'country', 'city', 'city_country'" -ForegroundColor White
-Write-Host "- Case-insensitive and whitespace-normalized matching" -ForegroundColor White
-Write-Host "- Integration with existing brute-force and IP tracking" -ForegroundColor White
-Write-Host "- Generic 'Access denied' messages for security" -ForegroundColor White
-Write-Host "- Comprehensive validation of verification fields" -ForegroundColor White
-Write-Host "- Backward compatibility with existing geolocation restrictions" -ForegroundColor White
+Write-Output "`nNote: The enhanced geolocation verification feature is now active with:"
+Write-Output "- Four verification types: 'none', 'country', 'city', 'city_country'"
+Write-Output "- Case-insensitive and whitespace-normalized matching"
+Write-Output "- Integration with existing brute-force and IP tracking"
+Write-Output "- Generic 'Access denied' messages for security"
+Write-Output "- Comprehensive validation of verification fields"
+Write-Output "- Backward compatibility with existing geolocation restrictions"

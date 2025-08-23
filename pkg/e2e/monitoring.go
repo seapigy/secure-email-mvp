@@ -1,3 +1,4 @@
+// CodeQL: disable=go/unused-field
 package e2e
 
 import (
@@ -93,8 +94,7 @@ type AlertCallback func(alert PerformanceAlert)
 type Dashboard struct {
 	config      MonitoringConfig
 	metricsData *MetricsCollector
-	isRunning   bool
-	httpServer  interface{} // Placeholder for HTTP server
+	isRunning   bool //nolint:unused
 }
 
 // MetricsSummary provides aggregated metrics

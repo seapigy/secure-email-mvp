@@ -1,48 +1,48 @@
 # Secure Email MVP - Environment Setup Script
 # This script helps users set up their environment securely
 
-Write-Host "🔒 Secure Email MVP - Environment Setup" -ForegroundColor Green
-Write-Host "================================================" -ForegroundColor Green
+Write-Output "🔒 Secure Email MVP - Environment Setup"
+Write-Output "================================================"
 
 # Check if .env exists
 if (Test-Path ".env") {
-    Write-Host "⚠️  WARNING: .env file already exists!" -ForegroundColor Yellow
-    Write-Host "   This file contains sensitive credentials and should be kept secure." -ForegroundColor Yellow
-    Write-Host "   Make sure it's in your .gitignore (it should be)." -ForegroundColor Yellow
-    Write-Host ""
+    Write-Output "⚠️  WARNING: .env file already exists!"
+    Write-Output "   This file contains sensitive credentials and should be kept secure."
+    Write-Output "   Make sure it's in your .gitignore (it should be)."
+    Write-Output ""
 }
 
 # Create .env from template if it doesn't exist
 if (-not (Test-Path ".env")) {
-    Write-Host "📝 Creating .env file from template..." -ForegroundColor Cyan
+    Write-Output "📝 Creating .env file from template..."
     Copy-Item "env.example" ".env"
-    Write-Host "✅ Created .env file from env.example" -ForegroundColor Green
-    Write-Host ""
+    Write-Output "✅ Created .env file from env.example"
+    Write-Output ""
 }
 
 # Generate a secure JWT secret
-Write-Host "🔑 Generating secure JWT secret..." -ForegroundColor Cyan
+Write-Output "🔑 Generating secure JWT secret..."
 $jwtSecret = [System.Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
-Write-Host "✅ Generated JWT secret: $jwtSecret" -ForegroundColor Green
-Write-Host ""
+Write-Output "✅ Generated JWT secret: $jwtSecret"
+Write-Output ""
 
 # Update .env with the JWT secret
 if (Test-Path ".env") {
     $envContent = Get-Content ".env"
     $updatedContent = $envContent -replace "JWT_SECRET=your_32_byte_jwt_secret_here", "JWT_SECRET=$jwtSecret"
     Set-Content ".env" $updatedContent
-    Write-Host "✅ Updated .env with generated JWT secret" -ForegroundColor Green
-    Write-Host ""
+    Write-Output "✅ Updated .env with generated JWT secret"
+    Write-Output ""
 }
 
-Write-Host "📋 Next Steps:" -ForegroundColor Yellow
-Write-Host "1. Edit .env file with your Cloudflare R2 credentials" -ForegroundColor White
-Write-Host "2. Never commit .env to Git (it's in .gitignore)" -ForegroundColor White
-Write-Host "3. Keep your credentials secure" -ForegroundColor White
-Write-Host ""
-Write-Host "🔒 Security Checklist:" -ForegroundColor Green
-Write-Host "✅ .env is in .gitignore" -ForegroundColor Green
-Write-Host "✅ JWT secret generated" -ForegroundColor Green
-Write-Host "⚠️  Add your R2 credentials to .env" -ForegroundColor Yellow
-Write-Host "⚠️  Never share your .env file" -ForegroundColor Yellow
-Write-Host ""
+Write-Output "📋 Next Steps:"
+Write-Output "1. Edit .env file with your Cloudflare R2 credentials"
+Write-Output "2. Never commit .env to Git (it's in .gitignore)"
+Write-Output "3. Keep your credentials secure"
+Write-Output ""
+Write-Output "🔒 Security Checklist:"
+Write-Output "✅ .env is in .gitignore"
+Write-Output "✅ JWT secret generated"
+Write-Output "⚠️  Add your R2 credentials to .env"
+Write-Output "⚠️  Never share your .env file"
+Write-Output ""

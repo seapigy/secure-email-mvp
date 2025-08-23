@@ -82,7 +82,8 @@ func setupTestSuite(t *testing.T) *SecurityIntegrationTestSuite {
 	// Create test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Add user context for testing
-		ctx := context.WithValue(r.Context(), "user_id", userID)
+		type testContextKey string
+		ctx := context.WithValue(r.Context(), testContextKey("user_id"), userID)
 		r = r.WithContext(ctx)
 
 		// Route requests to appropriate handlers

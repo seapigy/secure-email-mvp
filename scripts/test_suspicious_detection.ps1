@@ -19,15 +19,15 @@ function Invoke-ApiRequest {
         [string]$Body = "",
         [string]$Token = ""
     )
-    
+
     $headers = @{
         "Content-Type" = "application/json"
     }
-    
+
     if ($Token) {
         $headers["Authorization"] = "Bearer $Token"
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$BaseUrl$Endpoint" -Method $Method -Headers $headers -Body $Body -ErrorAction Stop
         return @{
@@ -41,7 +41,7 @@ function Invoke-ApiRequest {
             $reader = New-Object System.IO.StreamReader($errorResponse.GetResponseStream())
             $errorBody = $reader.ReadToEnd()
             $reader.Close()
-            
+
             return @{
                 Success = $false
                 StatusCode = $errorResponse.StatusCode
@@ -57,56 +57,56 @@ function Invoke-ApiRequest {
 
 # Test user registration and login
 function Test-UserAuth {
-    Write-Host "Testing user authentication..." -ForegroundColor Green
-    
+    Write-Output "Testing user authentication..."
+
     # Register user
     $registerBody = @{
         email = $TestEmail
         password = $TestPassword
     } | ConvertTo-Json
-    
+
     $registerResult = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/signup" -Body $registerBody
-    
+
     if (-not $registerResult.Success) {
-        Write-Host "User registration failed: $($registerResult.Error)" -ForegroundColor Red
+        Write-Output "User registration failed: $($registerResult.Error)"
         return $null
     }
-    
-    Write-Host "User registered successfully" -ForegroundColor Green
-    
+
+    Write-Output "User registered successfully"
+
     # Login user
     $loginBody = @{
         email = $TestEmail
         password = $TestPassword
     } | ConvertTo-Json
-    
+
     $loginResult = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/login" -Body $loginBody
-    
+
     if (-not $loginResult.Success) {
-        Write-Host "User login failed: $($loginResult.Error)" -ForegroundColor Red
+        Write-Output "User login failed: $($loginResult.Error)"
         return $null
     }
-    
-    Write-Host "User logged in successfully" -ForegroundColor Green
+
+    Write-Output "User logged in successfully"
     return $loginResult.Data.token
 }
 
 # Test suspicious access detection preferences
 function Test-SuspiciousPreferences {
     param([string]$Token)
-    
-    Write-Host "Testing suspicious access detection preferences..." -ForegroundColor Green
-    
+
+    Write-Output "Testing suspicious access detection preferences..."
+
     # Get user preferences
     $getPrefsResult = Invoke-ApiRequest -Method "GET" -Endpoint "/api/suspicious/preferences" -Token $Token
-    
+
     if (-not $getPrefsResult.Success) {
-        Write-Host "Failed to get user preferences: $($getPrefsResult.Error)" -ForegroundColor Red
+        Write-Output "Failed to get user preferences: $($getPrefsResult.Error)"
         return $false
     }
-    
-    Write-Host "Current preferences: $($getPrefsResult.Data | ConvertTo-Json)" -ForegroundColor Yellow
-    
+
+    Write-Output "Current preferences: $($getPrefsResult.Data | ConvertTo-Json)"
+
     # Update user preferences
     $updatePrefsBody = @{
         enable_suspicious_detection = $true
@@ -114,221 +114,223 @@ function Test-SuspiciousPreferences {
         auto_flag_suspicious_emails = $true
         minimum_severity_for_notification = "medium"
     } | ConvertTo-Json
-    
+
     $updatePrefsResult = Invoke-ApiRequest -Method "PUT" -Endpoint "/api/suspicious/preferences" -Body $updatePrefsBody -Token $Token
-    
+
     if (-not $updatePrefsResult.Success) {
-        Write-Host "Failed to update user preferences: $($updatePrefsResult.Error)" -ForegroundColor Red
+        Write-Output "Failed to update user preferences: $($updatePrefsResult.Error)"
         return $false
     }
-    
-    Write-Host "User preferences updated successfully" -ForegroundColor Green
+
+    Write-Output "User preferences updated successfully"
     return $true
 }
 
 # Test detection rules
 function Test-DetectionRules {
     param([string]$Token)
-    
-    Write-Host "Testing detection rules..." -ForegroundColor Green
-    
+
+    Write-Output "Testing detection rules..."
+
     $rulesResult = Invoke-ApiRequest -Method "GET" -Endpoint "/api/suspicious/rules" -Token $Token
-    
+
     if (-not $rulesResult.Success) {
-        Write-Host "Failed to get detection rules: $($rulesResult.Error)" -ForegroundColor Red
+        Write-Output "Failed to get detection rules: $($rulesResult.Error)"
         return $false
     }
-    
-    Write-Host "Detection rules: $($rulesResult.Data | ConvertTo-Json)" -ForegroundColor Yellow
-    
+
+    Write-Output "Detection rules: $($rulesResult.Data | ConvertTo-Json)"
+
     if ($rulesResult.Data.Count -eq 0) {
-        Write-Host "No detection rules found" -ForegroundColor Red
+        Write-Output "No detection rules found"
         return $false
     }
-    
-    Write-Host "Detection rules retrieved successfully" -ForegroundColor Green
+
+    Write-Output "Detection rules retrieved successfully"
     return $true
 }
 
 # Test suspicious emails list
 function Test-SuspiciousEmails {
     param([string]$Token)
-    
-    Write-Host "Testing suspicious emails list..." -ForegroundColor Green
-    
+
+    Write-Output "Testing suspicious emails list..."
+
     $emailsResult = Invoke-ApiRequest -Method "GET" -Endpoint "/api/suspicious/emails" -Token $Token
-    
+
     if (-not $emailsResult.Success) {
-        Write-Host "Failed to get suspicious emails: $($emailsResult.Error)" -ForegroundColor Red
+        Write-Output "Failed to get suspicious emails: $($emailsResult.Error)"
         return $false
     }
-    
-    Write-Host "Suspicious emails: $($emailsResult.Data | ConvertTo-Json)" -ForegroundColor Yellow
-    Write-Host "Suspicious emails retrieved successfully" -ForegroundColor Green
+
+    Write-Output "Suspicious emails: $($emailsResult.Data | ConvertTo-Json)"
+    Write-Output "Suspicious emails retrieved successfully"
     return $true
 }
 
 # Test suspicious activity for a specific email
 function Test-SuspiciousActivity {
     param([string]$Token, [string]$EmailID)
-    
-    Write-Host "Testing suspicious activity for email $EmailID..." -ForegroundColor Green
-    
+
+    Write-Output "Testing suspicious activity for email $EmailID..."
+
     $activityResult = Invoke-ApiRequest -Method "GET" -Endpoint "/api/suspicious/activity/$EmailID" -Token $Token
-    
+
     if (-not $activityResult.Success) {
-        Write-Host "Failed to get suspicious activity: $($activityResult.Error)" -ForegroundColor Red
+        Write-Output "Failed to get suspicious activity: $($activityResult.Error)"
         return $false
     }
-    
-    Write-Host "Suspicious activity: $($activityResult.Data | ConvertTo-Json)" -ForegroundColor Yellow
-    Write-Host "Suspicious activity retrieved successfully" -ForegroundColor Green
+
+    Write-Output "Suspicious activity: $($activityResult.Data | ConvertTo-Json)"
+    Write-Output "Suspicious activity retrieved successfully"
     return $true
 }
 
 # Test clearing suspicious flag
 function Test-ClearSuspiciousFlag {
     param([string]$Token, [string]$EmailID)
-    
-    Write-Host "Testing clear suspicious flag for email $EmailID..." -ForegroundColor Green
-    
+
+    Write-Output "Testing clear suspicious flag for email $EmailID..."
+
     $clearBody = @{
         resolution_notes = "Test resolution - false positive"
     } | ConvertTo-Json
-    
+
     $clearResult = Invoke-ApiRequest -Method "POST" -Endpoint "/api/suspicious/clear-flag/$EmailID" -Body $clearBody -Token $Token
-    
+
     if (-not $clearResult.Success) {
-        Write-Host "Failed to clear suspicious flag: $($clearResult.Error)" -ForegroundColor Red
+        Write-Output "Failed to clear suspicious flag: $($clearResult.Error)"
         return $false
     }
-    
-    Write-Host "Suspicious flag cleared successfully" -ForegroundColor Green
+
+    Write-Output "Suspicious flag cleared successfully"
     return $true
 }
 
 # Test resolving detection event
 function Test-ResolveDetection {
     param([string]$Token, [string]$DetectionID)
-    
-    Write-Host "Testing resolve detection event $DetectionID..." -ForegroundColor Green
-    
+
+    Write-Output "Testing resolve detection event $DetectionID..."
+
     $resolveBody = @{
         resolution_notes = "Test resolution - false positive"
     } | ConvertTo-Json
-    
+
     $resolveResult = Invoke-ApiRequest -Method "POST" -Endpoint "/api/suspicious/resolve/$DetectionID" -Body $resolveBody -Token $Token
-    
+
     if (-not $resolveResult.Success) {
-        Write-Host "Failed to resolve detection event: $($resolveResult.Error)" -ForegroundColor Red
+        Write-Output "Failed to resolve detection event: $($resolveResult.Error)"
         return $false
     }
-    
-    Write-Host "Detection event resolved successfully" -ForegroundColor Green
+
+    Write-Output "Detection event resolved successfully"
     return $true
 }
 
 # Test creating and accessing emails to trigger suspicious detection
 function Test-SuspiciousDetection {
     param([string]$Token)
-    
-    Write-Host "Testing suspicious access detection..." -ForegroundColor Green
-    
+
+    Write-Output "Testing suspicious access detection..."
+
     # Create a test email
     $createEmailBody = @{
         recipient = "recipient@example.com"
         subject = "Test Email for Suspicious Detection"
         content = "This is a test email for suspicious access detection testing."
     } | ConvertTo-Json
-    
+
     $createResult = Invoke-ApiRequest -Method "POST" -Endpoint "/api/emails/send" -Body $createEmailBody -Token $Token
-    
+
     if (-not $createResult.Success) {
-        Write-Host "Failed to create test email: $($createResult.Error)" -ForegroundColor Red
+        Write-Output "Failed to create test email: $($createResult.Error)"
         return $null
     }
-    
+
     $emailID = $createResult.Data.email_id
-    Write-Host "Test email created with ID: $emailID" -ForegroundColor Green
-    
+    Write-Output "Test email created with ID: $emailID"
+
     # Simulate multiple failed access attempts to trigger detection
-    Write-Host "Simulating multiple failed access attempts..." -ForegroundColor Yellow
-    
+    Write-Output "Simulating multiple failed access attempts..."
+
     for ($i = 1; $i -le 4; $i++) {
-        Write-Host "Attempt $i..." -ForegroundColor Yellow
-        
+        Write-Output "Attempt $i..."
+
         # Try to access the email with wrong credentials or from different IPs
         $accessResult = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/get" -Body "{}" -Token $Token
-        
+
         # Wait a bit between attempts
         Start-Sleep -Seconds 2
     }
-    
+
     # Check if suspicious activity was detected
     Start-Sleep -Seconds 5  # Give time for detection to process
-    
+
     $activityResult = Invoke-ApiRequest -Method "GET" -Endpoint "/api/suspicious/activity/$emailID" -Token $Token
-    
+
     if ($activityResult.Success) {
-        Write-Host "Suspicious activity detected: $($activityResult.Data | ConvertTo-Json)" -ForegroundColor Green
-        
+        Write-Output "Suspicious activity detected: $($activityResult.Data | ConvertTo-Json)"
+
         # Test clearing the suspicious flag
         Test-ClearSuspiciousFlag -Token $Token -EmailID $emailID
-        
+
         return $emailID
     } else {
-        Write-Host "No suspicious activity detected yet" -ForegroundColor Yellow
+        Write-Output "No suspicious activity detected yet"
         return $emailID
     }
 }
 
 # Main test execution
 function Main {
-    Write-Host "Starting Suspicious Access Detection Integration Tests" -ForegroundColor Cyan
-    Write-Host "Base URL: $BaseUrl" -ForegroundColor Cyan
-    Write-Host "Test Email: $TestEmail" -ForegroundColor Cyan
-    Write-Host "==================================================" -ForegroundColor Cyan
-    
+    Write-Output "Starting Suspicious Access Detection Integration Tests"
+    Write-Output "Base URL: $BaseUrl"
+    Write-Output "Test Email: $TestEmail"
+    Write-Output "=================================================="
+
     # Test user authentication
     $token = Test-UserAuth
     if (-not $token) {
-        Write-Host "Authentication failed. Exiting tests." -ForegroundColor Red
+        Write-Output "Authentication failed. Exiting tests."
         return
     }
-    
-    Write-Host "Authentication successful. Token: $($token.Substring(0, 20))..." -ForegroundColor Green
-    
+
+    Write-Output "Authentication successful. Token: $($token.Substring(0, 20))..."
+
     # Test suspicious detection preferences
     if (-not (Test-SuspiciousPreferences -Token $token)) {
-        Write-Host "Suspicious preferences test failed" -ForegroundColor Red
+        Write-Output "Suspicious preferences test failed"
         return
     }
-    
+
     # Test detection rules
     if (-not (Test-DetectionRules -Token $token)) {
-        Write-Host "Detection rules test failed" -ForegroundColor Red
+        Write-Output "Detection rules test failed"
         return
     }
-    
+
     # Test suspicious emails list
     if (-not (Test-SuspiciousEmails -Token $token)) {
-        Write-Host "Suspicious emails test failed" -ForegroundColor Red
+        Write-Output "Suspicious emails test failed"
         return
     }
-    
+
     # Test suspicious detection
     $emailID = Test-SuspiciousDetection -Token $token
     if ($emailID) {
         # Test suspicious activity for the email
         Test-SuspiciousActivity -Token $token -EmailID $emailID
     }
-    
-    Write-Host "==================================================" -ForegroundColor Cyan
-    Write-Host "Suspicious Access Detection Integration Tests Completed" -ForegroundColor Cyan
+
+    Write-Output "=================================================="
+    Write-Output "Suspicious Access Detection Integration Tests Completed"
 }
 
 # Run the tests
 Main
+
+
 
 
 

@@ -27,10 +27,10 @@ function Invoke-ApiRequest {
         [object]$Body = $null,
         [hashtable]$Headers = @{}
     )
-    
+
     $uri = "$BaseUrl$Endpoint"
     $headers["Content-Type"] = "application/json"
-    
+
     try {
         if ($Body) {
             $jsonBody = $Body | ConvertTo-Json -Depth 10
@@ -63,21 +63,21 @@ function Invoke-ApiRequest {
 
 function Test-SignupWithWeakPassword {
     Write-ColorOutput "`n=== Testing Signup with Weak Password ===" $Yellow
-    
+
     $testEmail = "testuser$(Get-Random)@securesystem.email"
     $weakPassword = "weak"
     $fallbackEmail = "fallback$(Get-Random)@example.com"
-    
+
     $signupData = @{
         email = $testEmail
         password = $weakPassword
         fallback_email = $fallbackEmail
     }
-    
+
     Write-ColorOutput "Attempting signup with weak password: '$weakPassword'" $White
-    
+
     $response = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/signup" -Body $signupData
-    
+
     if ($response.StatusCode -eq 400 -and $response.Error -like "*security requirements*") {
         Write-ColorOutput "[SUCCESS] Signup correctly blocked due to weak password" $Green
         return $true
@@ -89,21 +89,21 @@ function Test-SignupWithWeakPassword {
 
 function Test-SignupWithCommonPassword {
     Write-ColorOutput "`n=== Testing Signup with Common Password ===" $Yellow
-    
+
     $testEmail = "testuser$(Get-Random)@securesystem.email"
     $commonPassword = "password"
     $fallbackEmail = "fallback$(Get-Random)@example.com"
-    
+
     $signupData = @{
         email = $testEmail
         password = $commonPassword
         fallback_email = $fallbackEmail
     }
-    
+
     Write-ColorOutput "Attempting signup with common password: '$commonPassword'" $White
-    
+
     $response = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/signup" -Body $signupData
-    
+
     if ($response.StatusCode -eq 400 -and $response.Error -like "*security requirements*") {
         Write-ColorOutput "[SUCCESS] Signup correctly blocked due to common password" $Green
         return $true
@@ -115,21 +115,21 @@ function Test-SignupWithCommonPassword {
 
 function Test-SignupWithStrongPassword {
     Write-ColorOutput "`n=== Testing Signup with Strong Password ===" $Yellow
-    
+
     $testEmail = "testuser$(Get-Random)@securesystem.email"
     $strongPassword = "SecurePassword123!"
     $fallbackEmail = "fallback$(Get-Random)@example.com"
-    
+
     $signupData = @{
         email = $testEmail
         password = $strongPassword
         fallback_email = $fallbackEmail
     }
-    
+
     Write-ColorOutput "Attempting signup with strong password: '$strongPassword'" $White
-    
+
     $response = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/signup" -Body $signupData
-    
+
     if ($response.Success) {
         Write-ColorOutput "[SUCCESS] Signup successful with strong password" $Green
         return $testEmail
@@ -141,7 +141,7 @@ function Test-SignupWithStrongPassword {
 
 function Test-SignupWithMissingRequirements {
     Write-ColorOutput "`n=== Testing Signup with Missing Requirements ===" $Yellow
-    
+
     $testCases = @(
         @{ Password = "nouppercase123!"; Description = "No uppercase letters" },
         @{ Password = "NOLOWERCASE123!"; Description = "No lowercase letters" },
@@ -149,23 +149,23 @@ function Test-SignupWithMissingRequirements {
         @{ Password = "NoSpecialChars123"; Description = "No special characters" },
         @{ Password = "Short1!"; Description = "Too short" }
     )
-    
+
     $allPassed = $true
-    
+
     foreach ($testCase in $testCases) {
         $testEmail = "testuser$(Get-Random)@securesystem.email"
         $fallbackEmail = "fallback$(Get-Random)@example.com"
-        
+
         $signupData = @{
             email = $testEmail
             password = $testCase.Password
             fallback_email = $fallbackEmail
         }
-        
+
         Write-ColorOutput "Testing: $($testCase.Description) - '$($testCase.Password)'" $White
-        
+
         $response = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/signup" -Body $signupData
-        
+
         if ($response.StatusCode -eq 400 -and $response.Error -like "*security requirements*") {
             Write-ColorOutput "[SUCCESS] Correctly blocked: $($testCase.Description)" $Green
         } else {
@@ -173,30 +173,30 @@ function Test-SignupWithMissingRequirements {
             $allPassed = $false
         }
     }
-    
+
     return $allPassed
 }
 
 function Test-PasswordResetValidation {
     Write-ColorOutput "`n=== Testing Password Reset Validation ===" $Yellow
-    
+
     # First create a user with strong password
     $testEmail = "testuser$(Get-Random)@securesystem.email"
     $strongPassword = "SecurePassword123!"
     $fallbackEmail = "fallback$(Get-Random)@example.com"
-    
+
     $signupData = @{
         email = $testEmail
         password = $strongPassword
         fallback_email = $fallbackEmail
     }
-    
+
     $signupResponse = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/signup" -Body $signupData
     if (-not $signupResponse.Success) {
         Write-ColorOutput "[ERROR] Failed to create test user for password reset test" $Red
         return $false
     }
-    
+
     # Test password reset with weak password
     $weakPassword = "weak"
     $resetData = @{
@@ -204,11 +204,11 @@ function Test-PasswordResetValidation {
         new_password = $weakPassword
         reset_token = "fake-token"
     }
-    
+
     Write-ColorOutput "Testing password reset with weak password: '$weakPassword'" $White
-    
+
     $response = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/reset-password" -Body $resetData
-    
+
     if ($response.StatusCode -eq 400 -and $response.Error -like "*security requirements*") {
         Write-ColorOutput "[SUCCESS] Password reset correctly blocked due to weak password" $Green
         return $true
@@ -220,13 +220,13 @@ function Test-PasswordResetValidation {
 
 function Test-PasswordConfiguration {
     Write-ColorOutput "`n=== Testing Password Configuration ===" $Yellow
-    
+
     if ($ApiKey) {
         Write-ColorOutput "[SUCCESS] HIBP_API_KEY is configured" $Green
     } else {
         Write-ColorOutput "[WARNING] HIBP_API_KEY is not configured - breach checking will be limited" $Yellow
     }
-    
+
     Write-ColorOutput "[INFO] Password requirements:" $White
     Write-ColorOutput "  - Minimum length: 12 characters" $White
     Write-ColorOutput "  - Must contain uppercase letters" $White
@@ -239,9 +239,9 @@ function Test-PasswordConfiguration {
 
 function Test-HealthCheck {
     Write-ColorOutput "`n=== Testing Health Check ===" $Yellow
-    
+
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/health"
-    
+
     if ($response.Success) {
         Write-ColorOutput "[SUCCESS] Health check passed" $Green
         return $true
@@ -291,6 +291,8 @@ Write-ColorOutput "  - Password reset validation: $(if ($resetTest) { '[SUCCESS]
 
 Write-ColorOutput "`nNote: Breach checking requires a valid HIBP API key to be fully tested." $White
 Write-ColorOutput "Get your free API key at: https://haveibeenpwned.com/API/Key" $White
+
+
 
 
 

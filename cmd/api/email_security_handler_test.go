@@ -7,34 +7,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
 	"secure-email-mvp/pkg/email"
 
-	"github.com/dgrijalva/jwt-go"
 	_ "modernc.org/sqlite"
 )
-
-// Helper function to generate JWT token for email security tests
-func generateEmailSecurityTestToken(t *testing.T, userID, userEmail string) string {
-	// Set JWT secrets for testing
-	os.Setenv("JWT_SECRET", "test-secret-key-for-jwt-signing")
-	os.Setenv("JWT_ACCESS_SECRET", "test-access-secret-key-for-testing-only")
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": userID,
-		"email":   userEmail,
-		"exp":     time.Now().Add(24 * time.Hour).Unix(),
-		"iat":     time.Now().Unix(),
-	})
-	tokenString, err := token.SignedString([]byte("test-secret-key-for-jwt-signing"))
-	if err != nil {
-		t.Fatalf("Failed to generate JWT token: %v", err)
-	}
-	return tokenString
-}
 
 // TestUpdateEmailSecurityHandler tests the POST /api/email/security/{id} endpoint
 func TestUpdateEmailSecurityHandler(t *testing.T) {

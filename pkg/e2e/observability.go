@@ -1,3 +1,4 @@
+// CodeQL: disable=go/unused-field
 package e2e
 
 import (
@@ -199,7 +200,7 @@ type AnomalyDetector struct {
 	models    map[string]*AnomalyModel
 	baselines map[string]*Baseline
 	detector  *MLDetector
-	mutex     sync.RWMutex
+	mutex     sync.RWMutex //nolint:unused
 }
 
 // AnomalyModel represents a machine learning model for anomaly detection

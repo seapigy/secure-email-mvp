@@ -1,5 +1,5 @@
 # Simple test for GET /api/email/{id} endpoint
-Write-Host "=== Simple GET Endpoint Test ===" -ForegroundColor Green
+Write-Output "=== Simple GET Endpoint Test ==="
 
 # Test configuration
 $baseUrl = "http://localhost:8080"
@@ -7,7 +7,7 @@ $testEmail = "newtest@securesystem.email"
 $testPassword = "TestPassword123!"
 
 # Step 1: Generate TOTP and authenticate
-Write-Host "Step 1: Authenticating..." -ForegroundColor Yellow
+Write-Output "Step 1: Authenticating..."
 $totpCode = & .\totp_generator.exe "67TD4B73KBSUZ7TYIKAQSY7RFZEPJQXN"
 $loginData = @{
     email = $testEmail
@@ -21,10 +21,10 @@ $headers = @{
     "Authorization" = "Bearer $token"
     "Content-Type" = "application/json"
 }
-Write-Host "✅ Authentication successful" -ForegroundColor Green
+Write-Output "✅ Authentication successful"
 
 # Step 2: Send test email
-Write-Host "Step 2: Sending test email..." -ForegroundColor Yellow
+Write-Output "Step 2: Sending test email..."
 $emailData = @{
     recipient = "test4@example.com"
     subject = "Simple Test Email"
@@ -33,46 +33,46 @@ $emailData = @{
 
 $response = Invoke-RestMethod -Uri "$baseUrl/api/email/send" -Method POST -Body $emailData -Headers $headers
 $blobId = $response.blob_id
-Write-Host "✅ Email sent successfully" -ForegroundColor Green
-Write-Host "Blob ID: $blobId" -ForegroundColor Gray
+Write-Output "✅ Email sent successfully"
+Write-Output "Blob ID: $blobId"
 
 # Step 3: Get email ID from database
-Write-Host "Step 3: Getting email ID..." -ForegroundColor Yellow
+Write-Output "Step 3: Getting email ID..."
 $emailId = sqlite3 secure-email.db "SELECT email_id FROM emails WHERE encrypted_blob_url = '$blobId';"
-Write-Host "Email ID: $emailId" -ForegroundColor Gray
+Write-Output "Email ID: $emailId"
 
 # Step 4: Test GET endpoint
-Write-Host "Step 4: Testing GET endpoint..." -ForegroundColor Yellow
+Write-Output "Step 4: Testing GET endpoint..."
 try {
     $response = Invoke-RestMethod -Uri "$baseUrl/api/email/$emailId" -Method GET -Headers $headers
-    Write-Host "✅ GET endpoint successful!" -ForegroundColor Green
-    Write-Host "Response: $($response | ConvertTo-Json -Depth 3)" -ForegroundColor Gray
+    Write-Output "✅ GET endpoint successful!"
+    Write-Output "Response: $($response | ConvertTo-Json -Depth 3)"
 } catch {
-    Write-Host "❌ GET endpoint failed: $($_.Exception.Message)" -ForegroundColor Red
-    
+    Write-Output "❌ GET endpoint failed: $($_.Exception.Message)"
+
     # Try to get more error details
     if ($_.Exception.Response) {
         $statusCode = $_.Exception.Response.StatusCode
-        Write-Host "Status Code: $statusCode" -ForegroundColor Red
-        
+        Write-Output "Status Code: $statusCode"
+
         # Try to read response body
         try {
             $stream = $_.Exception.Response.GetResponseStream()
             $reader = New-Object System.IO.StreamReader($stream)
             $errorBody = $reader.ReadToEnd()
-            Write-Host "Error Body: $errorBody" -ForegroundColor Red
+            Write-Output "Error Body: $errorBody"
         } catch {
-            Write-Host "Could not read error body" -ForegroundColor Yellow
+            Write-Output "Could not read error body"
         }
     }
 }
 
 # Step 5: Verify database record
-Write-Host "Step 5: Verifying database record..." -ForegroundColor Yellow
+Write-Output "Step 5: Verifying database record..."
 $dbResult = sqlite3 secure-email.db "SELECT email_id, sender_id, recipient, subject, encrypted_blob_url FROM emails WHERE email_id = '$emailId';"
-Write-Host "Database record: $dbResult" -ForegroundColor Gray
+Write-Output "Database record: $dbResult"
 
 # Step 6: Test JOIN query manually
-Write-Host "Step 6: Testing JOIN query manually..." -ForegroundColor Yellow
+Write-Output "Step 6: Testing JOIN query manually..."
 $joinResult = sqlite3 secure-email.db "SELECT e.encrypted_blob_url, e.encrypted_key, e.encryption_nonce, e.encryption_auth_tag, e.compression_algo, e.sender_id, e.recipient, e.subject, e.created_at, u.email as sender_email FROM emails e JOIN users u ON e.sender_id = u.id WHERE e.email_id = '$emailId';"
-Write-Host "JOIN query result: $joinResult" -ForegroundColor Gray
+Write-Output "JOIN query result: $joinResult"

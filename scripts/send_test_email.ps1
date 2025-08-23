@@ -14,5 +14,5 @@ $body = @{
 # Send the POST request and print the response
 $response = Invoke-RestMethod -Uri $uri -Method POST -ContentType "application/json" -Body $body
 
-Write-Host "API Response:"
-$response | ConvertTo-Json -Depth 5 
+Write-Output "API Response:"
+$response | ConvertTo-Json -Depth 5

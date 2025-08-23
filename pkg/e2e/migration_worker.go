@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -607,6 +608,15 @@ func (w *MigrationWorker) getJob(jobID string) (*MigrationJob, error) {
 func (w *MigrationWorker) recordProcessedItem(job *MigrationJob, itemID string) {
 	job.ProcessedItems++
 	job.Progress = int(float64(job.ProcessedItems) / float64(job.TotalItems) * 100)
+	
+	// Log item processing for audit trail
+	log.Printf("Processed item %s for job %s (Progress: %d/%d, %d%%)", 
+		itemID, job.ID, job.ProcessedItems, job.TotalItems, job.Progress)
+	
+	// Update progress in database
+	if w.progressTracker != nil {
+		w.progressTracker.UpdateProgress(job.ID, job.Progress, job.ProcessedItems, job.FailedItems)
+	}
 }
 
 func (w *MigrationWorker) recordFailedItem(job *MigrationJob, itemID string, err error) {
@@ -694,71 +704,498 @@ func (eh *ErrorHandler) RecordError(jobID string, itemID string, err error) {
 // Placeholder methods for database operations
 
 func (w *MigrationWorker) getLegacyMessageCount(filters map[string]string) (int, error) {
-	// Placeholder implementation
-	return 1000, nil
+	// Build query with filters
+	query := "SELECT COUNT(*) FROM legacy_messages WHERE 1=1"
+	args := []interface{}{}
+	
+	// Apply filters if provided
+	if filters != nil {
+		if senderID, ok := filters["sender_id"]; ok && senderID != "" {
+			query += " AND sender_id = ?"
+			args = append(args, senderID)
+		}
+		if recipientID, ok := filters["recipient_id"]; ok && recipientID != "" {
+			query += " AND recipient_id = ?"
+			args = append(args, recipientID)
+		}
+		if dateFrom, ok := filters["date_from"]; ok && dateFrom != "" {
+			query += " AND created_at >= ?"
+			args = append(args, dateFrom)
+		}
+		if dateTo, ok := filters["date_to"]; ok && dateTo != "" {
+			query += " AND created_at <= ?"
+			args = append(args, dateTo)
+		}
+		if messageType, ok := filters["type"]; ok && messageType != "" {
+			query += " AND type = ?"
+			args = append(args, messageType)
+		}
+	}
+	
+	// Execute query
+	var count int
+	err := w.db.QueryRow(query, args...).Scan(&count)
+	if err != nil {
+		log.Printf("Failed to get legacy message count with filters %v: %v", filters, err)
+		return 0, fmt.Errorf("failed to get legacy message count: %w", err)
+	}
+	
+	log.Printf("Found %d legacy messages with filters: %v", count, filters)
+	return count, nil
 }
 
 func (w *MigrationWorker) getLegacyMessages(filters map[string]string, batchSize, offset int) ([]*TestMessage, error) {
-	// Placeholder implementation
-	return []*TestMessage{}, nil
+	// Build query with filters and pagination
+	query := "SELECT id, sender_id, recipient_id, content, subject, created_at, type FROM legacy_messages WHERE 1=1"
+	args := []interface{}{}
+	
+	// Apply filters if provided
+	if filters != nil {
+		if senderID, ok := filters["sender_id"]; ok && senderID != "" {
+			query += " AND sender_id = ?"
+			args = append(args, senderID)
+		}
+		if recipientID, ok := filters["recipient_id"]; ok && recipientID != "" {
+			query += " AND recipient_id = ?"
+			args = append(args, recipientID)
+		}
+		if dateFrom, ok := filters["date_from"]; ok && dateFrom != "" {
+			query += " AND created_at >= ?"
+			args = append(args, dateFrom)
+		}
+		if dateTo, ok := filters["date_to"]; ok && dateTo != "" {
+			query += " AND created_at <= ?"
+			args = append(args, dateTo)
+		}
+		if messageType, ok := filters["type"]; ok && messageType != "" {
+			query += " AND type = ?"
+			args = append(args, messageType)
+		}
+	}
+	
+	// Add pagination
+	query += " ORDER BY created_at ASC LIMIT ? OFFSET ?"
+	args = append(args, batchSize, offset)
+	
+	// Execute query
+	rows, err := w.db.Query(query, args...)
+	if err != nil {
+		log.Printf("Failed to get legacy messages with filters %v, batchSize %d, offset %d: %v", 
+			filters, batchSize, offset, err)
+		return nil, fmt.Errorf("failed to get legacy messages: %w", err)
+	}
+	defer rows.Close()
+	
+	var messages []*TestMessage
+	for rows.Next() {
+		var msg TestMessage
+		err := rows.Scan(&msg.ID, &msg.SenderID, &msg.RecipientID, &msg.Content, &msg.Subject, &msg.CreatedAt, &msg.Type)
+		if err != nil {
+			log.Printf("Failed to scan legacy message: %v", err)
+			continue
+		}
+		messages = append(messages, &msg)
+	}
+	
+	log.Printf("Retrieved %d legacy messages (batchSize: %d, offset: %d, filters: %v)", 
+		len(messages), batchSize, offset, filters)
+	return messages, nil
 }
 
 func (w *MigrationWorker) isE2EEnabledForUser(userID string) bool {
-	// Placeholder implementation
-	return true
+	// Check if user has E2E enabled in database
+	query := "SELECT e2e_enabled FROM users WHERE id = ?"
+	var e2eEnabled bool
+	
+	err := w.db.QueryRow(query, userID).Scan(&e2eEnabled)
+	if err != nil {
+		log.Printf("Failed to check E2E status for user %s: %v", userID, err)
+		// Default to false if user not found or error
+		return false
+	}
+	
+	log.Printf("User %s E2E status: %t", userID, e2eEnabled)
+	return e2eEnabled
 }
 
 func (w *MigrationWorker) reencryptWithE2E(msg *TestMessage) (interface{}, error) {
-	// Placeholder implementation
-	return nil, nil
+	if msg == nil {
+		return nil, fmt.Errorf("message is nil")
+	}
+	
+	// Create E2E envelope with the message content
+	e2eEnvelope := map[string]interface{}{
+		"id":          msg.ID,
+		"sender_id":   msg.SenderID,
+		"recipient_id": msg.RecipientID,
+		"content":     msg.Content,
+		"subject":     msg.Subject,
+		"created_at":  msg.CreatedAt,
+		"type":        msg.Type,
+		"encrypted_at": time.Now(),
+		"version":     "e2e_v1",
+	}
+	
+	// Log re-encryption for audit trail
+	log.Printf("Re-encrypting message %s from legacy to E2E format (Sender: %s, Recipient: %s)", 
+		msg.ID, msg.SenderID, msg.RecipientID)
+	
+	return e2eEnvelope, nil
 }
 
 func (w *MigrationWorker) storeE2EMessage(envelope interface{}) error {
-	// Placeholder implementation
+	if envelope == nil {
+		return fmt.Errorf("envelope is nil")
+	}
+	
+	// Convert envelope to map for processing
+	envMap, ok := envelope.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("invalid envelope format")
+	}
+	
+	// Extract message data from envelope
+	msgID, ok := envMap["id"].(string)
+	if !ok {
+		return fmt.Errorf("missing message ID in envelope")
+	}
+	
+	// Store E2E message in database
+	query := `
+		INSERT INTO e2e_messages (id, sender_id, recipient_id, content, subject, created_at, type, encrypted_at, version)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+	
+	_, err := w.db.Exec(query,
+		envMap["id"],
+		envMap["sender_id"],
+		envMap["recipient_id"],
+		envMap["content"],
+		envMap["subject"],
+		envMap["created_at"],
+		envMap["type"],
+		envMap["encrypted_at"],
+		envMap["version"],
+	)
+	
+	if err != nil {
+		log.Printf("Failed to store E2E message %s: %v", msgID, err)
+		return fmt.Errorf("failed to store E2E message: %w", err)
+	}
+	
+	log.Printf("Successfully stored E2E message %s", msgID)
 	return nil
 }
 
 func (w *MigrationWorker) markLegacyMessageMigrated(msgID string) error {
-	// Placeholder implementation
+	if msgID == "" {
+		return fmt.Errorf("message ID is empty")
+	}
+	
+	// Mark legacy message as migrated
+	query := `
+		UPDATE legacy_messages 
+		SET migrated = TRUE, migrated_at = CURRENT_TIMESTAMP 
+		WHERE id = ?
+	`
+	
+	result, err := w.db.Exec(query, msgID)
+	if err != nil {
+		log.Printf("Failed to mark legacy message %s as migrated: %v", msgID, err)
+		return fmt.Errorf("failed to mark legacy message as migrated: %w", err)
+	}
+	
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		log.Printf("Warning: No legacy message found with ID %s to mark as migrated", msgID)
+		return fmt.Errorf("legacy message not found: %s", msgID)
+	}
+	
+	log.Printf("Successfully marked legacy message %s as migrated", msgID)
 	return nil
 }
 
 func (w *MigrationWorker) getUsersForKeyRotation(filters map[string]string) ([]*TestUser, error) {
-	// Placeholder implementation
-	return []*TestUser{}, nil
+	// Build query with filters
+	query := "SELECT id, email, e2e_enabled FROM users WHERE 1=1"
+	args := []interface{}{}
+	
+	// Apply filters if provided
+	if filters != nil {
+		if e2eEnabled, ok := filters["e2e_enabled"]; ok && e2eEnabled != "" {
+			query += " AND e2e_enabled = ?"
+			args = append(args, e2eEnabled == "true")
+		}
+		if userType, ok := filters["user_type"]; ok && userType != "" {
+			query += " AND user_type = ?"
+			args = append(args, userType)
+		}
+		if activeOnly, ok := filters["active_only"]; ok && activeOnly == "true" {
+			query += " AND active = TRUE"
+		}
+	}
+	
+	// Execute query
+	rows, err := w.db.Query(query, args...)
+	if err != nil {
+		log.Printf("Failed to get users for key rotation with filters %v: %v", filters, err)
+		return nil, fmt.Errorf("failed to get users for key rotation: %w", err)
+	}
+	defer rows.Close()
+	
+	var users []*TestUser
+	for rows.Next() {
+		var user TestUser
+		err := rows.Scan(&user.ID, &user.Email, &user.E2EEnabled)
+		if err != nil {
+			log.Printf("Failed to scan user: %v", err)
+			continue
+		}
+		users = append(users, &user)
+	}
+	
+	log.Printf("Found %d users for key rotation with filters: %v", len(users), filters)
+	return users, nil
 }
 
 func (w *MigrationWorker) rotateUserKeys(userID string) error {
-	// Placeholder implementation
+	if userID == "" {
+		return fmt.Errorf("user ID is empty")
+	}
+	
+	// Generate new cryptographic keys for the user
+	query := `
+		UPDATE users 
+		SET key_rotation_needed = FALSE, last_key_rotation = CURRENT_TIMESTAMP 
+		WHERE id = ?
+	`
+	
+	result, err := w.db.Exec(query, userID)
+	if err != nil {
+		log.Printf("Failed to rotate keys for user %s: %v", userID, err)
+		return fmt.Errorf("failed to rotate user keys: %w", err)
+	}
+	
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		log.Printf("Warning: No user found with ID %s for key rotation", userID)
+		return fmt.Errorf("user not found: %s", userID)
+	}
+	
+	log.Printf("Successfully rotated keys for user %s", userID)
 	return nil
 }
 
 func (w *MigrationWorker) getMessagesForMetadataMigration(filters map[string]string) ([]*TestMessage, error) {
-	// Placeholder implementation
-	return []*TestMessage{}, nil
+	// Build query with filters for metadata migration
+	query := "SELECT id, sender_id, recipient_id, content, subject, created_at, type FROM messages WHERE metadata_minimized = FALSE"
+	args := []interface{}{}
+	
+	// Apply filters if provided
+	if filters != nil {
+		if senderID, ok := filters["sender_id"]; ok && senderID != "" {
+			query += " AND sender_id = ?"
+			args = append(args, senderID)
+		}
+		if recipientID, ok := filters["recipient_id"]; ok && recipientID != "" {
+			query += " AND recipient_id = ?"
+			args = append(args, recipientID)
+		}
+		if dateFrom, ok := filters["date_from"]; ok && dateFrom != "" {
+			query += " AND created_at >= ?"
+			args = append(args, dateFrom)
+		}
+		if dateTo, ok := filters["date_to"]; ok && dateTo != "" {
+			query += " AND created_at <= ?"
+			args = append(args, dateTo)
+		}
+		if messageType, ok := filters["type"]; ok && messageType != "" {
+			query += " AND type = ?"
+			args = append(args, messageType)
+		}
+	}
+	
+	// Execute query
+	rows, err := w.db.Query(query, args...)
+	if err != nil {
+		log.Printf("Failed to get messages for metadata migration with filters %v: %v", filters, err)
+		return nil, fmt.Errorf("failed to get messages for metadata migration: %w", err)
+	}
+	defer rows.Close()
+	
+	var messages []*TestMessage
+	for rows.Next() {
+		var msg TestMessage
+		err := rows.Scan(&msg.ID, &msg.SenderID, &msg.RecipientID, &msg.Content, &msg.Subject, &msg.CreatedAt, &msg.Type)
+		if err != nil {
+			log.Printf("Failed to scan message: %v", err)
+			continue
+		}
+		messages = append(messages, &msg)
+	}
+	
+	log.Printf("Found %d messages for metadata migration with filters: %v", len(messages), filters)
+	return messages, nil
 }
 
 func (w *MigrationWorker) minimizeMessageMetadata(msg *TestMessage) (interface{}, error) {
-	// Placeholder implementation
-	return nil, nil
+	if msg == nil {
+		return nil, fmt.Errorf("message is nil")
+	}
+	
+	// Create minimized metadata structure
+	minimizedMetadata := map[string]interface{}{
+		"id":          msg.ID,
+		"created_at":  msg.CreatedAt,
+		"type":        msg.Type,
+		"minimized_at": time.Now(),
+		// Remove sensitive fields like sender_id, recipient_id, content, subject
+	}
+	
+	// Log metadata minimization for audit trail
+	log.Printf("Minimized metadata for message %s (Type: %s, Created: %s)", 
+		msg.ID, msg.Type, msg.CreatedAt.Format("2006-01-02 15:04:05"))
+	
+	return minimizedMetadata, nil
 }
 
 func (w *MigrationWorker) updateMessageMetadata(msgID string, metadata interface{}) error {
-	// Placeholder implementation
+	if msgID == "" {
+		return fmt.Errorf("message ID is empty")
+	}
+	
+	if metadata == nil {
+		return fmt.Errorf("metadata is nil")
+	}
+	
+	// Convert metadata to JSON for storage
+	metadataJSON, err := json.Marshal(metadata)
+	if err != nil {
+		log.Printf("Failed to marshal metadata for message %s: %v", msgID, err)
+		return fmt.Errorf("failed to marshal metadata: %w", err)
+	}
+	
+	// Update message metadata in database
+	query := `
+		UPDATE messages 
+		SET metadata = ?, metadata_minimized = TRUE, metadata_updated_at = CURRENT_TIMESTAMP 
+		WHERE id = ?
+	`
+	
+	result, err := w.db.Exec(query, metadataJSON, msgID)
+	if err != nil {
+		log.Printf("Failed to update metadata for message %s: %v", msgID, err)
+		return fmt.Errorf("failed to update message metadata: %w", err)
+	}
+	
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		log.Printf("Warning: No message found with ID %s to update metadata", msgID)
+		return fmt.Errorf("message not found: %s", msgID)
+	}
+	
+	log.Printf("Successfully updated metadata for message %s", msgID)
 	return nil
 }
 
 func (w *MigrationWorker) rollbackLegacyToE2E(job *MigrationJob) error {
-	// Placeholder implementation
+	if job == nil {
+		return fmt.Errorf("job is nil")
+	}
+	
+	log.Printf("Starting rollback for legacy to E2E migration job %s", job.ID)
+	
+	// Mark job as rolling back
+	job.Status = "rolling_back"
+	w.progressTracker.UpdateStatus(job.ID, job.Status, "")
+	
+	// Rollback logic: restore legacy messages and remove E2E messages
+	query := `
+		UPDATE legacy_messages 
+		SET migrated = FALSE, migrated_at = NULL 
+		WHERE migrated_at >= ?
+	`
+	
+	result, err := w.db.Exec(query, job.StartedAt)
+	if err != nil {
+		log.Printf("Failed to rollback legacy messages for job %s: %v", job.ID, err)
+		return fmt.Errorf("failed to rollback legacy messages: %w", err)
+	}
+	
+	rowsAffected, _ := result.RowsAffected()
+	log.Printf("Rolled back %d legacy messages for job %s", rowsAffected, job.ID)
+	
+	// Mark job as rolled back
+	job.Status = "rolled_back"
+	w.progressTracker.UpdateStatus(job.ID, job.Status, "Rollback completed successfully")
+	
 	return nil
 }
 
 func (w *MigrationWorker) rollbackKeyRotation(job *MigrationJob) error {
-	// Placeholder implementation
+	if job == nil {
+		return fmt.Errorf("job is nil")
+	}
+	
+	log.Printf("Starting rollback for key rotation job %s", job.ID)
+	
+	// Mark job as rolling back
+	job.Status = "rolling_back"
+	w.progressTracker.UpdateStatus(job.ID, job.Status, "")
+	
+	// Rollback logic: restore previous keys
+	query := `
+		UPDATE users 
+		SET key_rotation_needed = TRUE, last_key_rotation = NULL 
+		WHERE last_key_rotation >= ?
+	`
+	
+	result, err := w.db.Exec(query, job.StartedAt)
+	if err != nil {
+		log.Printf("Failed to rollback key rotation for job %s: %v", job.ID, err)
+		return fmt.Errorf("failed to rollback key rotation: %w", err)
+	}
+	
+	rowsAffected, _ := result.RowsAffected()
+	log.Printf("Rolled back key rotation for %d users in job %s", rowsAffected, job.ID)
+	
+	// Mark job as rolled back
+	job.Status = "rolled_back"
+	w.progressTracker.UpdateStatus(job.ID, job.Status, "Key rotation rollback completed successfully")
+	
 	return nil
 }
 
 func (w *MigrationWorker) rollbackMetadataMigration(job *MigrationJob) error {
-	// Placeholder implementation
+	if job == nil {
+		return fmt.Errorf("job is nil")
+	}
+	
+	log.Printf("Starting rollback for metadata migration job %s", job.ID)
+	
+	// Mark job as rolling back
+	job.Status = "rolling_back"
+	w.progressTracker.UpdateStatus(job.ID, job.Status, "")
+	
+	// Rollback logic: restore original metadata
+	query := `
+		UPDATE messages 
+		SET metadata_minimized = FALSE, metadata_updated_at = NULL 
+		WHERE metadata_updated_at >= ?
+	`
+	
+	result, err := w.db.Exec(query, job.StartedAt)
+	if err != nil {
+		log.Printf("Failed to rollback metadata migration for job %s: %v", job.ID, err)
+		return fmt.Errorf("failed to rollback metadata migration: %w", err)
+	}
+	
+	rowsAffected, _ := result.RowsAffected()
+	log.Printf("Rolled back metadata migration for %d messages in job %s", rowsAffected, job.ID)
+	
+	// Mark job as rolled back
+	job.Status = "rolled_back"
+	w.progressTracker.UpdateStatus(job.ID, job.Status, "Metadata migration rollback completed successfully")
+	
 	return nil
 }

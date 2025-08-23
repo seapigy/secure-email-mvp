@@ -145,12 +145,6 @@ func createTestEmail(t *testing.T, db *sql.DB, emailID, senderID string, selfDes
 	}
 }
 
-// mockR2Delete is a mock function for R2 deletion in tests
-func mockR2Delete(ctx context.Context, blobID string) error {
-	// Mock successful deletion for tests
-	return nil
-}
-
 func TestHandleFailedAccessAttempt(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()

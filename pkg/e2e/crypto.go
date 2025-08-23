@@ -11,13 +11,16 @@ import (
 	"io"
 	"time"
 
+	"secure-email-mvp/pkg/pqc"
+
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/hkdf"
 )
 
 // CryptoProvider handles all cryptographic operations for the E2E system
 type CryptoProvider struct {
-	config CryptoConfig
+	config     CryptoConfig
+	pqcWrapper *pqc.LibOQSWrapper
 }
 
 // Envelope represents the encrypted message envelope
@@ -46,10 +49,17 @@ type KeyPair struct {
 }
 
 // NewCryptoProvider creates a new cryptographic provider
-func NewCryptoProvider(config CryptoConfig) *CryptoProvider {
-	return &CryptoProvider{
-		config: config,
+func NewCryptoProvider(config CryptoConfig) (*CryptoProvider, error) {
+	// Initialize PQC wrapper
+	pqcWrapper, err := pqc.NewLibOQSWrapper()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize PQC wrapper: %w", err)
 	}
+
+	return &CryptoProvider{
+		config:     config,
+		pqcWrapper: pqcWrapper,
+	}, nil
 }
 
 // GenerateKeyPair generates a new key pair for the specified algorithm
@@ -64,10 +74,25 @@ func (cp *CryptoProvider) GenerateKeyPair(algorithm string) (*KeyPair, error) {
 	}
 }
 
-// generateKyberKeyPair generates a Kyber key pair (placeholder implementation)
+// generateKyberKeyPair generates a Kyber key pair using real PQC implementation
 func (cp *CryptoProvider) generateKyberKeyPair(algorithm string) (*KeyPair, error) {
-	// TODO: Implement actual Kyber key generation
-	// For now, generate random keys as placeholders with a deterministic relationship
+	// Use real PQC implementation if available
+	if cp.pqcWrapper != nil && cp.pqcWrapper.ValidateKEMAlgorithm(algorithm) {
+		publicKey, privateKey, err := cp.pqcWrapper.GenerateKEMKeyPair(algorithm)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate %s key pair: %w", algorithm, err)
+		}
+
+		return &KeyPair{
+			PublicKey:  publicKey,
+			PrivateKey: privateKey,
+			Algorithm:  algorithm,
+			CreatedAt:  time.Now(),
+			ExpiresAt:  cp.calculateKeyExpiry(),
+		}, nil
+	}
+
+	// Fallback to placeholder implementation
 	privateKey := make([]byte, 32)
 	if _, err := rand.Read(privateKey); err != nil {
 		return nil, fmt.Errorf("failed to generate private key: %w", err)
@@ -88,10 +113,25 @@ func (cp *CryptoProvider) generateKyberKeyPair(algorithm string) (*KeyPair, erro
 	}, nil
 }
 
-// generateDilithiumKeyPair generates a Dilithium key pair (placeholder implementation)
+// generateDilithiumKeyPair generates a Dilithium key pair using real PQC implementation
 func (cp *CryptoProvider) generateDilithiumKeyPair(algorithm string) (*KeyPair, error) {
-	// TODO: Implement actual Dilithium key generation
-	// For now, generate random keys as placeholders with a deterministic relationship
+	// Use real PQC implementation if available
+	if cp.pqcWrapper != nil && cp.pqcWrapper.ValidateSignatureAlgorithm(algorithm) {
+		publicKey, privateKey, err := cp.pqcWrapper.GenerateSignatureKeyPair(algorithm)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate %s key pair: %w", algorithm, err)
+		}
+
+		return &KeyPair{
+			PublicKey:  publicKey,
+			PrivateKey: privateKey,
+			Algorithm:  algorithm,
+			CreatedAt:  time.Now(),
+			ExpiresAt:  cp.calculateKeyExpiry(),
+		}, nil
+	}
+
+	// Fallback to placeholder implementation
 	privateKey := make([]byte, 128)
 	if _, err := rand.Read(privateKey); err != nil {
 		return nil, fmt.Errorf("failed to generate private key: %w", err)
@@ -194,8 +234,28 @@ func (cp *CryptoProvider) DecryptMessage(envelope *Envelope, recipientPrivateKey
 
 // encapsulateKey encapsulates a symmetric key using KEM
 func (cp *CryptoProvider) encapsulateKey(symmetricKey []byte, publicKey []byte) ([]byte, error) {
-	// TODO: Implement actual KEM encapsulation
-	// For now, use a simple XOR-based placeholder
+	// Use real PQC implementation if available
+	if cp.pqcWrapper != nil && cp.pqcWrapper.ValidateKEMAlgorithm(cp.config.KEMAlgorithm) {
+		// Use PQC KEM to generate a shared secret
+		ciphertext, sharedSecret, err := cp.pqcWrapper.Encapsulate(cp.config.KEMAlgorithm, publicKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encapsulate with PQC: %w", err)
+		}
+
+		// Use the shared secret to encrypt the symmetric key
+		encryptedSymmetricKey, err := cp.encryptWithSharedSecret(symmetricKey, sharedSecret)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encrypt symmetric key with shared secret: %w", err)
+		}
+
+		// Combine ciphertext and encrypted symmetric key
+		combined := make([]byte, len(ciphertext)+len(encryptedSymmetricKey))
+		copy(combined, ciphertext)
+		copy(combined[len(ciphertext):], encryptedSymmetricKey)
+		return combined, nil
+	}
+
+	// Fallback to placeholder implementation
 	encapsulated := make([]byte, len(symmetricKey))
 	for i := range symmetricKey {
 		encapsulated[i] = symmetricKey[i] ^ publicKey[i%len(publicKey)]
@@ -205,9 +265,45 @@ func (cp *CryptoProvider) encapsulateKey(symmetricKey []byte, publicKey []byte) 
 
 // decapsulateKey decapsulates a symmetric key using KEM
 func (cp *CryptoProvider) decapsulateKey(encapsulatedKey []byte, privateKey []byte) ([]byte, error) {
-	// TODO: Implement actual KEM decapsulation
-	// For now, use a simple XOR-based placeholder
+	// Use real PQC implementation if available
+	if cp.pqcWrapper != nil && cp.pqcWrapper.ValidateKEMAlgorithm(cp.config.KEMAlgorithm) {
+		// Determine ciphertext size based on algorithm
+		var ciphertextSize int
+		switch cp.config.KEMAlgorithm {
+		case "kyber512":
+			ciphertextSize = 768 // Approximate size for Kyber512
+		case "kyber768":
+			ciphertextSize = 1088 // Approximate size for Kyber768
+		case "kyber1024":
+			ciphertextSize = 1568 // Approximate size for Kyber1024
+		default:
+			return nil, fmt.Errorf("unsupported KEM algorithm for decapsulation: %s", cp.config.KEMAlgorithm)
+		}
 
+		if len(encapsulatedKey) < ciphertextSize {
+			return nil, fmt.Errorf("encapsulated key too short for %s", cp.config.KEMAlgorithm)
+		}
+
+		// Extract ciphertext and encrypted symmetric key
+		ciphertext := encapsulatedKey[:ciphertextSize]
+		encryptedSymmetricKey := encapsulatedKey[ciphertextSize:]
+
+		// Decapsulate to get shared secret
+		sharedSecret, err := cp.pqcWrapper.Decapsulate(cp.config.KEMAlgorithm, ciphertext, privateKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decapsulate with PQC: %w", err)
+		}
+
+		// Use shared secret to decrypt symmetric key
+		symmetricKey, err := cp.decryptWithSharedSecret(encryptedSymmetricKey, sharedSecret)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt symmetric key with shared secret: %w", err)
+		}
+
+		return symmetricKey, nil
+	}
+
+	// Fallback to placeholder implementation
 	// The private key should be the same length as the public key used for encapsulation
 	// For the placeholder, we need to derive the public key from the private key to match encapsulation
 	publicKey := make([]byte, len(privateKey))
@@ -226,6 +322,32 @@ func (cp *CryptoProvider) decapsulateKey(encapsulatedKey []byte, privateKey []by
 		decapsulated[i] = encapsulatedKey[i] ^ publicKey[i%len(publicKey)]
 	}
 	return decapsulated, nil
+}
+
+// encryptWithSharedSecret encrypts data using a shared secret derived from PQC KEM
+func (cp *CryptoProvider) encryptWithSharedSecret(data []byte, sharedSecret []byte) ([]byte, error) {
+	// Use HKDF to derive a key from the shared secret
+	key := make([]byte, 32) // 256-bit key for AES-256
+	_, err := hkdf.New(sha256.New, sharedSecret, nil, []byte("pqc-kem-key")).Read(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to derive key from shared secret: %w", err)
+	}
+
+	// Encrypt the data using AES-256-GCM
+	return cp.encryptAES256GCM(data, key)
+}
+
+// decryptWithSharedSecret decrypts data using a shared secret derived from PQC KEM
+func (cp *CryptoProvider) decryptWithSharedSecret(encryptedData []byte, sharedSecret []byte) ([]byte, error) {
+	// Use HKDF to derive a key from the shared secret
+	key := make([]byte, 32) // 256-bit key for AES-256
+	_, err := hkdf.New(sha256.New, sharedSecret, nil, []byte("pqc-kem-key")).Read(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to derive key from shared secret: %w", err)
+	}
+
+	// Decrypt the data using AES-256-GCM
+	return cp.decryptAES256GCM(encryptedData, key)
 }
 
 // encryptData encrypts data using DEM
@@ -341,8 +463,16 @@ func (cp *CryptoProvider) signEnvelope(envelope *Envelope, privateKey []byte) ([
 	// Create a canonical representation of the envelope for signing
 	signatureData := cp.createSignatureData(envelope)
 
-	// TODO: Implement actual signature using Dilithium
-	// For now, use a simple HMAC-based placeholder
+	// Use real PQC implementation if available
+	if cp.pqcWrapper != nil && cp.pqcWrapper.ValidateSignatureAlgorithm(cp.config.SignatureAlgorithm) {
+		signature, err := cp.pqcWrapper.Sign(cp.config.SignatureAlgorithm, signatureData, privateKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sign with PQC: %w", err)
+		}
+		return signature, nil
+	}
+
+	// Fallback to placeholder implementation
 	signature := cp.createHMACSignature(signatureData, privateKey)
 	return signature, nil
 }
@@ -356,6 +486,16 @@ func (cp *CryptoProvider) verifyEnvelopeSignature(envelope *Envelope, publicKey 
 
 	signatureData := cp.createSignatureData(envelope)
 
+	// Use real PQC implementation if available
+	if cp.pqcWrapper != nil && cp.pqcWrapper.ValidateSignatureAlgorithm(cp.config.SignatureAlgorithm) {
+		err := cp.pqcWrapper.Verify(cp.config.SignatureAlgorithm, signatureData, signature, publicKey)
+		if err != nil {
+			return fmt.Errorf("signature verification failed with PQC: %w", err)
+		}
+		return nil
+	}
+
+	// Fallback to placeholder implementation
 	// For the placeholder implementation, derive the signing key from the public key
 	// This reverses the transformation used in key generation
 	signingKey := make([]byte, len(publicKey))
@@ -458,6 +598,42 @@ func (cp *CryptoProvider) DeriveKey(secret []byte, salt []byte, info []byte, len
 		return nil, fmt.Errorf("failed to derive key: %w", err)
 	}
 	return key, nil
+}
+
+// EncryptThreadMessage encrypts a thread message using symmetric encryption with the thread key
+func (cp *CryptoProvider) EncryptThreadMessage(plaintext []byte, threadKey []byte) (*Envelope, error) {
+	// Generate a random symmetric key for this message
+	symmetricKey := make([]byte, 32)
+	if _, err := rand.Read(symmetricKey); err != nil {
+		return nil, fmt.Errorf("failed to generate symmetric key: %w", err)
+	}
+
+	// Encrypt the data with the symmetric key
+	encryptedData, err := cp.encryptData(plaintext, symmetricKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt data: %w", err)
+	}
+
+	// Encrypt the symmetric key with the thread key (simple XOR for now)
+	encryptedKey := make([]byte, len(symmetricKey))
+	for i := range symmetricKey {
+		encryptedKey[i] = symmetricKey[i] ^ threadKey[i%len(threadKey)]
+	}
+
+	// Create the envelope
+	envelope := &Envelope{
+		ID:                 cp.generateEnvelopeID(),
+		Version:            "1.0",
+		KEMAlgorithm:       "thread-symmetric",
+		DEMAlgorithm:       "aes256gcm",
+		SignatureAlgorithm: "none",
+		EncryptedKey:       base64.StdEncoding.EncodeToString(encryptedKey),
+		EncryptedData:      base64.StdEncoding.EncodeToString(encryptedData),
+		CreatedAt:          time.Now(),
+		ExpiresAt:          cp.calculateEnvelopeExpiry(),
+	}
+
+	return envelope, nil
 }
 
 // DecryptThreadMessage decrypts a thread message without signature verification

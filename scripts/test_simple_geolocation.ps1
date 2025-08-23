@@ -7,9 +7,9 @@ param(
     [string]$TestPassword = "testpassword123"
 )
 
-Write-Host "=== Testing Simple Geolocation Restrictions (Micro-Iteration 4.10) ===" -ForegroundColor Green
-Write-Host "API URL: $ApiUrl" -ForegroundColor Yellow
-Write-Host ""
+Write-Output "=== Testing Simple Geolocation Restrictions (Micro-Iteration 4.10) ==="
+Write-Output "API URL: $ApiUrl"
+Write-Output ""
 
 # Function to make API requests
 function Invoke-ApiRequest {
@@ -19,10 +19,10 @@ function Invoke-ApiRequest {
         [object]$Body = $null,
         [hashtable]$Headers = @{}
     )
-    
+
     $uri = "$ApiUrl$Endpoint"
     $headers["Content-Type"] = "application/json"
-    
+
     try {
         if ($Body) {
             $jsonBody = $Body | ConvertTo-Json -Depth 10
@@ -50,22 +50,22 @@ function Invoke-ApiRequest {
 }
 
 # Test 1: Login to get authentication token
-Write-Host "1. Testing authentication..." -ForegroundColor Cyan
+Write-Output "1. Testing authentication..."
 $loginResponse = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/login" -Body @{
     email = $TestEmail
     password = $TestPassword
 }
 
 if (-not $loginResponse.Success) {
-    Write-Host "❌ Login failed: $($loginResponse.Error)" -ForegroundColor Red
+    Write-Output "❌ Login failed: $($loginResponse.Error)"
     exit 1
 }
 
 $token = $loginResponse.Data.token
-Write-Host "✅ Login successful" -ForegroundColor Green
+Write-Output "✅ Login successful"
 
 # Test 2: Send email with country restriction only
-Write-Host "`n2. Testing country-only restriction..." -ForegroundColor Cyan
+Write-Output "`n2. Testing country-only restriction..."
 $countryRestrictionEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - Country Restriction Only"
@@ -75,14 +75,14 @@ $countryRestrictionEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/emai
 }
 
 if (-not $countryRestrictionEmail.Success) {
-    Write-Host "❌ Failed to send country-restricted email: $($countryRestrictionEmail.Error)" -ForegroundColor Red
+    Write-Output "❌ Failed to send country-restricted email: $($countryRestrictionEmail.Error)"
 } else {
-    Write-Host "✅ Country-restricted email sent successfully" -ForegroundColor Green
+    Write-Output "✅ Country-restricted email sent successfully"
     $countryEmailId = $countryRestrictionEmail.Data.blob_id
 }
 
 # Test 3: Send email with city restriction only
-Write-Host "`n3. Testing city-only restriction..." -ForegroundColor Cyan
+Write-Output "`n3. Testing city-only restriction..."
 $cityRestrictionEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - City Restriction Only"
@@ -92,14 +92,14 @@ $cityRestrictionEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/s
 }
 
 if (-not $cityRestrictionEmail.Success) {
-    Write-Host "❌ Failed to send city-restricted email: $($cityRestrictionEmail.Error)" -ForegroundColor Red
+    Write-Output "❌ Failed to send city-restricted email: $($cityRestrictionEmail.Error)"
 } else {
-    Write-Host "✅ City-restricted email sent successfully" -ForegroundColor Green
+    Write-Output "✅ City-restricted email sent successfully"
     $cityEmailId = $cityRestrictionEmail.Data.blob_id
 }
 
 # Test 4: Send email with both country and city restrictions
-Write-Host "`n4. Testing combined country and city restriction..." -ForegroundColor Cyan
+Write-Output "`n4. Testing combined country and city restriction..."
 $combinedRestrictionEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - Combined Restrictions"
@@ -109,14 +109,14 @@ $combinedRestrictionEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/ema
 }
 
 if (-not $combinedRestrictionEmail.Success) {
-    Write-Host "❌ Failed to send combined-restriction email: $($combinedRestrictionEmail.Error)" -ForegroundColor Red
+    Write-Output "❌ Failed to send combined-restriction email: $($combinedRestrictionEmail.Error)"
 } else {
-    Write-Host "✅ Combined-restriction email sent successfully" -ForegroundColor Green
+    Write-Output "✅ Combined-restriction email sent successfully"
     $combinedEmailId = $combinedRestrictionEmail.Data.blob_id
 }
 
 # Test 5: Send email with no restrictions
-Write-Host "`n5. Testing no restrictions..." -ForegroundColor Cyan
+Write-Output "`n5. Testing no restrictions..."
 $noRestrictionEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - No Restrictions"
@@ -126,14 +126,14 @@ $noRestrictionEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/sen
 }
 
 if (-not $noRestrictionEmail.Success) {
-    Write-Host "❌ Failed to send unrestricted email: $($noRestrictionEmail.Error)" -ForegroundColor Red
+    Write-Output "❌ Failed to send unrestricted email: $($noRestrictionEmail.Error)"
 } else {
-    Write-Host "✅ Unrestricted email sent successfully" -ForegroundColor Green
+    Write-Output "✅ Unrestricted email sent successfully"
     $unrestrictedEmailId = $noRestrictionEmail.Data.blob_id
 }
 
 # Test 6: Test invalid country code
-Write-Host "`n6. Testing invalid country code..." -ForegroundColor Cyan
+Write-Output "`n6. Testing invalid country code..."
 $invalidCountryEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - Invalid Country"
@@ -143,13 +143,13 @@ $invalidCountryEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/se
 }
 
 if ($invalidCountryEmail.Success) {
-    Write-Host "❌ Invalid country code was accepted (should have failed)" -ForegroundColor Red
+    Write-Output "❌ Invalid country code was accepted (should have failed)"
 } else {
-    Write-Host "✅ Invalid country code correctly rejected" -ForegroundColor Green
+    Write-Output "✅ Invalid country code correctly rejected"
 }
 
 # Test 7: Test invalid city name
-Write-Host "`n7. Testing invalid city name..." -ForegroundColor Cyan
+Write-Output "`n7. Testing invalid city name..."
 $invalidCityEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - Invalid City"
@@ -159,13 +159,13 @@ $invalidCityEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send"
 }
 
 if ($invalidCityEmail.Success) {
-    Write-Host "❌ Invalid city name was accepted (should have failed)" -ForegroundColor Red
+    Write-Output "❌ Invalid city name was accepted (should have failed)"
 } else {
-    Write-Host "✅ Invalid city name correctly rejected" -ForegroundColor Green
+    Write-Output "✅ Invalid city name correctly rejected"
 }
 
 # Test 8: Test case sensitivity and normalization
-Write-Host "`n8. Testing case sensitivity and normalization..." -ForegroundColor Cyan
+Write-Output "`n8. Testing case sensitivity and normalization..."
 $caseSensitiveEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - Case Sensitivity"
@@ -175,19 +175,19 @@ $caseSensitiveEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/sen
 }
 
 if (-not $caseSensitiveEmail.Success) {
-    Write-Host "❌ Case sensitivity test failed: $($caseSensitiveEmail.Error)" -ForegroundColor Red
+    Write-Output "❌ Case sensitivity test failed: $($caseSensitiveEmail.Error)"
 } else {
-    Write-Host "✅ Case sensitivity test passed" -ForegroundColor Green
+    Write-Output "✅ Case sensitivity test passed"
     $caseEmailId = $caseSensitiveEmail.Data.blob_id
 }
 
-Write-Host "`n=== Test Summary ===" -ForegroundColor Green
-Write-Host "✅ All geolocation restriction tests completed" -ForegroundColor Green
-Write-Host "📧 Emails sent with various restriction combinations" -ForegroundColor Yellow
-Write-Host "🔒 Validation working correctly for invalid inputs" -ForegroundColor Yellow
-Write-Host "🔄 Case sensitivity and normalization working" -ForegroundColor Yellow
+Write-Output "`n=== Test Summary ==="
+Write-Output "✅ All geolocation restriction tests completed"
+Write-Output "📧 Emails sent with various restriction combinations"
+Write-Output "🔒 Validation working correctly for invalid inputs"
+Write-Output "🔄 Case sensitivity and normalization working"
 
-Write-Host "`nNote: To test actual geolocation enforcement, you would need to:" -ForegroundColor Cyan
-Write-Host "1. Access the emails from different IP locations" -ForegroundColor White
-Write-Host "2. Use VPN services to simulate different countries/cities" -ForegroundColor White
-Write-Host "3. Verify that access is denied when location doesn't match" -ForegroundColor White
+Write-Output "`nNote: To test actual geolocation enforcement, you would need to:"
+Write-Output "1. Access the emails from different IP locations"
+Write-Output "2. Use VPN services to simulate different countries/cities"
+Write-Output "3. Verify that access is denied when location doesn't match"

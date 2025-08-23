@@ -1,49 +1,49 @@
 # Sprint 8 Simple Validation Script
 param([string]$TestMode = "all")
 
-Write-Host "=== Sprint 8 Validation: Production Deployment & Enterprise Integration ===" -ForegroundColor Cyan
-Write-Host "Timestamp: $(Get-Date)" -ForegroundColor Green
-Write-Host ""
+Write-Output "=== Sprint 8 Validation: Production Deployment & Enterprise Integration ==="
+Write-Output "Timestamp: $(Get-Date)"
+Write-Output ""
 
 $PassedTests = 0
 $FailedTests = 0
 
 function Test-Component {
     param($FilePath, $ComponentName)
-    
+
     if (Test-Path $FilePath) {
-        Write-Host "✅ $ComponentName - File exists" -ForegroundColor Green
+        Write-Output "✅ $ComponentName - File exists"
         $global:PassedTests++
         return $true
     } else {
-        Write-Host "❌ $ComponentName - File missing" -ForegroundColor Red
+        Write-Output "❌ $ComponentName - File missing"
         $global:FailedTests++
         return $false
     }
 }
 
 function Test-Compilation {
-    Write-Host "`nTesting compilation..." -ForegroundColor Yellow
+    Write-Output "`nTesting compilation..."
     try {
         $output = go build ./pkg/e2e/... 2>&1
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "✅ Compilation successful" -ForegroundColor Green
+            Write-Output "✅ Compilation successful"
             $global:PassedTests++
             return $true
         } else {
-            Write-Host "❌ Compilation failed: $output" -ForegroundColor Red
+            Write-Output "❌ Compilation failed: $output"
             $global:FailedTests++
             return $false
         }
     } catch {
-        Write-Host "❌ Compilation error: $_" -ForegroundColor Red
+        Write-Output "❌ Compilation error: $_"
         $global:FailedTests++
         return $false
     }
 }
 
-Write-Host "📋 Testing Sprint 8 Core Components..." -ForegroundColor Blue
-Write-Host ""
+Write-Output "📋 Testing Sprint 8 Core Components..."
+Write-Output ""
 
 # Component tests
 Test-Component "docs/sprint8_design.md" "Sprint 8 Design Document"
@@ -54,25 +54,25 @@ Test-Component "pkg/e2e/scaling_infrastructure.go" "Scaling Infrastructure"
 # Compilation test
 Test-Compilation
 
-Write-Host ""
-Write-Host "📊 Validation Results" -ForegroundColor Cyan
-Write-Host "=====================" -ForegroundColor Cyan
-Write-Host "✅ Passed: $PassedTests" -ForegroundColor Green
-Write-Host "❌ Failed: $FailedTests" -ForegroundColor Red
-Write-Host "📋 Total: $($PassedTests + $FailedTests)" -ForegroundColor Blue
+Write-Output ""
+Write-Output "📊 Validation Results"
+Write-Output "====================="
+Write-Output "✅ Passed: $PassedTests"
+Write-Output "❌ Failed: $FailedTests"
+Write-Output "📋 Total: $($PassedTests + $FailedTests)"
 
-$PassRate = if ($PassedTests + $FailedTests -gt 0) { 
-    [math]::Round(($PassedTests / ($PassedTests + $FailedTests)) * 100, 2) 
-} else { 
-    0 
+$PassRate = if ($PassedTests + $FailedTests -gt 0) {
+    [math]::Round(($PassedTests / ($PassedTests + $FailedTests)) * 100, 2)
+} else {
+    0
 }
-Write-Host "📈 Pass Rate: $PassRate%" -ForegroundColor Yellow
+Write-Output "📈 Pass Rate: $PassRate%"
 
-Write-Host ""
+Write-Output ""
 if ($FailedTests -eq 0) {
-    Write-Host "🎉 Sprint 8 validation passed! All components are ready." -ForegroundColor Green
+    Write-Output "🎉 Sprint 8 validation passed! All components are ready."
     exit 0
 } else {
-    Write-Host "⚠️ Some validations failed. Please review the issues above." -ForegroundColor Yellow
+    Write-Output "⚠️ Some validations failed. Please review the issues above."
     exit 1
 }

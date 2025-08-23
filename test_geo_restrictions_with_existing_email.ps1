@@ -20,7 +20,7 @@ function Write-Info { param([string]$Message) Write-ColorOutput "[INFO] $Message
 
 function Get-TOTPCode {
     param([string]$Email)
-    
+
     try {
         $totpCode = & powershell -ExecutionPolicy Bypass -File "scripts/get_totp_code.ps1" -Email $Email
         return $totpCode.Trim()
@@ -144,7 +144,7 @@ $createRuleResult = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/$exis
 if ($createRuleResult.Success) {
     $ruleId = $createRuleResult.Data.rules[0].id
     Write-Success "Create geo-restriction rule successful. Rule ID: $ruleId"
-    
+
     # Test update geo-restriction rule
     Write-Info "3.3: Testing update geo-restriction rule..."
     $updateRuleData = @{
@@ -153,14 +153,14 @@ if ($createRuleResult.Success) {
         cities = @("New York", "Toronto", "London")
         description = "Updated: Allow US, Canada, and UK access"
     }
-    
+
     $updateRuleResult = Invoke-ApiRequest -Method "PUT" -Endpoint "/api/email/$existingEmail/geo-restrictions/$ruleId" -Body $updateRuleData -Token $accessToken
     if ($updateRuleResult.Success) {
         Write-Success "Update geo-restriction rule successful"
     } else {
         Write-Error "Update geo-restriction rule failed: $($updateRuleResult.Error)"
     }
-    
+
     # Test delete geo-restriction rule
     Write-Info "3.4: Testing delete geo-restriction rule..."
     $deleteRuleResult = Invoke-ApiRequest -Method "DELETE" -Endpoint "/api/email/$existingEmail/geo-restrictions/$ruleId" -Token $accessToken

@@ -1,0 +1,827 @@
+# Generate Visual HTML with Mermaid.js Support
+Write-Host "Generating Visual User Flow HTML with Mermaid.js..." -ForegroundColor Green
+
+# Define paths
+$markdownFile = "docs/visual-user-flow-map.md"
+$outputDir = "docs/pdf"
+$htmlFile = "$outputDir/visual-user-flow-map.html"
+
+# Create output directory if it doesn't exist
+if (-not (Test-Path $outputDir)) {
+    New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
+    Write-Host "Created output directory: $outputDir" -ForegroundColor Green
+}
+
+# Check if markdown file exists
+if (-not (Test-Path $markdownFile)) {
+    Write-Host "Markdown file not found: $markdownFile" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "Processing visual flow map: $markdownFile" -ForegroundColor Cyan
+
+# Create HTML content with Mermaid.js support
+$htmlContent = @"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual User Flow Map - Secure Email System</title>
+    
+    <!-- Mermaid.js for diagram rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: #ffffff;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            color: #2c3e50;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        h2 {
+            font-size: 2em;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+            margin-top: 40px;
+            color: #2c3e50;
+        }
+        
+        h3 {
+            font-size: 1.5em;
+            color: #34495e;
+            margin-top: 30px;
+        }
+        
+        .mermaid {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .flow-section {
+            margin: 40px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .flow-description {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #e8f5e8;
+            border-radius: 5px;
+            border-left: 4px solid #4caf50;
+        }
+        
+        .decision-points {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #fff3e0;
+            border-radius: 5px;
+            border-left: 4px solid #ff9800;
+        }
+        
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .stats-table th, .stats-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .stats-table th {
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .stats-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ecf0f1;
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        
+        @media print {
+            body {
+                font-size: 12pt;
+                line-height: 1.4;
+                max-width: none;
+                margin: 0;
+                padding: 20px;
+            }
+            
+            h1 { font-size: 18pt; }
+            h2 { font-size: 16pt; }
+            h3 { font-size: 14pt; }
+            
+            .mermaid {
+                page-break-inside: avoid;
+                margin: 20px 0;
+            }
+            
+            .flow-section {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Visual User Flow Map</h1>
+        <div style="color: #7f8c8d; font-size: 1.1em;">Secure Email System</div>
+        <div style="color: #7f8c8d; font-size: 1.1em;">Complete Visual Flow Diagrams</div>
+    </div>
+    
+    <div class="flow-section">
+        <h2>New User Sign-Up Flow</h2>
+        <div class="flow-description">
+            <p>Complete step-by-step process for new user registration and account setup.</p>
+        </div>
+        
+                       <div class="mermaid">
+                   graph TD
+                       %% Initial Entry
+                       Start([User Visits System]) --> LandingPage[Landing Page]
+                       LandingPage --> SignUpButton[Click Sign Up or Create Account]
+                       
+                       %% Registration Form
+                       SignUpButton --> RegistrationForm[Registration Form]
+                       RegistrationForm --> EmailInput[Enter Email Address @securesystem.email]
+                       EmailInput --> EmailValidation{Email Valid Format?}
+                       EmailValidation -->|No| EmailError[Show Email Format Error]
+                       EmailError --> EmailInput
+                       EmailValidation -->|Yes| CheckEmailExistsEarly{Email Already Exists?}
+                       CheckEmailExistsEarly -->|Yes| EmailExistsEarlyError[Show Email Already Exists]
+                       EmailExistsEarlyError --> EmailInput
+                       CheckEmailExistsEarly -->|No| CheckPendingSignupEarly{Pending Signup Exists?}
+                       CheckPendingSignupEarly -->|Yes| PendingSignupEarlyError[Show Signup Already in Progress]
+                       PendingSignupEarlyError --> EmailInput
+                       CheckPendingSignupEarly -->|No| PasswordInput[Create Password]
+                       
+                       %% Password Requirements
+                       PasswordInput --> PasswordValidation{Password Meets Requirements?}
+                       PasswordValidation -->|No| PasswordError[Show Password Requirements]
+                       PasswordError --> PasswordInput
+                       PasswordValidation -->|Yes| FallbackEmailInput[Enter Fallback Email Required]
+                       
+                       %% Fallback Email Validation
+                       FallbackEmailInput --> FallbackEmailValidation{Fallback Email Valid Format?}
+                       FallbackEmailValidation -->|No| FallbackEmailError[Show Fallback Email Format Error]
+                       FallbackEmailError --> FallbackEmailInput
+                       FallbackEmailValidation -->|Yes| CheckSameEmail{Same as Main Email?}
+                       CheckSameEmail -->|Yes| SameEmailError[Show Cannot Use Same Email Error]
+                       SameEmailError --> FallbackEmailInput
+                       CheckSameEmail -->|No| CheckFallbackExists{Fallback Email Already Exists?}
+                       CheckFallbackExists -->|Yes| FallbackExistsError[Show Fallback Email Already in Use Error]
+                       FallbackExistsError --> FallbackEmailInput
+                       CheckFallbackExists -->|No| SubmitRegistration[Submit Registration]
+                       
+                       %% Final Validation & Security Checks
+                       SubmitRegistration --> CheckUserLimit{User Count < 100?}
+                       CheckUserLimit -->|No| UserLimitError[Show Max Users Reached]
+                       UserLimitError --> End[End Process]
+                       
+                       %% Create Pending Signup
+                       CheckUserLimit -->|Yes| CreatePendingSignup[Create Pending Signup Record]
+                       
+                       %% Pending Signup Creation Steps
+                       CreatePendingSignup --> HashPassword[Hash Password with Argon2]
+                       HashPassword --> GenerateTOTPSecret[Generate TOTP Secret]
+                       GenerateTOTPSecret --> GenerateFallbackToken[Generate Fallback Token]
+                       GenerateFallbackToken --> StorePendingData[Store in Pending Signups Table]
+                       StorePendingData --> SendFallbackEmail[Send Fallback Confirmation Email]
+                       
+                       %% Email Sending Check
+                       SendFallbackEmail --> EmailSent{Email Sent Successfully?}
+                       EmailSent -->|No| EmailSendError[Show Email Send Error]
+                       EmailSendError --> CleanupPending[Clean Up Pending Signup]
+                       CleanupPending --> RetryFallbackEmail[Allow Retry with Different Fallback Email]
+                       RetryFallbackEmail --> FallbackEmailInput
+                       EmailSent -->|Yes| ShowPendingMessage[Show Pending Confirmation Message]
+                       
+                       %% Fallback Email Confirmation
+                       ShowPendingMessage --> UserChecksFallbackEmail[User Checks Fallback Email]
+                       UserChecksFallbackEmail --> ClickFallbackLink[Click Fallback Confirmation Link]
+                       ClickFallbackLink --> ValidateFallbackToken{Fallback Token Valid?}
+                       ValidateFallbackToken -->|No| FallbackTokenError[Show Invalid Token]
+                       FallbackTokenError --> RequestNewToken[Request New Fallback Token]
+                       RequestNewToken --> SendFallbackEmail
+                       ValidateFallbackToken -->|Yes| CheckTokenExpired{Token Expired?}
+                       
+                       %% Token Expiration Check
+                       CheckTokenExpired -->|Yes| TokenExpiredError[Show Token Expired]
+                       TokenExpiredError --> CleanupExpired[Clean Up Expired Pending Signup]
+                       CleanupExpired --> End
+                       CheckTokenExpired -->|No| CreateActualUser[Create Actual User Account]
+                       
+                       %% Actual User Creation
+                       CreateActualUser --> StoreUserData[Store User in Main Database]
+                       StoreUserData --> CleanupPending[Clean Up Pending Signup]
+                       CleanupPending --> TOTPSetupPage[TOTP Setup Page]
+                       
+                       %% TOTP Setup
+                       TOTPSetupPage --> ShowQRCode[Display QR Code]
+                       ShowQRCode --> ScanQRCode[User Scans QR Code with Authenticator App]
+                       ScanQRCode --> EnterTOTPCode[Enter TOTP Code]
+                       EnterTOTPCode --> ValidateTOTP{TOTP Code Valid?}
+                       ValidateTOTP -->|No| TOTPError[Show Invalid Code]
+                       TOTPError --> EnterTOTPCode
+                       ValidateTOTP -->|Yes| TOTPVerified[TOTP Setup Complete]
+                       
+                       %% Welcome & Onboarding
+                       TOTPVerified --> WelcomePage[Welcome Page]
+                       WelcomePage --> SecurityTutorial[Security Features Tutorial]
+                       SecurityTutorial --> ProfileSetup[Profile Setup]
+                       ProfileSetup --> DashboardAccess[Access to Dashboard]
+                       
+                       %% Styling
+                       classDef entryFlow fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+                       classDef formFlow fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+                       classDef validationFlow fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+                       classDef pendingFlow fill:#fff8e1,stroke:#f57f17,stroke-width:2px
+                       classDef setupFlow fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+                       classDef errorFlow fill:#ffebee,stroke:#c62828,stroke-width:2px
+                       classDef successFlow fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+                       classDef fallbackFlow fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+                       
+                       class Start,LandingPage,SignUpButton entryFlow
+                       class RegistrationForm,EmailInput,PasswordInput,FallbackEmailInput,SubmitRegistration formFlow
+                       class EmailValidation,CheckEmailExistsEarly,CheckPendingSignupEarly,PasswordValidation,FallbackEmailValidation,CheckSameEmail,CheckFallbackExists,CheckUserLimit,ValidateFallbackToken,CheckTokenExpired,ValidateTOTP validationFlow
+                       class CreatePendingSignup,HashPassword,GenerateTOTPSecret,GenerateFallbackToken,StorePendingData,EmailSent pendingFlow
+                       class CreateActualUser,StoreUserData,TOTPSetupPage,ShowQRCode,ScanQRCode,TOTPVerified setupFlow
+                       class EmailError,EmailExistsEarlyError,PendingSignupEarlyError,PasswordError,FallbackEmailError,SameEmailError,FallbackExistsError,UserLimitError,EmailSendError,FallbackTokenError,TokenExpiredError,TOTPError errorFlow
+                       class RetryFallbackEmail fallbackFlow
+                       class ShowPendingMessage,CleanupPending,CleanupExpired,WelcomePage,SecurityTutorial,ProfileSetup,DashboardAccess successFlow
+                       class SendFallbackEmail,UserChecksFallbackEmail,ClickFallbackLink,RequestNewToken fallbackFlow
+               </div>
+    </div>
+    
+    <div class="flow-description">
+        <h3>Complete System Flow Overview</h3>
+        <p>This diagram shows the main entry points and user type decisions for the Secure Email system.</p>
+    </div>
+    
+    <div class="mermaid">
+        graph TB
+            %% User Entry Points
+            Start([User Enters System]) --> UserType{User Type?}
+            
+                         %% User Type Decision
+             UserType -->|New User| SignUpFlow[Sign-Up Flow]
+             UserType -->|Existing User| LoginFlow[Login Flow]
+             UserType -->|Administrator| AdminFlow[Administrator Flow]
+             
+                                %% Sign-Up Flow
+                   SignUpFlow --> Registration[Complete Registration with Fallback Email]
+                   Registration --> PendingSignup[Store in Pending Signups Table]
+                   PendingSignup --> FallbackConfirmation[Confirm Fallback Email]
+                   FallbackConfirmation --> CreateUser[Create Actual User Account]
+                   CreateUser --> TOTPSetup[Setup TOTP]
+                   TOTPSetup --> DashboardAccess[Dashboard Access]
+             
+             %% Login Flow
+             LoginFlow --> Login[Login with Email + Password + TOTP]
+             Login --> FallbackCheck{Fallback Confirmed?}
+             FallbackCheck -->|No| FallbackRequired[Confirm Fallback Email First]
+             FallbackCheck -->|Yes| Dashboard[Dashboard Access]
+            Dashboard --> Compose[Compose Email]
+            Compose --> SecurityConfig[Configure Security Settings]
+            SecurityConfig --> RecipientCheck{Recipient Type?}
+            
+            %% Recipient Decision
+            RecipientCheck -->|Internal| InternalSend[Send to Internal User]
+            RecipientCheck -->|External| ExternalSend[Create Secure Link]
+            
+            %% External User Flow
+            ExternalFlow --> ReceiveEmail[Receive Email with Secure Link]
+            ReceiveEmail --> ClickLink[Click Secure Link]
+            ClickLink --> SecurityValidation[Security Validation Process]
+            SecurityValidation --> ViewEmail[View Secure Email]
+            ViewEmail --> ReplyOption{Want to Reply?}
+            ReplyOption -->|Yes| SecureReply[Send Secure Reply]
+            ReplyOption -->|No| EndExternal[End Session]
+            
+            %% Security Validation Subflow
+            SecurityValidation --> PasswordCheck{Password Required?}
+            PasswordCheck -->|Yes| EnterPassword[Enter Password]
+            PasswordCheck -->|No| GeoCheck{Geolocation Restricted?}
+            EnterPassword --> GeoCheck
+            GeoCheck -->|Yes| LocationCheck[Validate Location]
+            GeoCheck -->|No| TimeCheck{Time Lock Active?}
+            LocationCheck --> TimeCheck
+            TimeCheck -->|Yes| WaitTime[Wait for Unlock Time]
+            TimeCheck -->|No| MFACheck{MFA Required?}
+            WaitTime --> MFACheck
+            MFACheck -->|Yes| EnterMFA[Enter MFA Code]
+            MFACheck -->|No| AccessGranted[Access Granted]
+            EnterMFA --> AccessGranted
+            
+            %% Admin Flow
+            AdminFlow --> AdminLogin[Admin Login with Enhanced MFA]
+            AdminLogin --> AdminDashboard[Admin Dashboard]
+            AdminDashboard --> SystemMonitor[System Monitoring]
+            SystemMonitor --> UserManagement[User Management]
+            UserManagement --> AuditLogs[Audit Logs]
+            
+            %% Styling
+            classDef userFlow fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+            classDef securityFlow fill:#fff3e0,stroke:#e65100,stroke-width:2px
+            classDef decisionFlow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+            classDef adminFlow fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+            classDef signupFlow fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+            
+            class SignUpFlow,Registration,TOTPSetup,DashboardAccess signupFlow
+            class LoginFlow,Login,Dashboard,Compose,ReceiveEmail,ClickLink,ViewEmail,SecureReply userFlow
+            class SecurityConfig,SecurityValidation,PasswordCheck,GeoCheck,TimeCheck,MFACheck,EnterPassword,LocationCheck,WaitTime,EnterMFA,AccessGranted securityFlow
+            class UserType,RecipientCheck,ReplyOption,PasswordCheck,GeoCheck,TimeCheck,MFACheck decisionFlow
+            class AdminFlow,AdminLogin,AdminDashboard,SystemMonitor,UserManagement,AuditLogs adminFlow
+    </div>
+    
+    <div class="flow-section">
+        <h2>Authentication Flow</h2>
+        <div class="flow-description">
+            <p>Complete authentication process for new user registration and existing user login.</p>
+        </div>
+        
+                 <div class="mermaid">
+             graph TD
+                                        %% New User Registration
+                       NewUser[New User Registration] --> EmailInput[Enter Email @securesystem.email]
+                       EmailInput --> PasswordInput[Create Password]
+                       PasswordInput --> FallbackEmailInput[Enter Fallback Email Required]
+                       FallbackEmailInput --> CreatePendingAccount[Create Pending Signup Record]
+                       CreatePendingAccount --> SendFallbackEmail[Send Fallback Confirmation Email]
+                       SendFallbackEmail --> ConfirmFallbackEmail[Confirm Fallback Email]
+                       ConfirmFallbackEmail --> CreateActualAccount[Create Actual User Account]
+                       CreateActualAccount --> TOTPSetup[Setup TOTP Authenticator]
+                       TOTPSetup --> AccountActive[Account Activated]
+                 
+                 %% Existing User Login
+                 ExistingUser[Existing User Login] --> EmailLogin[Enter Email]
+                 EmailLogin --> PasswordLogin[Enter Password]
+                 PasswordLogin --> CheckFallbackConfirmed{Fallback Email Confirmed?}
+                 CheckFallbackConfirmed -->|No| FallbackNotConfirmed[Login Denied - Confirm Fallback Email]
+                 CheckFallbackConfirmed -->|Yes| TOTPCode[Enter TOTP Code]
+                 TOTPCode --> LoginSuccess[Login Successful]
+                 LoginSuccess --> DashboardAccess[Dashboard Access]
+                 
+                 %% Security Checks
+                 PasswordLogin --> BruteForceCheck{Brute Force Check}
+                 BruteForceCheck -->|Too Many Attempts| AccountLocked[Account Locked]
+                 BruteForceCheck -->|Valid| CheckFallbackConfirmed
+                 
+                 TOTPCode --> IPCheck{IP Check}
+                 IPCheck -->|Suspicious| AdditionalVerification[Additional Verification]
+                 IPCheck -->|Valid| LoginSuccess
+                 
+                 %% Styling
+                 classDef registrationFlow fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+                 classDef loginFlow fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+                 classDef securityCheck fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+                 classDef fallbackFlow fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
+                 
+                                        class NewUser,EmailInput,PasswordInput,CreatePendingAccount,CreateActualAccount,TOTPSetup,AccountActive registrationFlow
+                 class ExistingUser,EmailLogin,PasswordLogin,TOTPCode,LoginSuccess,DashboardAccess loginFlow
+                 class BruteForceCheck,AccountLocked,IPCheck,AdditionalVerification securityCheck
+                 class FallbackEmailInput,SendFallbackEmail,ConfirmFallbackEmail,CheckFallbackConfirmed,FallbackNotConfirmed fallbackFlow
+         </div>
+    </div>
+    
+    <div class="flow-section">
+        <h2>Internal User Email Flow</h2>
+        <div class="flow-description">
+            <p>Step-by-step process for internal users to compose and send emails with security configuration.</p>
+        </div>
+        
+        <div class="mermaid">
+            graph LR
+                %% Email Composition
+                ComposeEmail[Compose Email] --> RecipientInput[Enter Recipients]
+                RecipientInput --> SubjectInput[Enter Subject]
+                SubjectInput --> MessageInput[Write Message]
+                MessageInput --> AttachmentUpload[Upload Attachments]
+                AttachmentUpload --> SecuritySettings[Configure Security]
+                
+                %% Security Configuration
+                SecuritySettings --> PasswordProtection{Password Protection?}
+                PasswordProtection -->|Yes| SetPassword[Set Password]
+                PasswordProtection -->|No| GeoRestriction{Geolocation Restriction?}
+                SetPassword --> GeoRestriction
+                
+                GeoRestriction -->|Yes| SetGeoLocation[Set Allowed Locations]
+                GeoRestriction -->|No| TimeLock{Time Lock?}
+                SetGeoLocation --> TimeLock
+                
+                TimeLock -->|Yes| SetTimeLock[Set Unlock Time]
+                TimeLock -->|No| MFARequired{MFA Required?}
+                SetTimeLock --> MFARequired
+                
+                MFARequired -->|Yes| SetMFA[Configure MFA Type]
+                MFARequired -->|No| AdditionalSecurity[Additional Security Settings]
+                SetMFA --> AdditionalSecurity
+                
+                %% Send Process
+                AdditionalSecurity --> SendEmail[Send Email]
+                SendEmail --> RecipientCheck{Recipient Type?}
+                RecipientCheck -->|Internal| DirectSend[Direct Send]
+                RecipientCheck -->|External| CreateSecureLink[Create Secure Link]
+                
+                CreateSecureLink --> SendNotification[Send Notification Email]
+                SendNotification --> ExternalRecipient[External Recipient Receives]
+                
+                %% Styling
+                classDef compositionFlow fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+                classDef securityConfig fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+                classDef sendFlow fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+                
+                class ComposeEmail,RecipientInput,SubjectInput,MessageInput,AttachmentUpload compositionFlow
+                class SecuritySettings,PasswordProtection,SetPassword,GeoRestriction,SetGeoLocation,TimeLock,SetTimeLock,MFARequired,SetMFA,AdditionalSecurity securityConfig
+                class SendEmail,RecipientCheck,DirectSend,CreateSecureLink,SendNotification,ExternalRecipient sendFlow
+        </div>
+    </div>
+    
+    <div class="flow-section">
+        <h2>External User Secure Link Flow</h2>
+        <div class="flow-description">
+            <p>Complete security validation chain and email viewing process for external users.</p>
+        </div>
+        
+        <div class="mermaid">
+            graph TD
+                %% Receive and Access
+                ReceiveLink[Receive Secure Link Email] --> ClickSecureLink[Click Secure Link]
+                ClickSecureLink --> SecurityValidation[Security Validation Process]
+                
+                %% Security Validation Chain
+                SecurityValidation --> CheckExpiration{Link Expired?}
+                CheckExpiration -->|Yes| LinkExpired[Link Expired - Access Denied]
+                CheckExpiration -->|No| CheckRevoked{Link Revoked?}
+                
+                CheckRevoked -->|Yes| LinkRevoked[Link Revoked - Access Denied]
+                CheckRevoked -->|No| CheckPassword{Password Required?}
+                
+                CheckPassword -->|Yes| PasswordPrompt[Enter Password]
+                PasswordPrompt --> ValidatePassword{Password Correct?}
+                ValidatePassword -->|No| PasswordFailed[Password Failed]
+                PasswordFailed --> AttemptLimit{Attempt Limit Reached?}
+                AttemptLimit -->|Yes| LinkDestroyed[Link Destroyed]
+                AttemptLimit -->|No| PasswordPrompt
+                ValidatePassword -->|Yes| CheckGeoLocation{Geolocation Restricted?}
+                
+                CheckPassword -->|No| CheckGeoLocation
+                
+                CheckGeoLocation -->|Yes| ValidateLocation{Location Valid?}
+                ValidateLocation -->|No| LocationBlocked[Location Blocked]
+                ValidateLocation -->|Yes| CheckTimeLock{Time Lock Active?}
+                
+                CheckGeoLocation -->|No| CheckTimeLock
+                
+                CheckTimeLock -->|Yes| CheckTime{Current Time Valid?}
+                CheckTime -->|No| TimeBlocked[Time Lock Active - Wait Required]
+                CheckTime -->|Yes| CheckMFA{MFA Required?}
+                
+                CheckTimeLock -->|No| CheckMFA
+                
+                CheckMFA -->|Yes| MFAPrompt[Enter MFA Code]
+                MFAPrompt --> ValidateMFA{MFA Valid?}
+                ValidateMFA -->|No| MFAFailed[MFA Failed]
+                ValidateMFA -->|Yes| AccessGranted[Access Granted]
+                
+                CheckMFA -->|No| AccessGranted
+                
+                %% Email Viewing
+                AccessGranted --> CreateSession[Create Viewing Session]
+                CreateSession --> SanitizeContent[Sanitize Email Content]
+                SanitizeContent --> DisplayEmail[Display Secure Email]
+                DisplayEmail --> AttachmentAccess{Attachments?}
+                AttachmentAccess -->|Yes| DownloadAttachment[Download Attachments]
+                AttachmentAccess -->|No| ReplyOption{Want to Reply?}
+                DownloadAttachment --> ReplyOption
+                
+                %% Reply Process
+                ReplyOption -->|Yes| ComposeReply[Compose Secure Reply]
+                ReplyOption -->|No| EndSession[End Session]
+                ComposeReply --> SendReply[Send Secure Reply]
+                SendReply --> NewSecureLink[Create New Secure Link]
+                NewSecureLink --> NotifySender[Notify Original Sender]
+                
+                %% Styling
+                classDef accessFlow fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
+                classDef securityCheck fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+                classDef viewingFlow fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+                classDef replyFlow fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+                
+                class ReceiveLink,ClickSecureLink,CreateSession,SanitizeContent,DisplayEmail,EndSession accessFlow
+                class SecurityValidation,CheckExpiration,CheckRevoked,CheckPassword,PasswordPrompt,ValidatePassword,CheckGeoLocation,ValidateLocation,CheckTimeLock,CheckTime,CheckMFA,MFAPrompt,ValidateMFA,AccessGranted securityCheck
+                class AttachmentAccess,DownloadAttachment viewingFlow
+                class ReplyOption,ComposeReply,SendReply,NewSecureLink,NotifySender replyFlow
+        </div>
+    </div>
+    
+    <div class="flow-section">
+        <h2>Administrative Flow</h2>
+        <div class="flow-description">
+            <p>System management and monitoring capabilities for administrators.</p>
+        </div>
+        
+        <div class="mermaid">
+            graph TB
+                %% Admin Access
+                AdminLogin[Admin Login] --> AdminDashboard[Admin Dashboard]
+                
+                %% System Management
+                AdminDashboard --> SystemHealth[System Health Monitoring]
+                SystemHealth --> PerformanceMetrics[Performance Metrics]
+                PerformanceMetrics --> ErrorTracking[Error Tracking]
+                ErrorTracking --> ResourceUsage[Resource Usage]
+                
+                %% User Management
+                AdminDashboard --> UserManagement[User Management]
+                UserManagement --> ViewUsers[View All Users]
+                ViewUsers --> AccountStatus[Account Status Management]
+                AccountStatus --> SecuritySettings[Security Settings Review]
+                SecuritySettings --> AccessControl[Access Control]
+                
+                %% Security Administration
+                AdminDashboard --> SecurityAdmin[Security Administration]
+                SecurityAdmin --> AuditLogs[Audit Logs]
+                AuditLogs --> SecurityIncidents[Security Incidents]
+                SecurityIncidents --> ComplianceReports[Compliance Reports]
+                ComplianceReports --> PolicyManagement[Policy Management]
+                
+                %% Enterprise Features
+                AdminDashboard --> EnterpriseFeatures[Enterprise Features]
+                EnterpriseFeatures --> QuotaManagement[Quota Management]
+                QuotaManagement --> RetryLogic[Retry Logic]
+                RetryLogic --> SystemResilience[System Resilience]
+                
+                %% Styling
+                classDef adminFlow fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+                classDef systemFlow fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+                classDef securityFlow fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+                classDef enterpriseFlow fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+                
+                class AdminLogin,AdminDashboard adminFlow
+                class SystemHealth,PerformanceMetrics,ErrorTracking,ResourceUsage systemFlow
+                class SecurityAdmin,AuditLogs,SecurityIncidents,ComplianceReports,PolicyManagement securityFlow
+                class EnterpriseFeatures,QuotaManagement,RetryLogic,SystemResilience enterpriseFlow
+        </div>
+    </div>
+    
+    <div class="flow-section">
+        <h2>Security Features Flow Map</h2>
+        <div class="flow-description">
+            <p>All 12 security features and their implementation details.</p>
+        </div>
+        
+        <div class="mermaid">
+            graph LR
+                %% Security Features Overview
+                SecurityFeatures[Security Features] --> PasswordProtection[Password Protection]
+                SecurityFeatures --> GeolocationVerification[Geolocation Verification]
+                SecurityFeatures --> TimeBasedControls[Time-based Controls]
+                SecurityFeatures --> MultiFactorAuth[Multi-Factor Authentication]
+                SecurityFeatures --> ReadOnce[Read-once & Auto-destruct]
+                SecurityFeatures --> RemoteRevocation[Remote Revocation]
+                SecurityFeatures --> DecoyMessages[Decoy Messages]
+                SecurityFeatures --> MetadataStripping[Metadata Stripping]
+                SecurityFeatures --> TamperDetection[Tamper Detection]
+                SecurityFeatures --> SelfDestruct[Self-destruct After Failed Attempts]
+                SecurityFeatures --> EmailExpiration[Email Expiration]
+                SecurityFeatures --> AuditLogging[Enhanced Audit Logging]
+                
+                %% Implementation Flow
+                PasswordProtection --> Argon2Hashing[Argon2 Hashing]
+                GeolocationVerification --> IPGeolocation[IP Geolocation]
+                TimeBasedControls --> UnixTimestamp[Unix Timestamp Validation]
+                MultiFactorAuth --> TOTPImplementation[TOTP Implementation]
+                ReadOnce --> DatabaseDeletion[Database Deletion]
+                RemoteRevocation --> LinkStatusManagement[Link Status Management]
+                DecoyMessages --> ConditionalContent[Conditional Content Display]
+                MetadataStripping --> ContentSanitization[Content Sanitization]
+                TamperDetection --> ActivityMonitoring[Activity Monitoring]
+                SelfDestruct --> AttemptTracking[Attempt Tracking]
+                EmailExpiration --> TimeBasedDeletion[Time-based Deletion]
+                AuditLogging --> ComprehensiveLogging[Comprehensive Logging]
+                
+                %% Styling
+                classDef featureFlow fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+                classDef implementationFlow fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+                
+                class SecurityFeatures,PasswordProtection,GeolocationVerification,TimeBasedControls,MultiFactorAuth,ReadOnce,RemoteRevocation,DecoyMessages,MetadataStripping,TamperDetection,SelfDestruct,EmailExpiration,AuditLogging featureFlow
+                class Argon2Hashing,IPGeolocation,UnixTimestamp,TOTPImplementation,DatabaseDeletion,LinkStatusManagement,ConditionalContent,ContentSanitization,ActivityMonitoring,AttemptTracking,TimeBasedDeletion,ComprehensiveLogging implementationFlow
+        </div>
+    </div>
+    
+    <div class="decision-points">
+        <h2>Key Decision Points</h2>
+        
+        <h3>1. User Type Selection</h3>
+        <ul>
+            <li><strong>New User</strong>: Complete registration and TOTP setup process</li>
+            <li><strong>Existing User</strong>: Login with email, password, and TOTP</li>
+            <li><strong>Administrator</strong>: System management and monitoring</li>
+        </ul>
+        
+                                <h3>2. Registration Validation</h3>
+               <ul>
+                   <li><strong>Email Validation</strong>: Must end with @securesystem.email and be unique</li>
+                   <li><strong>Password Requirements</strong>: Minimum strength and complexity validation</li>
+                   <li><strong>Fallback Email</strong>: Required for account recovery</li>
+                   <li><strong>User Limit</strong>: Maximum 100 users allowed</li>
+                   <li><strong>Pending Signup Check</strong>: Prevents duplicate signup attempts</li>
+                   <li><strong>Fallback Confirmation</strong>: Must confirm fallback email before user creation</li>
+                   <li><strong>Token Expiration</strong>: Fallback tokens expire after 24 hours</li>
+                   <li><strong>TOTP Setup</strong>: Scan QR code and verify code</li>
+               </ul>
+        
+        <h3>3. Security Configuration (Optional)</h3>
+        <ul>
+            <li><strong>Password Protection</strong>: Enable/disable with custom password</li>
+            <li><strong>Geolocation Restrictions</strong>: Country/city-level restrictions</li>
+            <li><strong>Time-based Controls</strong>: Expiration and time lock settings</li>
+            <li><strong>Multi-Factor Authentication</strong>: TOTP, SMS, or Email-based</li>
+            <li><strong>Access Controls</strong>: Read-once, auto-destruct, attempt limits</li>
+        </ul>
+        
+        <h3>4. Recipient Type Detection</h3>
+        <ul>
+            <li><strong>Internal Recipients</strong>: Direct email delivery</li>
+            <li><strong>External Recipients</strong>: Automatic secure link creation</li>
+        </ul>
+        
+        <h3>5. Security Validation Chain</h3>
+        <ul>
+            <li><strong>Expiration Check</strong>: Verify link hasn't expired</li>
+            <li><strong>Revocation Check</strong>: Verify link hasn't been revoked</li>
+            <li><strong>Password Validation</strong>: If password protection enabled</li>
+            <li><strong>Geolocation Validation</strong>: If location restrictions set</li>
+            <li><strong>Time Lock Validation</strong>: If time restrictions active</li>
+            <li><strong>MFA Validation</strong>: If multi-factor authentication required</li>
+        </ul>
+        
+        <h3>6. Reply Decision</h3>
+        <ul>
+            <li><strong>Reply</strong>: Create new secure link for ongoing conversation</li>
+            <li><strong>No Reply</strong>: End session and close secure link</li>
+        </ul>
+    </div>
+    
+    <div class="flow-section">
+        <h2>Flow Statistics</h2>
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>Flow Type</th>
+                    <th>Steps</th>
+                    <th>Security Checks</th>
+                    <th>User Types</th>
+                    <th>Features</th>
+                </tr>
+            </thead>
+            <tbody>
+                                                        <tr>
+                           <td><strong>New User Sign-Up</strong></td>
+                           <td>35+</td>
+                           <td>12</td>
+                           <td>1</td>
+                           <td>Pending Signup, Fallback Confirmation, User Creation & TOTP Setup</td>
+                       </tr>
+                <tr>
+                    <td><strong>Internal User</strong></td>
+                    <td>15+</td>
+                    <td>3</td>
+                    <td>1</td>
+                    <td>All 12 Security Features</td>
+                </tr>
+                <tr>
+                    <td><strong>External User</strong></td>
+                    <td>20+</td>
+                    <td>8</td>
+                    <td>1</td>
+                    <td>Subject to Sender's Settings</td>
+                </tr>
+                <tr>
+                    <td><strong>Administrator</strong></td>
+                    <td>12+</td>
+                    <td>5</td>
+                    <td>1</td>
+                    <td>System Management Tools</td>
+                </tr>
+                <tr>
+                    <td><strong>Security Validation</strong></td>
+                    <td>8</td>
+                    <td>8</td>
+                    <td>2</td>
+                    <td>Real-time Enforcement</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="footer">
+        <p><strong>Secure Email System - Visual User Flow Map</strong></p>
+        <p>Version 1.0 | Last Updated: August 2025 | System Version: Secure Email MVP v1.0</p>
+        <p>This visual flow map provides a comprehensive overview of all user journeys through the Secure Email system.</p>
+    </div>
+    
+    <script>
+        // Initialize Mermaid.js
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
+</body>
+</html>
+"@
+
+# Save the HTML file
+$htmlContent | Out-File -FilePath $htmlFile -Encoding UTF8
+
+Write-Host "Visual HTML file generated successfully: $htmlFile" -ForegroundColor Green
+
+# Create conversion guide
+$conversionGuide = @"
+Visual Flow Map PDF Conversion Guide
+
+Option 1: Browser Print to PDF (Recommended)
+1. Open the visual HTML file in your web browser
+2. Wait for all diagrams to load completely
+3. Press Ctrl+P (or Cmd+P on Mac)
+4. Select "Save as PDF" as the destination
+5. Choose your preferred settings:
+   - Page size: A4
+   - Margins: Default or Minimum
+   - Include background graphics: Yes
+6. Click "Save" and choose your file location
+
+Option 2: Online Converters
+1. Visit an online HTML to PDF converter
+2. Upload the HTML file: $htmlFile
+3. Convert and download the PDF
+
+File Locations
+- Visual HTML File: $htmlFile
+- Output Directory: $outputDir
+
+Note: The visual HTML file includes Mermaid.js diagrams that will render as professional flowcharts.
+"@
+
+$conversionGuide | Out-File -FilePath "$outputDir/visual-pdf-conversion-guide.txt" -Encoding UTF8
+
+Write-Host "Visual conversion guide created: $outputDir/visual-pdf-conversion-guide.txt" -ForegroundColor Cyan
+
+# Open the HTML file in default browser
+Write-Host "Opening visual HTML file in browser..." -ForegroundColor Yellow
+Start-Process $htmlFile
+
+Write-Host "Visual HTML Generation Complete!" -ForegroundColor Green
+Write-Host "Visual HTML File: $htmlFile" -ForegroundColor Cyan
+Write-Host "This file includes Mermaid.js diagrams that render as professional flowcharts" -ForegroundColor Yellow

@@ -136,15 +136,11 @@ type UserMetrics struct {
 
 // LoadTestMetricsCollector collects and aggregates load test metrics
 type LoadTestMetricsCollector struct {
-	startTime    time.Time
-	endTime      time.Time
-	userMetrics  map[string]*UserMetrics
-	requestCount int64
-	successCount int64
-	failureCount int64
-	latencies    []time.Duration
-	errors       map[string]int64
-	mutex        sync.RWMutex
+	startTime   time.Time
+	endTime     time.Time
+	userMetrics map[string]*UserMetrics
+	errors      map[string]int64
+	mutex       sync.RWMutex
 }
 
 // NewLoadTestSuite creates a new load test suite
@@ -522,10 +518,13 @@ func (us *UserSimulator) sendMessage() error {
 	plaintext := make([]byte, messageSize)
 	us.random.Read(plaintext)
 
-	recipientPublicKey := make([]byte, 32) // Mock recipient public key
-	us.random.Read(recipientPublicKey)
+	// Generate a proper KEM public key for testing
+	recipientKEMKeyPair, err := us.client.cryptoProvider.GenerateKeyPair("kyber768")
+	if err != nil {
+		return fmt.Errorf("failed to generate recipient KEM key pair: %w", err)
+	}
 
-	_, err := us.client.EncryptMessage(plaintext, recipientPublicKey, "test_thread", "test_recipient")
+	_, err = us.client.EncryptMessage(plaintext, recipientKEMKeyPair.PublicKey, "test_thread", "test_recipient")
 	return err
 }
 
@@ -540,14 +539,19 @@ func (us *UserSimulator) receiveMessage() error {
 	us.random.Read(plaintext)
 
 	// Simulate receiving a message encrypted for this user
-	// Use the client's own public key for encryption (as if someone sent them a message)
-	message, err := us.client.EncryptMessage(plaintext, us.client.GetPublicKey(), "test_thread", us.userID)
+	// Generate a proper KEM key pair for encryption (as if someone sent them a message)
+	recipientKEMKeyPair, err := us.client.cryptoProvider.GenerateKeyPair("kyber768")
+	if err != nil {
+		return fmt.Errorf("failed to generate recipient KEM key pair: %w", err)
+	}
+
+	message, err := us.client.EncryptMessage(plaintext, recipientKEMKeyPair.PublicKey, "test_thread", us.userID)
 	if err != nil {
 		return err
 	}
 
-	// Decrypt the message using the sender's public key (in this simulation, we use the client's own public key)
-	_, err = us.client.DecryptMessage(message, us.client.GetPublicKey())
+	// Decrypt the message using the KEM private key and sender's signature public key
+	_, err = us.client.cryptoProvider.DecryptMessage(message.Envelope, recipientKEMKeyPair.PrivateKey, us.client.GetPublicKey())
 	return err
 }
 

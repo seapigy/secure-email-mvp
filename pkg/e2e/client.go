@@ -33,10 +33,13 @@ func NewClient(config E2EConfig, userID string) (*Client, error) {
 		return nil, fmt.Errorf("E2E system is disabled")
 	}
 
-	cryptoProvider := NewCryptoProvider(config.Crypto)
+	cryptoProvider, err := NewCryptoProvider(config.Crypto)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create crypto provider: %w", err)
+	}
 
-	// Generate key pair for the user
-	keyPair, err := cryptoProvider.GenerateKeyPair(config.Crypto.KEMAlgorithm)
+	// Generate key pair for the user (using signature algorithm for signing)
+	keyPair, err := cryptoProvider.GenerateKeyPair(config.Crypto.SignatureAlgorithm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate key pair: %w", err)
 	}
@@ -145,8 +148,8 @@ func (c *Client) EncryptThreadMessage(plaintext []byte, thread *Thread) (*Messag
 		return nil, fmt.Errorf("user is not a participant in this thread")
 	}
 
-	// Encrypt with thread key
-	envelope, err := c.cryptoProvider.EncryptMessage(plaintext, thread.ThreadKey, c.keyPair.PrivateKey)
+	// Encrypt with thread key using dedicated thread message function
+	envelope, err := c.cryptoProvider.EncryptThreadMessage(plaintext, thread.ThreadKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt thread message: %w", err)
 	}

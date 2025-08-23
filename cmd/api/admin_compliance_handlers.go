@@ -1,5 +1,9 @@
 package main
 
+// TODO: Wire up compliance handlers to routes in future micro-iteration
+// All functions in this file are marked as unused until routes are implemented
+// CodeQL: disable=go/unused-function
+
 import (
 	"database/sql"
 	"fmt"
@@ -61,7 +65,8 @@ type ComplianceStatsResponse struct {
 }
 
 // getComplianceSummaryHandler returns compliance summary for an organization
-func getComplianceSummaryHandler(db *sql.DB) http.HandlerFunc {
+// TODO: Wire up to routes in future micro-iteration
+func getComplianceSummaryHandler(db *sql.DB) http.HandlerFunc { //nolint:unused
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Extract organization ID from URL path
 		pathParts := strings.Split(r.URL.Path, "/")
@@ -123,7 +128,8 @@ func getComplianceSummaryHandler(db *sql.DB) http.HandlerFunc {
 }
 
 // getComplianceLogsHandler returns paginated compliance logs for an organization
-func getComplianceLogsHandler(db *sql.DB) http.HandlerFunc {
+// TODO: Wire up to routes in future micro-iteration
+func getComplianceLogsHandler(db *sql.DB) http.HandlerFunc { //nolint:unused
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Extract organization ID from URL path
 		pathParts := strings.Split(r.URL.Path, "/")
@@ -224,7 +230,8 @@ func getComplianceLogsHandler(db *sql.DB) http.HandlerFunc {
 }
 
 // getComplianceStatsHandler returns detailed compliance statistics for an organization
-func getComplianceStatsHandler(db *sql.DB) http.HandlerFunc {
+// TODO: Wire up to routes in future micro-iteration
+func getComplianceStatsHandler(db *sql.DB) http.HandlerFunc { //nolint:unused
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Extract organization ID from URL path
 		pathParts := strings.Split(r.URL.Path, "/")
@@ -274,7 +281,8 @@ func getComplianceStatsHandler(db *sql.DB) http.HandlerFunc {
 }
 
 // exportComplianceLogsHandler exports compliance logs as CSV
-func exportComplianceLogsHandler(db *sql.DB) http.HandlerFunc {
+// TODO: Wire up to routes in future micro-iteration
+func exportComplianceLogsHandler(db *sql.DB) http.HandlerFunc { //nolint:unused
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Extract organization ID from URL path
 		pathParts := strings.Split(r.URL.Path, "/")
@@ -355,7 +363,8 @@ func exportComplianceLogsHandler(db *sql.DB) http.HandlerFunc {
 }
 
 // getComplianceActivityHandler returns recent compliance activity for an organization
-func getComplianceActivityHandler(db *sql.DB) http.HandlerFunc {
+// TODO: Wire up to routes in future micro-iteration
+func getComplianceActivityHandler(db *sql.DB) http.HandlerFunc { //nolint:unused
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Extract organization ID from URL path
 		pathParts := strings.Split(r.URL.Path, "/")

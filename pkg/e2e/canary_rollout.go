@@ -411,7 +411,7 @@ func (crm *CanaryRolloutManager) checkRollbackConditions() {
 	}
 
 	// Check A/B test results
-	if crm.ABTest.Results != nil && crm.ABTest.Results.Decision.PromoteE2E == false {
+	if crm.ABTest.Results != nil && !crm.ABTest.Results.Decision.PromoteE2E {
 		crm.TriggerRollback(
 			"A/B test indicates E2E performance is not acceptable",
 			"automatic",

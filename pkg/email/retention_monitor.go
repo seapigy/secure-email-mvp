@@ -498,20 +498,41 @@ func (rms *RetentionMonitorService) createMetricsEntry(ctx context.Context, metr
 }
 
 func (rms *RetentionMonitorService) refreshMetricsCache(ctx context.Context) error {
+	// Check for context cancellation
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context cancelled during cache refresh: %w", ctx.Err())
+	default:
+	}
+	
 	// This would refresh the cache with the latest data from the database
 	// For now, we'll just update the last_updated timestamp
 	rms.cacheMutex.Lock()
 	defer rms.cacheMutex.Unlock()
 	
 	for _, metrics := range rms.metricsCache {
+		// Check for context cancellation during iteration
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("context cancelled during cache refresh: %w", ctx.Err())
+		default:
+		}
 		metrics.LastUpdated = time.Now()
 	}
 	
+	log.Printf("Refreshed metrics cache with %d entries", len(rms.metricsCache))
 	return nil
 }
 
 // Event processing methods
 func (rms *RetentionMonitorService) processPolicyEvaluationEvent(ctx context.Context, event *RetentionEvent) error {
+	// Check for context cancellation
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context cancelled during policy evaluation processing: %w", ctx.Err())
+	default:
+	}
+	
 	// Parse event data
 	var eventData map[string]interface{}
 	if err := json.Unmarshal(event.EventData, &eventData); err != nil {
@@ -528,10 +549,18 @@ func (rms *RetentionMonitorService) processPolicyEvaluationEvent(ctx context.Con
 	
 	rms.updatePolicyMetrics(int64(policyID), result, matchScore, impactScore, storageSavings, archivalLoadImpact)
 	
+	log.Printf("Processed policy evaluation event for policy %d, result: %s", int64(policyID), result)
 	return nil
 }
 
 func (rms *RetentionMonitorService) processEmailDeletionEvent(ctx context.Context, event *RetentionEvent) error {
+	// Check for context cancellation
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context cancelled during email deletion processing: %w", ctx.Err())
+	default:
+	}
+	
 	var eventData map[string]interface{}
 	if err := json.Unmarshal(event.EventData, &eventData); err != nil {
 		return fmt.Errorf("failed to unmarshal event data: %w", err)
@@ -542,10 +571,18 @@ func (rms *RetentionMonitorService) processEmailDeletionEvent(ctx context.Contex
 	
 	rms.updateDeletionMetrics(userID, storageBytes)
 	
+	log.Printf("Processed email deletion event for user %s, storage freed: %d bytes", userID, storageBytes)
 	return nil
 }
 
 func (rms *RetentionMonitorService) processEmailArchivalEvent(ctx context.Context, event *RetentionEvent) error {
+	// Check for context cancellation
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context cancelled during email archival processing: %w", ctx.Err())
+	default:
+	}
+	
 	var eventData map[string]interface{}
 	if err := json.Unmarshal(event.EventData, &eventData); err != nil {
 		return fmt.Errorf("failed to unmarshal event data: %w", err)
@@ -559,11 +596,63 @@ func (rms *RetentionMonitorService) processEmailArchivalEvent(ctx context.Contex
 	
 	rms.updateArchivalMetrics(userID, originalSize, compressedSize, durationMs, success)
 	
+	log.Printf("Processed email archival event for user %s, original: %d bytes, compressed: %d bytes, duration: %d ms, success: %t", 
+		userID, originalSize, compressedSize, durationMs, success)
 	return nil
 }
 
 func (rms *RetentionMonitorService) processPolicyChangeEvent(ctx context.Context, event *RetentionEvent) error {
-	// Handle policy change events
+	// Check for context cancellation
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context cancelled during policy change processing: %w", ctx.Err())
+	default:
+	}
+	
+	// Parse event data
+	var eventData map[string]interface{}
+	if err := json.Unmarshal(event.EventData, &eventData); err != nil {
+		return fmt.Errorf("failed to unmarshal event data: %w", err)
+	}
+	
+	// Extract policy change information
+	policyID := eventData["policy_id"].(float64)
+	changeType := eventData["change_type"].(string) // "created", "updated", "deleted"
+	oldSettings := eventData["old_settings"]
+	newSettings := eventData["new_settings"]
+	
+	// Log policy change for audit purposes
+	log.Printf("Policy change event: policy %d, change type: %s, old settings: %v, new settings: %v", 
+		int64(policyID), changeType, oldSettings, newSettings)
+	
+	// Update policy metrics cache to reflect changes
+	rms.cacheMutex.Lock()
+	defer rms.cacheMutex.Unlock()
+	
+	cacheKey := fmt.Sprintf("policy:%d", int64(policyID))
+	
+	switch changeType {
+	case "created":
+		// Initialize new policy metrics
+		if _, exists := rms.metricsCache[cacheKey]; !exists {
+			rms.metricsCache[cacheKey] = &RealtimeMetrics{
+				MetricType: "policy",
+				MetricKey:  fmt.Sprintf("%d", int64(policyID)),
+				LastUpdated: time.Now(),
+			}
+		}
+	case "updated":
+		// Update existing policy metrics timestamp
+		if metrics, exists := rms.metricsCache[cacheKey]; exists {
+			metrics.LastUpdated = time.Now()
+		}
+	case "deleted":
+		// Remove policy metrics from cache
+		delete(rms.metricsCache, cacheKey)
+	default:
+		log.Printf("Unknown policy change type: %s", changeType)
+	}
+	
 	return nil
 }
 
@@ -587,12 +676,31 @@ func (rms *RetentionMonitorService) updatePolicyMetrics(policyID int64, result s
 	metrics.PolicyEvaluationsCount++
 	metrics.AvgMatchScore = (metrics.AvgMatchScore*float64(metrics.PolicyEvaluationsCount-1) + float64(matchScore)) / float64(metrics.PolicyEvaluationsCount)
 	metrics.AvgImpactScore = (metrics.AvgImpactScore*float64(metrics.PolicyEvaluationsCount-1) + impactScore) / float64(metrics.PolicyEvaluationsCount)
+	
+	// Use storageSavings for storage efficiency tracking
+	if storageSavings > 0 {
+		metrics.TotalStorageBytes -= storageSavings
+		log.Printf("Policy %d achieved storage savings of %d bytes", policyID, storageSavings)
+	}
+	
+	// Use archivalLoadImpact for performance monitoring
+	if archivalLoadImpact > 0 {
+		log.Printf("Policy %d archival load impact: %.2f", policyID, archivalLoadImpact)
+	}
+	
 	metrics.LastUpdated = time.Now()
 	
-	if result == "matched" {
+	// Use switch statement for better performance
+	switch result {
+	case "matched":
 		metrics.PolicyMatchesCount++
-	} else if result == "applied" {
+	case "applied":
 		metrics.PolicyApplicationsCount++
+	case "rejected":
+		// Track rejected policies for analysis
+		log.Printf("Policy %d evaluation rejected", policyID)
+	default:
+		log.Printf("Unknown policy evaluation result: %s", result)
 	}
 	
 	// Update global metrics
@@ -689,6 +797,7 @@ func parsePolicyID(s string) (int64, error) {
 	_, err := fmt.Sscanf(s, "%d", &id)
 	return id, err
 }
+
 
 
 

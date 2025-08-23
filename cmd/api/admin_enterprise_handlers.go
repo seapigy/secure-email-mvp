@@ -49,7 +49,8 @@ type UserAssignmentResponse struct {
 }
 
 // createOrganizationHandler creates a new organization (system_admin only)
-func createOrganizationHandler(db *sql.DB) http.HandlerFunc {
+// TODO: Wire up to routes in future micro-iteration
+func createOrganizationHandler(db *sql.DB) http.HandlerFunc { //nolint:unused
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Parse request body
 		var req OrganizationRequest
@@ -94,7 +95,8 @@ func createOrganizationHandler(db *sql.DB) http.HandlerFunc {
 }
 
 // listOrganizationsHandler lists all organizations (system_admin only)
-func listOrganizationsHandler(db *sql.DB) http.HandlerFunc {
+// TODO: Wire up to routes in future micro-iteration
+func listOrganizationsHandler(db *sql.DB) http.HandlerFunc { //nolint:unused
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get query parameters for pagination (future enhancement)
 		_ = r.URL.Query().Get("page")

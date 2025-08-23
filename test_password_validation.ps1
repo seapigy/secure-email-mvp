@@ -27,15 +27,15 @@ foreach ($testCase in $testCases) {
     Write-Info "Testing: $($testCase.description)"
     Write-Info "Email: $($testCase.email)"
     Write-Info "Password: $($testCase.password)"
-    
+
     $signupData = @{
         email = $testCase.email
         password = $testCase.password
         fallback_email = "fallback@example.com"
     }
-    
+
     $jsonBody = $signupData | ConvertTo-Json
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$BaseUrl/api/auth/signup" -Method POST -Headers @{"Content-Type"="application/json"} -Body $jsonBody
         Write-Success "Signup successful for $($testCase.description)"
@@ -47,9 +47,11 @@ foreach ($testCase in $testCases) {
             Write-Error "Error: '$errorBody'"
         }
     }
-    
-    Write-Host ""
+
+    Write-Output ""
 }
+
+
 
 
 

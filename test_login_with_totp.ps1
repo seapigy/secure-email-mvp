@@ -17,7 +17,7 @@ function Write-Info { param([string]$Message) Write-ColorOutput "[INFO] $Message
 
 function Get-TOTPCode {
     param([string]$Secret)
-    
+
     try {
         $totpCode = & .\totp_generator.exe $Secret
         return $totpCode.Trim()
@@ -82,6 +82,8 @@ try {
     }
     Write-Error "=== Authentication System Test FAILED ==="
 }
+
+
 
 
 

@@ -30,9 +30,11 @@ const EnterpriseAdminApp: React.FC = () => {
     };
   }, []);
 
-  const handleLogin = (token: string) => {
+  const handleLogin = (token: string, user: unknown) => {
     setAdminToken(token);
     localStorage.setItem('enterprise_admin_token', token);
+    // User data can be used if needed
+    console.log('User logged in:', user);
   };
 
   const handleLogout = () => {
@@ -41,9 +43,7 @@ const EnterpriseAdminApp: React.FC = () => {
     localStorage.removeItem('enterprise_admin_token');
   };
 
-  const handleMFASetup = (_setup: any) => {
-    // MFA setup handled
-  };
+
 
   if (isLoading) {
     return (
@@ -59,8 +59,7 @@ const EnterpriseAdminApp: React.FC = () => {
   if (!adminToken) {
     return (
       <EnterpriseAdminLogin
-        onLogin={handleLogin}
-        onMFASetup={handleMFASetup}
+        onLoginSuccess={handleLogin}
       />
     );
   }

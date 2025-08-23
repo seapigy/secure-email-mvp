@@ -61,7 +61,10 @@ type BenchmarkStats struct {
 
 // NewBenchmarkSuite creates a new benchmark suite
 func NewBenchmarkSuite(config BenchmarkConfig) (*BenchmarkSuite, error) {
-	cryptoProvider := NewCryptoProvider(DefaultE2EConfig().Crypto)
+	cryptoProvider, err := NewCryptoProvider(DefaultE2EConfig().Crypto)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create crypto provider: %w", err)
+	}
 
 	client, err := NewClient(*getTestConfig(), "benchmark_user")
 	if err != nil {
@@ -283,13 +286,20 @@ func (bs *BenchmarkSuite) benchmarkEncryption(ctx context.Context, kemAlg, demAl
 		plaintext[i] = byte(i % 256)
 	}
 
+	// Generate KEM key pair for encryption
 	recipientKeys, err := bs.CryptoProvider.GenerateKeyPair(kemAlg)
 	if err != nil {
 		return err
 	}
 
+	// Generate signature key pair for signing
+	signatureKeys, err := bs.CryptoProvider.GenerateKeyPair("dilithium3")
+	if err != nil {
+		return err
+	}
+
 	return bs.runBenchmark(ctx, fmt.Sprintf("encryption_%s_%s_%db", kemAlg, demAlg, messageSize), iterations, func() error {
-		_, err := bs.CryptoProvider.EncryptMessage(plaintext, recipientKeys.PublicKey, recipientKeys.PublicKey)
+		_, err := bs.CryptoProvider.EncryptMessage(plaintext, recipientKeys.PublicKey, signatureKeys.PrivateKey)
 		return err
 	}, map[string]interface{}{
 		"kem_algorithm":  kemAlg,
@@ -306,18 +316,25 @@ func (bs *BenchmarkSuite) benchmarkDecryption(ctx context.Context, kemAlg, demAl
 		plaintext[i] = byte(i % 256)
 	}
 
+	// Generate KEM key pair for encryption/decryption
 	recipientKeys, err := bs.CryptoProvider.GenerateKeyPair(kemAlg)
 	if err != nil {
 		return err
 	}
 
-	envelope, err := bs.CryptoProvider.EncryptMessage(plaintext, recipientKeys.PublicKey, recipientKeys.PublicKey)
+	// Generate signature key pair for signing/verification
+	signatureKeys, err := bs.CryptoProvider.GenerateKeyPair("dilithium3")
+	if err != nil {
+		return err
+	}
+
+	envelope, err := bs.CryptoProvider.EncryptMessage(plaintext, recipientKeys.PublicKey, signatureKeys.PrivateKey)
 	if err != nil {
 		return err
 	}
 
 	return bs.runBenchmark(ctx, fmt.Sprintf("decryption_%s_%s_%db", kemAlg, demAlg, messageSize), iterations, func() error {
-		_, err := bs.CryptoProvider.DecryptMessage(envelope, recipientKeys.PrivateKey, recipientKeys.PrivateKey)
+		_, err := bs.CryptoProvider.DecryptMessage(envelope, recipientKeys.PrivateKey, signatureKeys.PublicKey)
 		return err
 	}, map[string]interface{}{
 		"kem_algorithm": kemAlg,
@@ -526,7 +543,13 @@ func (bs *BenchmarkSuite) benchmarkKeyRotation(ctx context.Context, iterations i
 
 func (bs *BenchmarkSuite) benchmarkConcurrentEncryption(ctx context.Context, concurrency, messageSize, iterations int) error {
 	plaintext := make([]byte, messageSize)
-	recipientPublicKey := make([]byte, 32)
+
+	// Generate proper PQC key pair for benchmarking
+	keyPair, err := bs.CryptoProvider.GenerateKeyPair("kyber768")
+	if err != nil {
+		return fmt.Errorf("failed to generate key pair for benchmark: %w", err)
+	}
+	recipientPublicKey := keyPair.PublicKey
 
 	return bs.runConcurrentBenchmark(ctx, fmt.Sprintf("concurrent_encryption_%d_threads", concurrency), concurrency, iterations, func() error {
 		_, err := bs.Client.EncryptMessage(plaintext, recipientPublicKey, "test_thread", "test_recipient")

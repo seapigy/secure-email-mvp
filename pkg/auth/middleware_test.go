@@ -52,18 +52,6 @@ func setupTestDB(t *testing.T) *sql.DB {
 	return db
 }
 
-func createTestUser(db *sql.DB, userID, email, role, organizationID string) error {
-	query := `INSERT INTO users (id, email, password_hash, totp_secret, role, organization_id) VALUES (?, ?, ?, ?, ?, ?)`
-	_, err := db.Exec(query, userID, email, "password-hash", "totp-secret", role, organizationID)
-	return err
-}
-
-func createTestOrganization(db *sql.DB, orgID, name string) error {
-	query := `INSERT INTO organizations (id, name) VALUES (?, ?)`
-	_, err := db.Exec(query, orgID, name)
-	return err
-}
-
 func TestRequireAuthMissingHeader(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   ArrowPathIcon, Cog6ToothIcon, BellIcon, ShieldCheckIcon, ExclamationTriangleIcon,
   XMarkIcon, EyeIcon, UserGroupIcon,
@@ -48,7 +48,7 @@ const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ adminToken })
   const [realTimeUpdates, setRealTimeUpdates] = useState<RealTimeUpdate[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-  const dashboardService = new EnterpriseDashboardService(adminToken);
+  const dashboardService = useMemo(() => new EnterpriseDashboardService(adminToken), [adminToken]);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -86,8 +86,9 @@ const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ adminToken })
       setDashboardConfig(configData);
       setLastUpdate(new Date());
       setConnectionStatus('connected');
-    } catch (error: any) {
-      setError(error.message || 'Failed to fetch dashboard data');
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message || 'Failed to fetch dashboard data');
       setConnectionStatus('disconnected');
     } finally {
       setIsLoading(false);
@@ -132,8 +133,9 @@ const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ adminToken })
           ? { ...alert, acknowledged: true, acknowledged_at: new Date().toISOString() }
           : alert
       ));
-    } catch (error: any) {
-      setError(error.message || 'Failed to dismiss alert');
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message || 'Failed to dismiss alert');
     }
   };
 
@@ -145,8 +147,9 @@ const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({ adminToken })
           ? { ...alert, resolved: true, resolved_at: new Date().toISOString() }
           : alert
       ));
-    } catch (error: any) {
-      setError(error.message || 'Failed to resolve alert');
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message || 'Failed to resolve alert');
     }
   };
 

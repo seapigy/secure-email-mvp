@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"secure-email-mvp/pkg/audit"
+	"secure-email-mvp/pkg/auth"
 
 	_ "modernc.org/sqlite"
 )
@@ -64,7 +65,7 @@ func TestEmailAccessAuditor(t *testing.T) {
 
 		// Log access attempt
 		err := auditor.LogAccess(ctx, emailID, ipAddress, &userID, result, userAgent)
-	if err != nil {
+		if err != nil {
 			t.Fatalf("Failed to log access: %v", err)
 		}
 
@@ -87,14 +88,14 @@ func TestEmailAccessAuditor(t *testing.T) {
 		// Log multiple failed attempts
 		for i := 0; i < 3; i++ {
 			err := auditor.LogAccess(ctx, emailID, ipAddress, nil, "failed_password", "test-agent")
-	if err != nil {
+			if err != nil {
 				t.Fatalf("Failed to log failed attempt %d: %v", i+1, err)
 			}
-	}
+		}
 
 		// Check rate limit
 		isLimited, err := auditor.CheckRateLimit(ctx, emailID, ipAddress)
-	if err != nil {
+		if err != nil {
 			t.Fatalf("Failed to check rate limit: %v", err)
 		}
 		if !isLimited {
@@ -118,14 +119,14 @@ func TestEmailAccessAuditor(t *testing.T) {
 		// Log some access attempts
 		for i := 0; i < 3; i++ {
 			err := auditor.LogAccess(ctx, emailID, "192.168.1.4", nil, "success", "test-agent")
-	if err != nil {
+			if err != nil {
 				t.Fatalf("Failed to log access attempt %d: %v", i+1, err)
 			}
-	}
+		}
 
 		// Get access logs
 		logs, err := auditor.GetAccessLogs(ctx, emailID, 10)
-	if err != nil {
+		if err != nil {
 			t.Fatalf("Failed to get access logs: %v", err)
 		}
 		if len(logs) != 3 {
@@ -151,14 +152,14 @@ func TestEmailAccessAuditor(t *testing.T) {
 		// Log some failed attempts
 		for i := 0; i < 5; i++ {
 			err := auditor.LogAccess(ctx, "test-email-999", "192.168.1.5", nil, "failed_password", "test-agent")
-	if err != nil {
+			if err != nil {
 				t.Fatalf("Failed to log failed attempt %d: %v", i+1, err)
 			}
 		}
 
 		// Get summary
 		summary, err := auditor.GetFailedAttemptsSummary(ctx, 1)
-	if err != nil {
+		if err != nil {
 			t.Fatalf("Failed to get failed attempts summary: %v", err)
 		}
 
@@ -427,7 +428,7 @@ func TestSecurityHardeningIntegration(t *testing.T) {
 
 		// Get access logs to verify audit trail
 		logs, err := auditor.GetAccessLogs(context.Background(), emailID, 10)
-			if err != nil {
+		if err != nil {
 			t.Fatalf("Failed to get access logs: %v", err)
 		}
 		if len(logs) != 4 {
@@ -490,8 +491,8 @@ func TestSecurityHardeningHTTPHandler(t *testing.T) {
 		req.Header.Set("User-Agent", "test-agent")
 
 		// Add JWT context (simplified for test)
-		ctx := context.WithValue(req.Context(), "user_id", "test-user")
-		req = req.WithContext(ctx)
+		ctx := context.WithValue(req.Context(), auth.UserIDKey, "test-user")
+		_ = req.WithContext(ctx)
 
 		w := httptest.NewRecorder()
 
@@ -533,8 +534,8 @@ func TestSecurityHardeningHTTPHandler(t *testing.T) {
 		req.Header.Set("User-Agent", "test-agent")
 
 		// Add JWT context
-		ctx := context.WithValue(req.Context(), "user_id", "test-user")
-		req = req.WithContext(ctx)
+		ctx := context.WithValue(req.Context(), auth.UserIDKey, "test-user")
+		_ = req.WithContext(ctx)
 
 		w := httptest.NewRecorder()
 

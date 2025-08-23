@@ -1,0 +1,20 @@
+﻿PDF Conversion Guide
+
+Option 1: Browser Print to PDF (Recommended)
+1. Open the HTML file in your web browser
+2. Press Ctrl+P (or Cmd+P on Mac)
+3. Select "Save as PDF" as the destination
+4. Choose your preferred settings:
+   - Page size: A4
+   - Margins: Default or Minimum
+   - Include background graphics: Yes
+5. Click "Save" and choose your file location
+
+Option 2: Online Converters
+1. Visit an online HTML to PDF converter
+2. Upload the HTML file: docs/pdf/complete-user-flow-guide.html
+3. Convert and download the PDF
+
+File Locations
+- HTML File: docs/pdf/complete-user-flow-guide.html
+- Output Directory: docs/pdf

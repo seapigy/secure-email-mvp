@@ -1,5 +1,8 @@
 package main
 
+// TODO: Wire up PQC handlers to routes in future micro-iteration
+// All functions in this file are marked as unused until routes are implemented
+
 import (
 	"encoding/json"
 	"fmt"

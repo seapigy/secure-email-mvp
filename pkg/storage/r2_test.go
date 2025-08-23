@@ -13,6 +13,7 @@ func TestNewR2ClientFromEnv(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error when environment variables are missing")
 	}
+	_ = client // Suppress unused variable warning
 
 	// Test with valid environment variables (mock)
 	os.Setenv("R2_ACCESS_KEY_ID", "test-access-key")
@@ -50,6 +51,7 @@ func TestNewR2Client(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error with incomplete configuration")
 	}
+	_ = client // Suppress unused variable warning
 
 	// Test with complete configuration
 	config = &R2Config{

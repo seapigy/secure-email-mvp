@@ -4,7 +4,7 @@
 // React component for viewing and managing audit logs with filtering and export.
 // =============================================================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Table, 
   TableBody, 
@@ -59,7 +59,7 @@ interface AuditEvent {
   user_agent?: string;
   related_email_id?: string;
   outcome: 'success' | 'failure' | 'blocked';
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   severity: 'info' | 'warning' | 'error' | 'critical';
   session_id?: string;
   request_id?: string;
@@ -84,7 +84,7 @@ interface ExportRequest {
   date_from?: string;
   date_to?: string;
   event_types?: string[];
-  filters?: any;
+  filters?: Record<string, unknown>;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   file_path?: string;
   file_size?: number;
@@ -105,8 +105,12 @@ interface RetentionPolicy {
 
 // API functions
 const api = {
-  async getAuditLogs(params: any): Promise<AuditLogQuery> {
-    const queryString = new URLSearchParams(params).toString();
+  async getAuditLogs(params: Record<string, string | number | boolean>): Promise<AuditLogQuery> {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      queryParams.append(key, String(value));
+    });
+    const queryString = queryParams.toString();
     const response = await fetch(`/api/audit/logs?${queryString}`, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
     });
@@ -131,7 +135,7 @@ const api = {
     return response.json();
   },
 
-  async createExport(exportData: any): Promise<ExportRequest> {
+  async createExport(exportData: { export_type: 'csv' | 'json'; date_from?: string; date_to?: string; event_types?: string[]; filters?: Record<string, unknown> }): Promise<ExportRequest> {
     const response = await fetch('/api/audit/exports', {
       method: 'POST',
       headers: {
@@ -177,7 +181,7 @@ const api = {
     return data.policies;
   },
 
-  async updateRetentionPolicy(eventType: string, policy: any): Promise<void> {
+  async updateRetentionPolicy(eventType: string, policy: { retention_days: number; auto_purge: boolean }): Promise<void> {
     const response = await fetch(`/api/audit/retention-policies/${eventType}`, {
       method: 'PUT',
       headers: {
@@ -247,43 +251,12 @@ const AuditLogDashboard: React.FC = () => {
     eventTypes: [] as string[]
   });
 
-  // Load initial data
-  useEffect(() => {
-    loadInitialData();
-  }, []);
-
-  // Load audit logs when filters or pagination change
-  useEffect(() => {
-    loadAuditLogs();
-  }, [filters, pagination]);
-
-  const loadInitialData = async () => {
+  const loadAuditLogs = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const [eventTypesData, userEventsData, exportsData, policiesData] = await Promise.all([
-        api.getEventTypes(),
-        api.getUserEvents(5),
-        api.getExports(5),
-        api.getRetentionPolicies()
-      ]);
 
-      setEventTypes(eventTypesData);
-      setUserEvents(userEventsData.events);
-      setExports(exportsData.exports);
-      setRetentionPolicies(policiesData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadAuditLogs = async () => {
-    setLoading(true);
-    setError(null);
     try {
-      const params: any = {
+      const params: Record<string, string | number | boolean> = {
         page: pagination.page,
         page_size: pagination.pageSize
       };
@@ -314,13 +287,39 @@ const AuditLogDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  }, [filters, pagination]);
+
+  useEffect(() => {
+    loadAuditLogs();
+  }, [loadAuditLogs]);
+
+  const loadInitialData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [eventTypesData, userEventsData, exportsData, policiesData] = await Promise.all([
+        api.getEventTypes(),
+        api.getUserEvents(5),
+        api.getExports(5),
+        api.getRetentionPolicies()
+      ]);
+
+      setEventTypes(eventTypesData);
+      setUserEvents(userEventsData.events);
+      setExports(exportsData.exports);
+      setRetentionPolicies(policiesData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreateExport = async () => {
     try {
       const exportRequest = await api.createExport({
         export_type: exportData.exportType,
-        filter: {
+        filters: {
           date_from: exportData.dateFrom?.toISOString(),
           date_to: exportData.dateTo?.toISOString(),
           event_types: exportData.eventTypes
@@ -524,10 +523,10 @@ const AuditLogDashboard: React.FC = () => {
               <Select
                 multiple
                 value={filters.eventTypes}
-                onChange={(e: any) => setFilters(prev => ({ ...prev, eventTypes: e.target.value as string[] }))}
-                renderValue={(selected: any) => (
+                onChange={(e) => setFilters(prev => ({ ...prev, eventTypes: e.target.value as string[] }))}
+                renderValue={(selected) => (
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {selected.map((value: any) => (
+                    {(selected as string[]).map((value) => (
                       <Chip key={value} label={value} size="small" />
                     ))}
                   </Box>
@@ -543,10 +542,10 @@ const AuditLogDashboard: React.FC = () => {
               <Select
                 multiple
                 value={filters.outcomes}
-                onChange={(e: any) => setFilters(prev => ({ ...prev, outcomes: e.target.value as string[] }))}
-                renderValue={(selected: any) => (
+                onChange={(e) => setFilters(prev => ({ ...prev, outcomes: e.target.value as string[] }))}
+                renderValue={(selected) => (
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {selected.map((value: any) => (
+                    {(selected as string[]).map((value) => (
                       <Chip key={value} label={value} size="small" />
                     ))}
                   </Box>
@@ -561,7 +560,7 @@ const AuditLogDashboard: React.FC = () => {
               fullWidth
               label="Search"
               value={filters.searchTerm}
-              onChange={(e: any) => setFilters(prev => ({ ...prev, searchTerm: e.target.value }))}
+              onChange={(e) => setFilters(prev => ({ ...prev, searchTerm: e.target.value }))}
               placeholder="Search in details or user agent..."
             />
             <Button
@@ -656,14 +655,14 @@ const AuditLogDashboard: React.FC = () => {
                   <TableCell>
                     <Chip 
                       label={event.outcome} 
-                      color={getOutcomeColor(event.outcome) as any}
+                      color={getOutcomeColor(event.outcome) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
                       size="small"
                     />
                   </TableCell>
                   <TableCell>
                     <Chip 
                       label={event.severity} 
-                      color={getSeverityColor(event.severity) as any}
+                      color={getSeverityColor(event.severity) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
                       size="small"
                     />
                   </TableCell>
@@ -695,7 +694,7 @@ const AuditLogDashboard: React.FC = () => {
             <Pagination
               count={Math.ceil(auditLogs.total / pagination.pageSize)}
               page={pagination.page}
-              onChange={(_: any, page: number) => setPagination(prev => ({ ...prev, page }))}
+              onChange={(_, page: number) => setPagination(prev => ({ ...prev, page }))}
               color="primary"
             />
           </Box>
@@ -724,7 +723,7 @@ const AuditLogDashboard: React.FC = () => {
                   <TableCell>
                     <Chip 
                       label={event.outcome} 
-                      color={getOutcomeColor(event.outcome) as any}
+                      color={getOutcomeColor(event.outcome) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
                       size="small"
                     />
                   </TableCell>
@@ -803,7 +802,7 @@ const AuditLogDashboard: React.FC = () => {
                 <InputLabel>Export Type</InputLabel>
                 <Select
                   value={exportData.exportType}
-                  onChange={(e: any) => setExportData(prev => ({ ...prev, exportType: e.target.value as 'csv' | 'json' }))}
+                  onChange={(e) => setExportData(prev => ({ ...prev, exportType: e.target.value as 'csv' | 'json' }))}
                 >
                   <MenuItem value="json">JSON</MenuItem>
                   <MenuItem value="csv">CSV</MenuItem>
@@ -826,10 +825,10 @@ const AuditLogDashboard: React.FC = () => {
                 <Select
                   multiple
                   value={exportData.eventTypes}
-                  onChange={(e: any) => setExportData(prev => ({ ...prev, eventTypes: e.target.value as string[] }))}
-                  renderValue={(selected: any) => (
+                  onChange={(e) => setExportData(prev => ({ ...prev, eventTypes: e.target.value as string[] }))}
+                  renderValue={(selected) => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {selected.map((value: any) => (
+                      {(selected as string[]).map((value) => (
                         <Chip key={value} label={value} size="small" />
                       ))}
                     </Box>
@@ -870,11 +869,11 @@ const AuditLogDashboard: React.FC = () => {
                   </Box>
                   <Box>
                     <Typography variant="body2" color="textSecondary">Outcome</Typography>
-                    <Chip label={selectedEvent.outcome} color={getOutcomeColor(selectedEvent.outcome) as any} />
+                    <Chip label={selectedEvent.outcome} color={getOutcomeColor(selectedEvent.outcome) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'} />
                   </Box>
                   <Box>
                     <Typography variant="body2" color="textSecondary">Severity</Typography>
-                    <Chip label={selectedEvent.severity} color={getSeverityColor(selectedEvent.severity) as any} />
+                    <Chip label={selectedEvent.severity} color={getSeverityColor(selectedEvent.severity) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'} />
                   </Box>
                   <Box>
                     <Typography variant="body2" color="textSecondary">User ID</Typography>

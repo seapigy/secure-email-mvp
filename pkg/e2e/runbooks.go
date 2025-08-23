@@ -351,6 +351,12 @@ func (re *RunbookEngine) executeStep(ctx context.Context, step Step, stepNumber 
 		Output:    make(map[string]interface{}),
 	}
 
+	// Log progress information
+	log.Printf("Executing step %d/%d: %s (%s)", stepNumber, totalSteps, step.Name, step.Description)
+	stepResult.Output["step_number"] = stepNumber
+	stepResult.Output["total_steps"] = totalSteps
+	stepResult.Output["progress"] = fmt.Sprintf("%d/%d", stepNumber, totalSteps)
+
 	// Execute the step action
 	err := re.Executor.ExecuteAction(ctx, step.Action, step.Parameters, &stepResult)
 	if err != nil {
@@ -361,12 +367,14 @@ func (re *RunbookEngine) executeStep(ctx context.Context, step Step, stepNumber 
 		if step.RetryCount > 0 {
 			for retry := 1; retry <= step.RetryCount; retry++ {
 				stepResult.RetryCount = retry
+				log.Printf("Retrying step %d/%d (attempt %d/%d): %s", stepNumber, totalSteps, retry, step.RetryCount, step.Name)
 				time.Sleep(time.Duration(retry) * time.Second) // Exponential backoff
 
 				err = re.Executor.ExecuteAction(ctx, step.Action, step.Parameters, &stepResult)
 				if err == nil {
 					stepResult.Status = "completed"
 					stepResult.Error = ""
+					log.Printf("Step %d/%d completed successfully on retry %d: %s", stepNumber, totalSteps, retry, step.Name)
 					break
 				}
 				stepResult.Error = err.Error()
@@ -374,6 +382,7 @@ func (re *RunbookEngine) executeStep(ctx context.Context, step Step, stepNumber 
 		}
 	} else {
 		stepResult.Status = "completed"
+		log.Printf("Step %d/%d completed successfully: %s", stepNumber, totalSteps, step.Name)
 	}
 
 	stepResult.EndTime = time.Now()
@@ -388,7 +397,7 @@ func (re *RunbookEngine) triggerRollback(procedure Procedure, result *ExecutionR
 		return
 	}
 
-	log.Printf("Triggering rollback for procedure '%s'", procedure.Name)
+	log.Printf("Triggering rollback for procedure '%s' (Operator: %s, Correlation: %s)", procedure.Name, operatorID, correlationID)
 
 	rollbackResult := &ExecutionResult{
 		ExecutionID:   uuid.New().String(),
@@ -399,17 +408,26 @@ func (re *RunbookEngine) triggerRollback(procedure Procedure, result *ExecutionR
 		Metadata:      make(map[string]interface{}),
 	}
 
+	// Add rollback metadata for tracking
+	rollbackResult.Metadata["original_execution_id"] = result.ExecutionID
+	rollbackResult.Metadata["operator_id"] = operatorID
+	rollbackResult.Metadata["correlation_id"] = correlationID
+	rollbackResult.Metadata["rollback_reason"] = result.Error
+
 	ctx, cancel := context.WithTimeout(context.Background(), procedure.Timeout)
 	defer cancel()
 
 	// Execute rollback steps
-	for _, step := range procedure.Rollback {
-		stepResult := re.executeStep(ctx, step, 1, len(procedure.Rollback))
+	for i, step := range procedure.Rollback {
+		stepNumber := i + 1
+		stepResult := re.executeStep(ctx, step, stepNumber, len(procedure.Rollback))
 		rollbackResult.StepResults = append(rollbackResult.StepResults, stepResult)
 
 		if stepResult.Status == "failed" {
 			rollbackResult.Status = "failed"
 			rollbackResult.Error = fmt.Sprintf("Rollback step '%s' failed: %s", step.Name, stepResult.Error)
+			log.Printf("Rollback failed at step %d/%d: %s (Operator: %s, Correlation: %s)",
+				stepNumber, len(procedure.Rollback), step.Name, operatorID, correlationID)
 			break
 		}
 	}
@@ -417,6 +435,8 @@ func (re *RunbookEngine) triggerRollback(procedure Procedure, result *ExecutionR
 	if rollbackResult.Status != "failed" {
 		rollbackResult.Status = "completed"
 		result.Status = "rolled_back"
+		log.Printf("Rollback completed successfully for procedure '%s' (Operator: %s, Correlation: %s)",
+			procedure.Name, operatorID, correlationID)
 	}
 
 	rollbackResult.EndTime = time.Now()
@@ -440,35 +460,73 @@ func (re *RunbookEngine) runValidation(ctx context.Context, validation Validatio
 
 // validateMetric validates a metric
 func (re *RunbookEngine) validateMetric(ctx context.Context, validation Validation) bool {
-	_, ok := validation.Parameters["metric"].(string)
+	metricName, ok := validation.Parameters["metric"].(string)
 	if !ok {
+		log.Printf("Invalid metric parameter in validation: %s", validation.Name)
 		return false
 	}
 
 	threshold, ok := validation.Parameters["threshold"].(float64)
 	if !ok {
+		log.Printf("Invalid threshold parameter in validation: %s", validation.Name)
 		return false
 	}
 
-	// This would typically query the metrics system
-	// For now, return a placeholder value
-	currentValue := 0.5 // Placeholder
+	// Use context for timeout
+	select {
+	case <-ctx.Done():
+		log.Printf("Validation timeout for metric: %s", metricName)
+		return false
+	default:
+		// This would typically query the metrics system
+		// For now, return a placeholder value
+		currentValue := 0.5 // Placeholder
 
-	return currentValue < threshold
+		log.Printf("Validating metric '%s': current=%.2f, threshold=%.2f", metricName, currentValue, threshold)
+		return currentValue < threshold
+	}
 }
 
 // validateHTTP validates an HTTP endpoint
 func (re *RunbookEngine) validateHTTP(ctx context.Context, validation Validation) bool {
-	// This would make an HTTP request to validate the endpoint
-	// For now, return true as placeholder
-	return true
+	url, ok := validation.Parameters["url"].(string)
+	if !ok {
+		log.Printf("Invalid URL parameter in validation: %s", validation.Name)
+		return false
+	}
+
+	// Use context for timeout
+	select {
+	case <-ctx.Done():
+		log.Printf("Validation timeout for HTTP endpoint: %s", url)
+		return false
+	default:
+		// This would make an HTTP request to validate the endpoint
+		// For now, return true as placeholder
+		log.Printf("Validating HTTP endpoint: %s", url)
+		return true
+	}
 }
 
 // validateDatabase validates a database query
 func (re *RunbookEngine) validateDatabase(ctx context.Context, validation Validation) bool {
-	// This would execute a database query to validate
-	// For now, return true as placeholder
-	return true
+	query, ok := validation.Parameters["query"].(string)
+	if !ok {
+		log.Printf("Invalid query parameter in validation: %s", validation.Name)
+		return false
+	}
+
+	// Use context for timeout
+	select {
+	case <-ctx.Done():
+		log.Printf("Validation timeout for database query: %s", query)
+		return false
+	default:
+		// This would execute a database query to validate
+		// For now, return true as placeholder
+		log.Printf("Validating database query: %s", query)
+		return true
+	}
 }
 
 // recordExecutionStart records the start of an execution
@@ -593,178 +651,321 @@ func (pe *ProcedureExecutor) ExecuteAction(ctx context.Context, action string, p
 
 // validatePrerequisites validates system prerequisites
 func (pe *ProcedureExecutor) validatePrerequisites(ctx context.Context, parameters map[string]interface{}, result *StepResult) error {
-	// Check database connectivity
-	err := pe.DB.PingContext(ctx)
-	if err != nil {
+	// Use context for timeout
+	select {
+	case <-ctx.Done():
 		result.Status = "failed"
-		result.Error = fmt.Sprintf("database connectivity check failed: %v", err)
-		return fmt.Errorf("database connectivity check failed: %w", err)
-	}
+		result.Error = "prerequisites validation timeout"
+		return fmt.Errorf("prerequisites validation timeout")
+	default:
+		// Check database connectivity
+		err := pe.DB.PingContext(ctx)
+		if err != nil {
+			result.Status = "failed"
+			result.Error = fmt.Sprintf("database connectivity check failed: %v", err)
+			return fmt.Errorf("database connectivity check failed: %w", err)
+		}
 
-	// Check metrics system
-	if pe.Metrics == nil {
-		result.Status = "failed"
-		result.Error = "metrics system not available"
-		return fmt.Errorf("metrics system not available")
-	}
+		// Check metrics system
+		if pe.Metrics == nil {
+			result.Status = "failed"
+			result.Error = "metrics system not available"
+			return fmt.Errorf("metrics system not available")
+		}
 
-	result.Status = "completed"
-	result.Output["database_status"] = "connected"
-	result.Output["metrics_status"] = "available"
-	return nil
+		// Log parameters for debugging
+		if len(parameters) > 0 {
+			log.Printf("Validating prerequisites with parameters: %v", parameters)
+		}
+
+		result.Status = "completed"
+		result.Output["database_status"] = "connected"
+		result.Output["metrics_status"] = "available"
+		return nil
+	}
 }
 
 // enableCanary enables canary rollout
 func (pe *ProcedureExecutor) enableCanary(ctx context.Context, parameters map[string]interface{}, result *StepResult) error {
-	trafficPercentage, ok := parameters["traffic_percentage"].(float64)
-	if !ok {
+	// Use context for timeout
+	select {
+	case <-ctx.Done():
 		result.Status = "failed"
-		result.Error = "invalid traffic_percentage parameter"
-		return fmt.Errorf("invalid traffic_percentage parameter")
+		result.Error = "canary enable timeout"
+		return fmt.Errorf("canary enable timeout")
+	default:
+		trafficPercentage, ok := parameters["traffic_percentage"].(float64)
+		if !ok {
+			result.Status = "failed"
+			result.Error = "invalid traffic_percentage parameter"
+			return fmt.Errorf("invalid traffic_percentage parameter")
+		}
+
+		_, err := pe.DB.ExecContext(ctx, `
+			UPDATE canary_config 
+			SET enabled = TRUE, traffic_percentage = ?, updated_at = CURRENT_TIMESTAMP 
+			WHERE id = 'canary_main'
+		`, trafficPercentage)
+
+		if err != nil {
+			result.Status = "failed"
+			result.Error = fmt.Sprintf("failed to enable canary: %v", err)
+			return fmt.Errorf("failed to enable canary: %w", err)
+		}
+
+		result.Status = "completed"
+		result.Output["traffic_percentage"] = trafficPercentage
+		result.Output["status"] = "enabled"
+		return nil
 	}
-
-	_, err := pe.DB.ExecContext(ctx, `
-		UPDATE canary_config 
-		SET enabled = TRUE, traffic_percentage = ?, updated_at = CURRENT_TIMESTAMP 
-		WHERE id = 'canary_main'
-	`, trafficPercentage)
-
-	if err != nil {
-		result.Status = "failed"
-		result.Error = fmt.Sprintf("failed to enable canary: %v", err)
-		return fmt.Errorf("failed to enable canary: %w", err)
-	}
-
-	result.Status = "completed"
-	result.Output["traffic_percentage"] = trafficPercentage
-	result.Output["status"] = "enabled"
-	return nil
 }
 
 // monitorSystem monitors system health
 func (pe *ProcedureExecutor) monitorSystem(ctx context.Context, parameters map[string]interface{}, result *StepResult) error {
-	durationStr, ok := parameters["duration"].(string)
-	if !ok {
-		return fmt.Errorf("invalid duration parameter")
+	// Use context for timeout
+	select {
+	case <-ctx.Done():
+		result.Status = "failed"
+		result.Error = "system monitoring timeout"
+		return fmt.Errorf("system monitoring timeout")
+	default:
+		durationStr, ok := parameters["duration"].(string)
+		if !ok {
+			return fmt.Errorf("invalid duration parameter")
+		}
+
+		duration, err := time.ParseDuration(durationStr)
+		if err != nil {
+			return fmt.Errorf("invalid duration format: %w", err)
+		}
+
+		// Simulate monitoring with context awareness
+		select {
+		case <-time.After(duration):
+			// Monitoring completed
+		case <-ctx.Done():
+			result.Status = "failed"
+			result.Error = "monitoring interrupted"
+			return fmt.Errorf("monitoring interrupted")
+		}
+
+		result.Output["monitoring_duration"] = duration.String()
+		result.Output["status"] = "monitoring_completed"
+		return nil
 	}
-
-	duration, err := time.ParseDuration(durationStr)
-	if err != nil {
-		return fmt.Errorf("invalid duration format: %w", err)
-	}
-
-	// Simulate monitoring
-	time.Sleep(duration)
-
-	result.Output["monitoring_duration"] = duration.String()
-	result.Output["status"] = "monitoring_completed"
-	return nil
 }
 
 // increaseTraffic increases traffic percentage
 func (pe *ProcedureExecutor) increaseTraffic(ctx context.Context, parameters map[string]interface{}, result *StepResult) error {
-	targetPercentage, ok := parameters["target_percentage"].(float64)
-	if !ok {
+	// Use context for timeout
+	select {
+	case <-ctx.Done():
 		result.Status = "failed"
-		result.Error = "invalid target_percentage parameter"
-		return fmt.Errorf("invalid target_percentage parameter")
+		result.Error = "traffic increase timeout"
+		return fmt.Errorf("traffic increase timeout")
+	default:
+		targetPercentage, ok := parameters["target_percentage"].(float64)
+		if !ok {
+			result.Status = "failed"
+			result.Error = "invalid target_percentage parameter"
+			return fmt.Errorf("invalid target_percentage parameter")
+		}
+
+		_, err := pe.DB.ExecContext(ctx, `
+			UPDATE canary_config 
+			SET traffic_percentage = ?, updated_at = CURRENT_TIMESTAMP 
+			WHERE id = 'canary_main'
+		`, targetPercentage)
+
+		if err != nil {
+			result.Status = "failed"
+			result.Error = fmt.Sprintf("failed to increase traffic: %v", err)
+			return fmt.Errorf("failed to increase traffic: %w", err)
+		}
+
+		result.Status = "completed"
+		result.Output["new_traffic_percentage"] = targetPercentage
+		result.Output["status"] = "traffic_increased"
+		return nil
 	}
-
-	_, err := pe.DB.ExecContext(ctx, `
-		UPDATE canary_config 
-		SET traffic_percentage = ?, updated_at = CURRENT_TIMESTAMP 
-		WHERE id = 'canary_main'
-	`, targetPercentage)
-
-	if err != nil {
-		result.Status = "failed"
-		result.Error = fmt.Sprintf("failed to increase traffic: %v", err)
-		return fmt.Errorf("failed to increase traffic: %w", err)
-	}
-
-	result.Status = "completed"
-	result.Output["new_traffic_percentage"] = targetPercentage
-	result.Output["status"] = "traffic_increased"
-	return nil
 }
 
 // disableCanary disables canary rollout
 func (pe *ProcedureExecutor) disableCanary(ctx context.Context, parameters map[string]interface{}, result *StepResult) error {
-	_, err := pe.DB.ExecContext(ctx, `
-		UPDATE canary_config 
-		SET enabled = FALSE, traffic_percentage = 0, updated_at = CURRENT_TIMESTAMP 
-		WHERE id = 'canary_main'
-	`)
-
-	if err != nil {
+	// Use context for timeout
+	select {
+	case <-ctx.Done():
 		result.Status = "failed"
-		result.Error = fmt.Sprintf("failed to disable canary: %v", err)
-		return fmt.Errorf("failed to disable canary: %w", err)
-	}
+		result.Error = "canary disable timeout"
+		return fmt.Errorf("canary disable timeout")
+	default:
+		_, err := pe.DB.ExecContext(ctx, `
+			UPDATE canary_config 
+			SET enabled = FALSE, traffic_percentage = 0, updated_at = CURRENT_TIMESTAMP 
+			WHERE id = 'canary_main'
+		`)
 
-	result.Status = "completed"
-	result.Output["status"] = "disabled"
-	return nil
+		if err != nil {
+			result.Status = "failed"
+			result.Error = fmt.Sprintf("failed to disable canary: %v", err)
+			return fmt.Errorf("failed to disable canary: %w", err)
+		}
+
+		result.Status = "completed"
+		result.Output["status"] = "disabled"
+		return nil
+	}
 }
 
 // assessSituation assesses the current situation
 func (pe *ProcedureExecutor) assessSituation(ctx context.Context, parameters map[string]interface{}, result *StepResult) error {
-	// This would typically check various system metrics
-	// For now, return placeholder assessment
-	result.Status = "completed"
-	result.Output["assessment"] = "system_requires_rollback"
-	result.Output["urgency"] = "high"
-	return nil
+	// Use context for timeout
+	select {
+	case <-ctx.Done():
+		result.Status = "failed"
+		result.Error = "situation assessment timeout"
+		return fmt.Errorf("situation assessment timeout")
+	default:
+		// Log assessment parameters
+		if len(parameters) > 0 {
+			log.Printf("Assessing situation with parameters: %v", parameters)
+		}
+
+		// This would typically check various system metrics
+		// For now, return placeholder assessment
+		result.Status = "completed"
+		result.Output["assessment"] = "system_requires_rollback"
+		result.Output["urgency"] = "high"
+		return nil
+	}
 }
 
 // disableE2E disables E2E system
 func (pe *ProcedureExecutor) disableE2E(ctx context.Context, parameters map[string]interface{}, result *StepResult) error {
-	// This would disable E2E features
-	result.Status = "completed"
-	result.Output["status"] = "e2e_disabled"
-	return nil
+	// Use context for timeout
+	select {
+	case <-ctx.Done():
+		result.Status = "failed"
+		result.Error = "E2E disable timeout"
+		return fmt.Errorf("E2E disable timeout")
+	default:
+		// Log disable parameters
+		if len(parameters) > 0 {
+			log.Printf("Disabling E2E with parameters: %v", parameters)
+		}
+
+		// This would disable E2E features
+		result.Status = "completed"
+		result.Output["status"] = "e2e_disabled"
+		return nil
+	}
 }
 
 // verifyLegacy verifies legacy system is working
 func (pe *ProcedureExecutor) verifyLegacy(ctx context.Context, parameters map[string]interface{}, result *StepResult) error {
-	// This would verify legacy system functionality
-	result.Status = "completed"
-	result.Output["status"] = "legacy_verified"
-	return nil
+	// Use context for timeout
+	select {
+	case <-ctx.Done():
+		result.Status = "failed"
+		result.Error = "legacy verification timeout"
+		return fmt.Errorf("legacy verification timeout")
+	default:
+		// Log verification parameters
+		if len(parameters) > 0 {
+			log.Printf("Verifying legacy system with parameters: %v", parameters)
+		}
+
+		// This would verify legacy system functionality
+		result.Status = "completed"
+		result.Output["status"] = "legacy_verified"
+		return nil
+	}
 }
 
 // backupKeys backs up current keys
 func (pe *ProcedureExecutor) backupKeys(ctx context.Context, parameters map[string]interface{}, result *StepResult) error {
-	// This would create a backup of current keys
-	result.Status = "completed"
-	result.Output["backup_created"] = true
-	result.Output["backup_location"] = "/backup/keys_" + time.Now().Format("20060102_150405")
-	return nil
+	// Use context for timeout
+	select {
+	case <-ctx.Done():
+		result.Status = "failed"
+		result.Error = "key backup timeout"
+		return fmt.Errorf("key backup timeout")
+	default:
+		// Log backup parameters
+		if len(parameters) > 0 {
+			log.Printf("Backing up keys with parameters: %v", parameters)
+		}
+
+		// This would create a backup of current keys
+		result.Status = "completed"
+		result.Output["backup_created"] = true
+		result.Output["backup_location"] = "/backup/keys_" + time.Now().Format("20060102_150405")
+		return nil
+	}
 }
 
 // generateNewKeys generates new cryptographic keys
 func (pe *ProcedureExecutor) generateNewKeys(ctx context.Context, parameters map[string]interface{}, result *StepResult) error {
-	// This would generate new keys
-	result.Status = "completed"
-	result.Output["keys_generated"] = true
-	result.Output["key_count"] = 3
-	return nil
+	// Use context for timeout
+	select {
+	case <-ctx.Done():
+		result.Status = "failed"
+		result.Error = "key generation timeout"
+		return fmt.Errorf("key generation timeout")
+	default:
+		// Log generation parameters
+		if len(parameters) > 0 {
+			log.Printf("Generating new keys with parameters: %v", parameters)
+		}
+
+		// This would generate new keys
+		result.Status = "completed"
+		result.Output["keys_generated"] = true
+		result.Output["key_count"] = 3
+		return nil
+	}
 }
 
 // deployNewKeys deploys new keys
 func (pe *ProcedureExecutor) deployNewKeys(ctx context.Context, parameters map[string]interface{}, result *StepResult) error {
-	// This would deploy new keys to the system
-	result.Status = "completed"
-	result.Output["keys_deployed"] = true
-	result.Output["deployment_time"] = time.Now().Format(time.RFC3339)
-	return nil
+	// Use context for timeout
+	select {
+	case <-ctx.Done():
+		result.Status = "failed"
+		result.Error = "key deployment timeout"
+		return fmt.Errorf("key deployment timeout")
+	default:
+		// Log deployment parameters
+		if len(parameters) > 0 {
+			log.Printf("Deploying new keys with parameters: %v", parameters)
+		}
+
+		// This would deploy new keys to the system
+		result.Status = "completed"
+		result.Output["keys_deployed"] = true
+		result.Output["deployment_time"] = time.Now().Format(time.RFC3339)
+		return nil
+	}
 }
 
 // restoreOldKeys restores old keys
 func (pe *ProcedureExecutor) restoreOldKeys(ctx context.Context, parameters map[string]interface{}, result *StepResult) error {
-	// This would restore previous keys
-	result.Status = "completed"
-	result.Output["keys_restored"] = true
-	result.Output["restore_time"] = time.Now().Format(time.RFC3339)
-	return nil
+	// Use context for timeout
+	select {
+	case <-ctx.Done():
+		result.Status = "failed"
+		result.Error = "key restoration timeout"
+		return fmt.Errorf("key restoration timeout")
+	default:
+		// Log restoration parameters
+		if len(parameters) > 0 {
+			log.Printf("Restoring old keys with parameters: %v", parameters)
+		}
+
+		// This would restore previous keys
+		result.Status = "completed"
+		result.Output["keys_restored"] = true
+		result.Output["restore_time"] = time.Now().Format(time.RFC3339)
+		return nil
+	}
 }

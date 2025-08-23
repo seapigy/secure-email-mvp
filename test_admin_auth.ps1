@@ -3,20 +3,20 @@
 
 $baseUrl = "http://localhost:8080"
 
-Write-Host "=== Testing Admin Authentication System ===" -ForegroundColor Green
+Write-Output "=== Testing Admin Authentication System ==="
 
 # Test 1: Check if admin setup is required
-Write-Host "`n1. Checking if admin setup is required..." -ForegroundColor Yellow
+Write-Output "`n1. Checking if admin setup is required..."
 try {
     $response = Invoke-RestMethod -Uri "$baseUrl/admin/check-setup" -Method GET -ContentType "application/json"
-    Write-Host "Setup required: $($response.setup_required)" -ForegroundColor Cyan
-    Write-Host "Root admin email: $($response.root_admin_email)" -ForegroundColor Cyan
+    Write-Output "Setup required: $($response.setup_required)"
+    Write-Output "Root admin email: $($response.root_admin_email)"
 } catch {
-    Write-Host "Error checking setup: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "Error checking setup: $($_.Exception.Message)"
 }
 
 # Test 2: Create root admin (if setup is required)
-Write-Host "`n2. Attempting to create root admin..." -ForegroundColor Yellow
+Write-Output "`n2. Attempting to create root admin..."
 $setupData = @{
     email = "cpigusch@gmail.com"
     password = "SecureAdminPassword123!"
@@ -24,20 +24,20 @@ $setupData = @{
 
 try {
     $response = Invoke-RestMethod -Uri "$baseUrl/admin/setup" -Method POST -Body ($setupData | ConvertTo-Json) -ContentType "application/json"
-    Write-Host "Admin created successfully: $($response.success)" -ForegroundColor Green
-    Write-Host "Admin ID: $($response.admin_id)" -ForegroundColor Cyan
+    Write-Output "Admin created successfully: $($response.success)"
+    Write-Output "Admin ID: $($response.admin_id)"
 } catch {
-    Write-Host "Error creating admin: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "Error creating admin: $($_.Exception.Message)"
     if ($_.Exception.Response) {
         $errorResponse = $_.Exception.Response.GetResponseStream()
         $reader = New-Object System.IO.StreamReader($errorResponse)
         $errorBody = $reader.ReadToEnd()
-        Write-Host "Error details: $errorBody" -ForegroundColor Red
+        Write-Output "Error details: $errorBody"
     }
 }
 
 # Test 3: Admin login
-Write-Host "`n3. Testing admin login..." -ForegroundColor Yellow
+Write-Output "`n3. Testing admin login..."
 $loginData = @{
     email = "cpigusch@gmail.com"
     password = "SecureAdminPassword123!"
@@ -46,75 +46,75 @@ $loginData = @{
 
 try {
     $response = Invoke-RestMethod -Uri "$baseUrl/admin/login" -Method POST -Body ($loginData | ConvertTo-Json) -ContentType "application/json"
-    Write-Host "Login successful: $($response.success)" -ForegroundColor Green
-    Write-Host "Session token: $($response.session_token)" -ForegroundColor Cyan
-    Write-Host "Admin role: $($response.admin.role)" -ForegroundColor Cyan
-    
+    Write-Output "Login successful: $($response.success)"
+    Write-Output "Session token: $($response.session_token)"
+    Write-Output "Admin role: $($response.admin.role)"
+
     $sessionToken = $response.session_token
 } catch {
-    Write-Host "Error logging in: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Output "Error logging in: $($_.Exception.Message)"
     if ($_.Exception.Response) {
         $errorResponse = $_.Exception.Response.GetResponseStream()
         $reader = New-Object System.IO.StreamReader($errorResponse)
         $errorBody = $reader.ReadToEnd()
-        Write-Host "Error details: $errorBody" -ForegroundColor Red
+        Write-Output "Error details: $errorBody"
     }
     $sessionToken = $null
 }
 
 # Test 4: Validate session (if login was successful)
 if ($sessionToken) {
-    Write-Host "`n4. Testing session validation..." -ForegroundColor Yellow
+    Write-Output "`n4. Testing session validation..."
     $headers = @{
         "Authorization" = "Bearer $sessionToken"
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$baseUrl/admin/session" -Method GET -Headers $headers -ContentType "application/json"
-        Write-Host "Session valid: $($response.success)" -ForegroundColor Green
-        Write-Host "Admin email: $($response.admin.email)" -ForegroundColor Cyan
-        Write-Host "Admin role: $($response.admin.role)" -ForegroundColor Cyan
+        Write-Output "Session valid: $($response.success)"
+        Write-Output "Admin email: $($response.admin.email)"
+        Write-Output "Admin role: $($response.admin.role)"
     } catch {
-        Write-Host "Error validating session: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Output "Error validating session: $($_.Exception.Message)"
     }
 }
 
 # Test 5: Get audit logs (if session is valid)
 if ($sessionToken) {
-    Write-Host "`n5. Testing audit logs retrieval..." -ForegroundColor Yellow
+    Write-Output "`n5. Testing audit logs retrieval..."
     $headers = @{
         "Authorization" = "Bearer $sessionToken"
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$baseUrl/admin/audit-logs" -Method GET -Headers $headers -ContentType "application/json"
-        Write-Host "Audit logs retrieved: $($response.success)" -ForegroundColor Green
-        Write-Host "Number of logs: $($response.count)" -ForegroundColor Cyan
-        
+        Write-Output "Audit logs retrieved: $($response.success)"
+        Write-Output "Number of logs: $($response.count)"
+
         if ($response.logs -and $response.logs.Count -gt 0) {
-            Write-Host "Recent actions:" -ForegroundColor Cyan
+            Write-Output "Recent actions:"
             $response.logs | Select-Object -First 3 | ForEach-Object {
-                Write-Host "  - $($_.action) at $($_.created_at) (Success: $($_.success))" -ForegroundColor White
+                Write-Output "  - $($_.action) at $($_.created_at) (Success: $($_.success))"
             }
         }
     } catch {
-        Write-Host "Error retrieving audit logs: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Output "Error retrieving audit logs: $($_.Exception.Message)"
     }
 }
 
 # Test 6: Admin logout (if session is valid)
 if ($sessionToken) {
-    Write-Host "`n6. Testing admin logout..." -ForegroundColor Yellow
+    Write-Output "`n6. Testing admin logout..."
     $logoutData = @{
         session_token = $sessionToken
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri "$baseUrl/admin/logout" -Method POST -Body ($logoutData | ConvertTo-Json) -ContentType "application/json"
-        Write-Host "Logout successful: $($response.success)" -ForegroundColor Green
+        Write-Output "Logout successful: $($response.success)"
     } catch {
-        Write-Host "Error logging out: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Output "Error logging out: $($_.Exception.Message)"
     }
 }
 
-Write-Host "`n=== Admin Authentication Test Complete ===" -ForegroundColor Green
+Write-Output "`n=== Admin Authentication Test Complete ==="

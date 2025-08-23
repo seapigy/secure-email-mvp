@@ -33,7 +33,7 @@ function Write-TestResult {
         [string]$Description,
         [object]$Details = $null
     )
-    
+
     $result = @{
         test_name = $TestName
         category = $Category
@@ -43,10 +43,10 @@ function Write-TestResult {
         timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         details = $Details
     }
-    
+
     $TestResults.tests += $result
     $TestResults.summary.total_tests++
-    
+
     if ($Passed) {
         $TestResults.summary.passed++
     } else {
@@ -58,13 +58,13 @@ function Write-TestResult {
             "Low" { $TestResults.summary.low_findings++ }
         }
     }
-    
+
     $status = if ($Passed) { "PASS" } else { "FAIL" }
     $color = if ($Passed) { "Green" } else { "Red" }
-    
-    Write-Host "[$status] $TestName ($Severity)" -ForegroundColor $color
+
+    Write-Output "[$status] $TestName ($Severity)" -ForegroundColor $color
     if ($Verbose -and $Details) {
-        Write-Host "  Details: $($Details | ConvertTo-Json -Depth 3)" -ForegroundColor Yellow
+        Write-Output "  Details: $($Details | ConvertTo-Json -Depth 3)"
     }
 }
 
@@ -77,7 +77,7 @@ function Invoke-SecureRequest {
         [string]$Body = $null,
         [int]$Timeout = 30
     )
-    
+
     try {
         $params = @{
             Uri = $Uri
@@ -86,11 +86,11 @@ function Invoke-SecureRequest {
             TimeoutSec = $Timeout
             UseBasicParsing = $true
         }
-        
+
         if ($Body) {
             $params.Body = $Body
         }
-        
+
         $response = Invoke-WebRequest @params
         return @{
             success = $true
@@ -110,8 +110,8 @@ function Invoke-SecureRequest {
 
 # Test 1: SQL Injection Tests
 function Test-SQLInjection {
-    Write-Host "`n=== SQL Injection Tests ===" -ForegroundColor Cyan
-    
+    Write-Output "`n=== SQL Injection Tests ==="
+
     $sqlPayloads = @(
         "' OR 1=1 --",
         "'; DROP TABLE users; --",
@@ -120,32 +120,32 @@ function Test-SQLInjection {
         "1' OR '1'='1",
         "' AND (SELECT COUNT(*) FROM users) > 0 --"
     )
-    
+
     $endpoints = @(
         "/api/auth/login",
         "/api/users/search",
         "/api/organizations",
         "/api/compliance/logs"
     )
-    
+
     foreach ($endpoint in $endpoints) {
         foreach ($payload in $sqlPayloads) {
             $testName = "SQL Injection - $endpoint - $payload"
-            
+
             $body = @{
                 email = $payload
                 password = "test123"
             } | ConvertTo-Json
-            
+
             $response = Invoke-SecureRequest -Uri "$BaseUrl$endpoint" -Method "POST" -Body $body
-            
+
             # Check for SQL error indicators
             $sqlErrorIndicators = @(
                 "sqlite", "mysql", "postgresql", "oracle", "sql server",
                 "syntax error", "unclosed quotation mark", "incorrect syntax",
                 "ORA-", "MySQL", "SQLite", "PostgreSQL"
             )
-            
+
             $hasError = $false
             foreach ($indicator in $sqlErrorIndicators) {
                 if ($response.content -and $response.content.ToLower().Contains($indicator.ToLower())) {
@@ -153,7 +153,7 @@ function Test-SQLInjection {
                     break
                 }
             }
-            
+
             Write-TestResult -TestName $testName -Category "SQL Injection" -Severity "High" -Passed (-not $hasError) -Description "Tested SQL injection payload on $endpoint" -Details @{
                 payload = $payload
                 endpoint = $endpoint
@@ -167,8 +167,8 @@ function Test-SQLInjection {
 
 # Test 2: XSS Tests
 function Test-XSS {
-    Write-Host "`n=== XSS Tests ===" -ForegroundColor Cyan
-    
+    Write-Output "`n=== XSS Tests ==="
+
     $xssPayloads = @(
         "<script>alert('XSS')</script>",
         "javascript:alert('XSS')",
@@ -177,27 +177,27 @@ function Test-XSS {
         "';alert('XSS');//",
         "<iframe src=javascript:alert('XSS')>"
     )
-    
+
     $endpoints = @(
         "/api/organizations",
         "/api/users",
         "/api/compliance/logs"
     )
-    
+
     foreach ($endpoint in $endpoints) {
         foreach ($payload in $xssPayloads) {
             $testName = "XSS - $endpoint - $payload"
-            
+
             $body = @{
                 name = $payload
                 description = $payload
             } | ConvertTo-Json
-            
+
             $response = Invoke-SecureRequest -Uri "$BaseUrl$endpoint" -Method "POST" -Body $body
-            
+
             # Check if payload is reflected in response
             $isReflected = $response.content -and $response.content.Contains($payload)
-            
+
             Write-TestResult -TestName $testName -Category "XSS" -Severity "High" -Passed (-not $isReflected) -Description "Tested XSS payload on $endpoint" -Details @{
                 payload = $payload
                 endpoint = $endpoint
@@ -210,15 +210,15 @@ function Test-XSS {
 
 # Test 3: JWT Tampering Tests
 function Test-JWTTampering {
-    Write-Host "`n=== JWT Tampering Tests ===" -ForegroundColor Cyan
-    
+    Write-Output "`n=== JWT Tampering Tests ==="
+
     # Test expired JWT
     $expiredToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-    
+
     $response = Invoke-SecureRequest -Uri "$BaseUrl/api/admin/organizations" -Method "GET" -Headers @{
         "Authorization" = "Bearer $expiredToken"
     }
-    
+
     Write-TestResult -TestName "JWT Expired Token" -Category "JWT Security" -Severity "Medium" -Passed (-not $response.success) -Description "Tested expired JWT token" -Details @{
         expired_token = $expiredToken
         response_status = $response.status_code
@@ -228,35 +228,35 @@ function Test-JWTTampering {
 
 # Test 4: TOTP Bypass Tests
 function Test-TOTPBypass {
-    Write-Host "`n=== TOTP Bypass Tests ===" -ForegroundColor Cyan
-    
+    Write-Output "`n=== TOTP Bypass Tests ==="
+
     $loginBody = @{
         email = "test@example.com"
         password = "test123"
     } | ConvertTo-Json
-    
+
     # Test missing TOTP code
     $response = Invoke-SecureRequest -Uri "$BaseUrl/api/auth/login" -Method "POST" -Body $loginBody
-    
+
     Write-TestResult -TestName "TOTP Missing Code" -Category "TOTP Security" -Severity "High" -Passed (-not $response.success) -Description "Tested login without TOTP code" -Details @{
         response_status = $response.status_code
         rejected_missing_totp = -not $response.success
     }
-    
+
     # Test invalid TOTP codes
     $invalidCodes = @("000000", "123456", "999999", "abcdef", "12345", "1234567")
-    
+
     foreach ($code in $invalidCodes) {
         $testName = "TOTP Invalid Code - $code"
-        
+
         $body = @{
             email = "test@example.com"
             password = "test123"
             totp_code = $code
         } | ConvertTo-Json
-        
+
         $response = Invoke-SecureRequest -Uri "$BaseUrl/api/auth/login" -Method "POST" -Body $body
-        
+
         Write-TestResult -TestName $testName -Category "TOTP Security" -Severity "Medium" -Passed (-not $response.success) -Description "Tested invalid TOTP code" -Details @{
             invalid_code = $code
             response_status = $response.status_code
@@ -267,11 +267,11 @@ function Test-TOTPBypass {
 
 # Test 5: Privilege Escalation Tests
 function Test-PrivilegeEscalation {
-    Write-Host "`n=== Privilege Escalation Tests ===" -ForegroundColor Cyan
-    
+    Write-Output "`n=== Privilege Escalation Tests ==="
+
     # Test access admin endpoints as regular user
     $regularUserToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyZWd1bGFyX3VzZXIiLCJyb2xlIjoiZW50ZXJwcmlzZV91c2VyIn0.test"
-    
+
     $adminEndpoints = @(
         "/api/admin/organizations",
         "/api/admin/users",
@@ -279,14 +279,14 @@ function Test-PrivilegeEscalation {
         "/api/admin/compliance/logs",
         "/api/admin/compliance/export"
     )
-    
+
     foreach ($endpoint in $adminEndpoints) {
         $testName = "Privilege Escalation - $endpoint"
-        
+
         $response = Invoke-SecureRequest -Uri "$BaseUrl$endpoint" -Method "GET" -Headers @{
             "Authorization" = "Bearer $regularUserToken"
         }
-        
+
         Write-TestResult -TestName $testName -Category "Privilege Escalation" -Severity "Critical" -Passed (-not $response.success) -Description "Tested admin endpoint access with regular user token" -Details @{
             endpoint = $endpoint
             user_role = "enterprise_user"
@@ -298,35 +298,35 @@ function Test-PrivilegeEscalation {
 
 # Test 6: Rate Limiting Tests
 function Test-RateLimiting {
-    Write-Host "`n=== Rate Limiting Tests ===" -ForegroundColor Cyan
-    
+    Write-Output "`n=== Rate Limiting Tests ==="
+
     # Test rapid login attempts
     $testName = "Rate Limiting - Login Attempts"
     $rateLimitExceeded = $false
-    
+
     for ($i = 1; $i -le 25; $i++) {
         $body = @{
             email = "test@example.com"
             password = "wrongpassword"
             totp_code = "000000"
         } | ConvertTo-Json
-        
+
         $response = Invoke-SecureRequest -Uri "$BaseUrl/api/auth/login" -Method "POST" -Body $body
-        
+
         if ($response.status_code -eq 429) {
             $rateLimitExceeded = $true
             break
         }
-        
+
         # Also check if we get a rate limit error in the response
         if ($response.content -and $response.content.Contains("Too many requests")) {
             $rateLimitExceeded = $true
             break
         }
-        
+
         Start-Sleep -Milliseconds 10
     }
-    
+
     Write-TestResult -TestName $testName -Category "Rate Limiting" -Severity "Medium" -Passed $rateLimitExceeded -Description "Tested rate limiting on login endpoint" -Details @{
         attempts_made = $i
         rate_limit_exceeded = $rateLimitExceeded
@@ -336,10 +336,10 @@ function Test-RateLimiting {
 
 # Test 7: Security Headers Tests
 function Test-SecurityHeaders {
-    Write-Host "`n=== Security Headers Tests ===" -ForegroundColor Cyan
-    
+    Write-Output "`n=== Security Headers Tests ==="
+
     $response = Invoke-SecureRequest -Uri "$BaseUrl/api/health" -Method "GET"
-    
+
     $requiredHeaders = @{
         "X-Content-Type-Options" = "nosniff"
         "X-Frame-Options" = "DENY"
@@ -348,17 +348,17 @@ function Test-SecurityHeaders {
         "Content-Security-Policy" = $true
         "Referrer-Policy" = $true
     }
-    
+
     $missingHeaders = @()
-    
+
     foreach ($header in $requiredHeaders.Keys) {
         if (-not $response.headers.ContainsKey($header)) {
             $missingHeaders += $header
         }
     }
-    
+
     $allHeadersPresent = $missingHeaders.Count -eq 0
-    
+
     Write-TestResult -TestName "Security Headers" -Category "Security Headers" -Severity "Medium" -Passed $allHeadersPresent -Description "Tested presence of security headers" -Details @{
         missing_headers = $missingHeaders
         all_headers_present = $allHeadersPresent
@@ -367,9 +367,9 @@ function Test-SecurityHeaders {
 }
 
 # Main execution
-Write-Host "Starting Penetration Testing for Secure Email MVP" -ForegroundColor Green
-Write-Host "Base URL: $BaseUrl" -ForegroundColor Yellow
-Write-Host "Output File: $OutputFile" -ForegroundColor Yellow
+Write-Output "Starting Penetration Testing for Secure Email MVP"
+Write-Output "Base URL: $BaseUrl"
+Write-Output "Output File: $OutputFile"
 
 # Run all tests
 Test-SQLInjection
@@ -381,25 +381,25 @@ Test-RateLimiting
 Test-SecurityHeaders
 
 # Generate summary
-Write-Host "`n=== Test Summary ===" -ForegroundColor Green
-Write-Host "Total Tests: $($TestResults.summary.total_tests)" -ForegroundColor White
-Write-Host "Passed: $($TestResults.summary.passed)" -ForegroundColor Green
-Write-Host "Failed: $($TestResults.summary.failed)" -ForegroundColor Red
-Write-Host "Critical Findings: $($TestResults.summary.critical_findings)" -ForegroundColor Red
-Write-Host "High Findings: $($TestResults.summary.high_findings)" -ForegroundColor Yellow
-Write-Host "Medium Findings: $($TestResults.summary.medium_findings)" -ForegroundColor Cyan
-Write-Host "Low Findings: $($TestResults.summary.low_findings)" -ForegroundColor Gray
+Write-Output "`n=== Test Summary ==="
+Write-Output "Total Tests: $($TestResults.summary.total_tests)"
+Write-Output "Passed: $($TestResults.summary.passed)"
+Write-Output "Failed: $($TestResults.summary.failed)"
+Write-Output "Critical Findings: $($TestResults.summary.critical_findings)"
+Write-Output "High Findings: $($TestResults.summary.high_findings)"
+Write-Output "Medium Findings: $($TestResults.summary.medium_findings)"
+Write-Output "Low Findings: $($TestResults.summary.low_findings)"
 
 # Save results to file
 $TestResults | ConvertTo-Json -Depth 10 | Out-File -FilePath $OutputFile -Encoding UTF8
 
-Write-Host "`nTest results saved to: $OutputFile" -ForegroundColor Green
+Write-Output "`nTest results saved to: $OutputFile"
 
 # Exit with appropriate code
 if ($TestResults.summary.failed -gt 0) {
-    Write-Host "`nPenetration testing completed with security findings!" -ForegroundColor Red
+    Write-Output "`nPenetration testing completed with security findings!"
     exit 1
 } else {
-    Write-Host "`nPenetration testing completed successfully - no security issues found!" -ForegroundColor Green
+    Write-Output "`nPenetration testing completed successfully - no security issues found!"
     exit 0
 }

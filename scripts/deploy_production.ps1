@@ -8,13 +8,13 @@ param(
     [switch]$SkipTests = $false
 )
 
-Write-Host "=== Secure Email MVP - Production Deployment ===" -ForegroundColor Cyan
-Write-Host "Environment: $Environment" -ForegroundColor Gray
-Write-Host "API URL: $ApiUrl" -ForegroundColor Gray
-Write-Host "Dry Run: $DryRun" -ForegroundColor Gray
-Write-Host "Skip Tests: $SkipTests" -ForegroundColor Gray
-Write-Host "Timestamp: $(Get-Date)" -ForegroundColor Gray
-Write-Host ""
+Write-Output "=== Secure Email MVP - Production Deployment ==="
+Write-Output "Environment: $Environment"
+Write-Output "API URL: $ApiUrl"
+Write-Output "Dry Run: $DryRun"
+Write-Output "Skip Tests: $SkipTests"
+Write-Output "Timestamp: $(Get-Date)"
+Write-Output ""
 
 # Configuration
 $DeploymentConfig = @{
@@ -51,12 +51,12 @@ function Write-Step {
         "WARNING" { "Yellow" }
         default { "White" }
     }
-    Write-Host "[$Status] $Step" -ForegroundColor $color
+    Write-Output "[$Status] $Step" -ForegroundColor $color
 }
 
 function Test-Connectivity {
     param([string]$Url, [int]$Timeout = 10)
-    
+
     try {
         $response = Invoke-WebRequest -Uri $Url -TimeoutSec $Timeout -ErrorAction Stop
         return $response.StatusCode -eq 200
@@ -68,47 +68,47 @@ function Test-Connectivity {
 
 function Test-HealthCheck {
     param([string]$ApiUrl)
-    
+
     $healthUrl = "$ApiUrl/health"
     $maxRetries = $DeploymentConfig.MaxRetries
-    
+
     for ($i = 1; $i -le $maxRetries; $i++) {
-        Write-Host "Health check attempt $i/$maxRetries..." -ForegroundColor Gray
-        
+        Write-Output "Health check attempt $i/$maxRetries..."
+
         if (Test-Connectivity -Url $healthUrl -Timeout 5) {
             Write-Step "Health check passed" "SUCCESS"
             return $true
         }
-        
+
         if ($i -lt $maxRetries) {
-            Write-Host "Health check failed, retrying in 5 seconds..." -ForegroundColor Yellow
+            Write-Output "Health check failed, retrying in 5 seconds..."
             Start-Sleep -Seconds 5
         }
     }
-    
+
     Write-Step "Health check failed after $maxRetries attempts" "ERROR"
     return $false
 }
 
 function Test-SecurityFeatures {
     param([string]$ApiUrl)
-    
-    Write-Host "Running security feature tests..." -ForegroundColor White
-    
+
+    Write-Output "Running security feature tests..."
+
     $tests = @(
         @{ Name = "Authentication"; Endpoint = "/api/auth/login"; Method = "POST" },
         @{ Name = "Rate Limiting"; Endpoint = "/health"; Method = "GET" },
         @{ Name = "Protected Endpoints"; Endpoint = "/api/email/list"; Method = "GET" }
     )
-    
+
     $passedTests = 0
     $totalTests = $tests.Count
-    
+
     foreach ($test in $tests) {
         try {
             $url = "$ApiUrl$($test.Endpoint)"
             $response = Invoke-WebRequest -Uri $url -Method $test.Method -TimeoutSec 10 -ErrorAction Stop
-            
+
             if ($response.StatusCode -in @(200, 401, 403, 429)) {
                 Write-Step "$($test.Name) test passed" "SUCCESS"
                 $passedTests++
@@ -120,27 +120,27 @@ function Test-SecurityFeatures {
             Write-Step "$($test.Name) test failed (Error: $($_.Exception.Message))" "ERROR"
         }
     }
-    
+
     $successRate = ($passedTests / $totalTests) * 100
-    Write-Host "Security tests completed: $passedTests/$totalTests passed ($([math]::Round($successRate, 1))%)" -ForegroundColor $(if ($successRate -ge 80) { "Green" } else { "Red" })
-    
+    Write-Output "Security tests completed: $passedTests/$totalTests passed ($([math]::Round($successRate, 1))%)" -ForegroundColor $(if ($successRate -ge 80) { "Green" } else { "Red" })
+
     return $successRate -ge 80
 }
 
 function Backup-CurrentSystem {
     param([string]$BackupPath = "./backups")
-    
-    Write-Host "Creating system backup..." -ForegroundColor White
-    
+
+    Write-Output "Creating system backup..."
+
     # Create backup directory
     if (-not (Test-Path $BackupPath)) {
         New-Item -ItemType Directory -Path $BackupPath -Force | Out-Null
     }
-    
+
     $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
     $backupDir = "$BackupPath/backup_$timestamp"
     New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
-    
+
     # Backup configuration files
     $configFiles = @(".env", "schema.sql", "go.mod", "package.json")
     foreach ($file in $configFiles) {
@@ -149,112 +149,112 @@ function Backup-CurrentSystem {
             Write-Step "Backed up $file" "SUCCESS"
         }
     }
-    
+
     # Backup database (if accessible)
     if (Test-Path "/var/db/secure-email.db") {
         Copy-Item "/var/db/secure-email.db" "$backupDir/secure-email.db.backup" -Force
         Write-Step "Backed up database" "SUCCESS"
     }
-    
+
     Write-Step "System backup completed: $backupDir" "SUCCESS"
     return $backupDir
 }
 
 function Deploy-Backend {
     param([string]$ApiUrl)
-    
-    Write-Host "Deploying backend..." -ForegroundColor White
-    
+
+    Write-Output "Deploying backend..."
+
     if ($DeploymentConfig.DryRun) {
         Write-Step "DRY RUN: Backend deployment simulation" "WARNING"
         return $true
     }
-    
+
     # Build the application
-    Write-Host "Building Go application..." -ForegroundColor Gray
+    Write-Output "Building Go application..."
     $buildResult = go build -o api-server ./cmd/api
     if ($LASTEXITCODE -ne 0) {
         Write-Step "Backend build failed" "ERROR"
         return $false
     }
     Write-Step "Backend build successful" "SUCCESS"
-    
+
     # Deploy to server (SSH deployment)
-    Write-Host "Deploying to production server..." -ForegroundColor Gray
+    Write-Output "Deploying to production server..."
     # Note: This would be implemented based on your deployment strategy
     # For now, we'll simulate the deployment
-    
+
     Write-Step "Backend deployment completed" "SUCCESS"
     return $true
 }
 
 function Deploy-Frontend {
     param([string]$ApiUrl)
-    
-    Write-Host "Deploying frontend..." -ForegroundColor White
-    
+
+    Write-Output "Deploying frontend..."
+
     if ($DeploymentConfig.DryRun) {
         Write-Step "DRY RUN: Frontend deployment simulation" "WARNING"
         return $true
     }
-    
+
     # Build frontend
-    Write-Host "Building React application..." -ForegroundColor Gray
+    Write-Output "Building React application..."
     $buildResult = npm run build
     if ($LASTEXITCODE -ne 0) {
         Write-Step "Frontend build failed" "ERROR"
         return $false
     }
     Write-Step "Frontend build successful" "SUCCESS"
-    
+
     # Deploy to Netlify (or other hosting)
-    Write-Host "Deploying to Netlify..." -ForegroundColor Gray
+    Write-Output "Deploying to Netlify..."
     # Note: This would use Netlify CLI or API
     # For now, we'll simulate the deployment
-    
+
     Write-Step "Frontend deployment completed" "SUCCESS"
     return $true
 }
 
 function Update-Configuration {
     param([string]$Environment)
-    
-    Write-Host "Updating configuration..." -ForegroundColor White
-    
+
+    Write-Output "Updating configuration..."
+
     if ($DeploymentConfig.DryRun) {
         Write-Step "DRY RUN: Configuration update simulation" "WARNING"
         return $true
     }
-    
+
     # Update environment variables
     $envFile = ".env.$Environment"
     if (Test-Path $envFile) {
         Copy-Item $envFile ".env" -Force
         Write-Step "Environment configuration updated" "SUCCESS"
     }
-    
+
     # Update database schema if needed
-    Write-Host "Checking database schema..." -ForegroundColor Gray
+    Write-Output "Checking database schema..."
     # Note: This would run database migrations
     Write-Step "Database schema updated" "SUCCESS"
-    
+
     return $true
 }
 
 function Run-IntegrationTests {
     param([string]$ApiUrl)
-    
-    Write-Host "Running integration tests..." -ForegroundColor White
-    
+
+    Write-Output "Running integration tests..."
+
     if ($DeploymentConfig.SkipTests) {
         Write-Step "Skipping integration tests (--SkipTests flag)" "WARNING"
         return $true
     }
-    
+
     # Run the integration test script
     $testScript = "./scripts/integration_test_security_features.ps1"
     if (Test-Path $testScript) {
-        Write-Host "Executing integration tests..." -ForegroundColor Gray
+        Write-Output "Executing integration tests..."
         $testResult = & $testScript -ApiUrl $ApiUrl
         if ($LASTEXITCODE -eq 0) {
             Write-Step "Integration tests passed" "SUCCESS"
@@ -271,9 +271,9 @@ function Run-IntegrationTests {
 
 function Validate-Environment {
     param([string]$Environment)
-    
-    Write-Host "Validating environment..." -ForegroundColor White
-    
+
+    Write-Output "Validating environment..."
+
     # Check required environment variables
     $requiredVars = @(
         "JWT_SECRET",
@@ -282,19 +282,19 @@ function Validate-Environment {
         "R2_BUCKET",
         "R2_ENDPOINT"
     )
-    
+
     $missingVars = @()
     foreach ($var in $requiredVars) {
         if (-not (Get-Variable -Name $var -ErrorAction SilentlyContinue)) {
             $missingVars += $var
         }
     }
-    
+
     if ($missingVars.Count -gt 0) {
         Write-Step "Missing required environment variables: $($missingVars -join ', ')" "ERROR"
         return $false
     }
-    
+
     Write-Step "Environment validation passed" "SUCCESS"
     return $true
 }
@@ -302,18 +302,18 @@ function Validate-Environment {
 # Main Deployment Process
 function Start-Deployment {
     param([hashtable]$Config)
-    
-    Write-Host "Starting deployment process..." -ForegroundColor Cyan
-    Write-Host ""
-    
+
+    Write-Output "Starting deployment process..."
+    Write-Output ""
+
     $deploymentStart = Get-Date
     $stepResults = @{}
-    
+
     foreach ($step in $DeploymentSteps) {
-        Write-Host "=== Step: $step ===" -ForegroundColor Yellow
-        
+        Write-Output "=== Step: $step ==="
+
         $stepStart = Get-Date
-        
+
         switch ($step) {
             "PreDeploymentChecks" {
                 $stepResults[$step] = Test-Connectivity -Url $Config.ApiUrl
@@ -350,35 +350,35 @@ function Start-Deployment {
                 $stepResults[$step] = Test-SecurityFeatures -ApiUrl $Config.ApiUrl
             }
         }
-        
+
         $stepDuration = (Get-Date) - $stepStart
         $status = if ($stepResults[$step]) { "SUCCESS" } else { "ERROR" }
         Write-Step "$step completed in $($stepDuration.TotalSeconds.ToString('F1'))s" $status
-        Write-Host ""
-        
+        Write-Output ""
+
         # Stop deployment if critical step failed
         if (-not $stepResults[$step] -and $step -in @("ValidateEnvironment", "RunSecurityTests", "VerifyHealthChecks")) {
-            Write-Host "Critical step '$step' failed. Stopping deployment." -ForegroundColor Red
+            Write-Output "Critical step '$step' failed. Stopping deployment."
             break
         }
     }
-    
+
     # Deployment Summary
     $deploymentDuration = (Get-Date) - $deploymentStart
     $successfulSteps = ($stepResults.Values | Where-Object { $_ -eq $true }).Count
     $totalSteps = $stepResults.Count
     $successRate = ($successfulSteps / $totalSteps) * 100
-    
-    Write-Host "=== Deployment Summary ===" -ForegroundColor Cyan
-    Write-Host "Duration: $($deploymentDuration.TotalMinutes.ToString('F1')) minutes" -ForegroundColor White
-    Write-Host "Steps Completed: $successfulSteps/$totalSteps" -ForegroundColor White
-    Write-Host "Success Rate: $([math]::Round($successRate, 1))%" -ForegroundColor $(if ($successRate -ge 90) { "Green" } else { "Red" })
-    
+
+    Write-Output "=== Deployment Summary ==="
+    Write-Output "Duration: $($deploymentDuration.TotalMinutes.ToString('F1')) minutes"
+    Write-Output "Steps Completed: $successfulSteps/$totalSteps"
+    Write-Output "Success Rate: $([math]::Round($successRate, 1))%" -ForegroundColor $(if ($successRate -ge 90) { "Green" } else { "Red" })
+
     if ($successRate -ge 90) {
-        Write-Host "Deployment completed successfully!" -ForegroundColor Green
+        Write-Output "Deployment completed successfully!"
         return $true
     } else {
-        Write-Host "Deployment completed with issues. Review failed steps." -ForegroundColor Red
+        Write-Output "Deployment completed with issues. Review failed steps."
         return $false
     }
 }
@@ -386,20 +386,20 @@ function Start-Deployment {
 # Execute deployment
 try {
     $deploymentSuccess = Start-Deployment -Config $DeploymentConfig
-    
+
     if ($deploymentSuccess) {
-        Write-Host ""
-        Write-Host "🎉 Production deployment completed successfully!" -ForegroundColor Green
-        Write-Host "The Secure Email MVP is now live and ready for production use." -ForegroundColor Green
+        Write-Output ""
+        Write-Output "🎉 Production deployment completed successfully!"
+        Write-Output "The Secure Email MVP is now live and ready for production use."
     } else {
-        Write-Host ""
-        Write-Host "❌ Deployment completed with issues." -ForegroundColor Red
-        Write-Host "Please review the failed steps and consider rolling back if necessary." -ForegroundColor Red
+        Write-Output ""
+        Write-Output "❌ Deployment completed with issues."
+        Write-Output "Please review the failed steps and consider rolling back if necessary."
         exit 1
     }
 }
 catch {
-    Write-Host "💥 Deployment failed with error: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "Please check the logs and consider rolling back." -ForegroundColor Red
+    Write-Output "💥 Deployment failed with error: $($_.Exception.Message)"
+    Write-Output "Please check the logs and consider rolling back."
     exit 1
 }

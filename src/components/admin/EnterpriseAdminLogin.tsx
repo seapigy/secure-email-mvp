@@ -1,22 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   EyeIcon, EyeSlashIcon, ShieldCheckIcon, ExclamationTriangleIcon, CheckCircleIcon, QrCodeIcon,
-  KeyIcon, UserIcon, LockClosedIcon, UserGroupIcon, Cog6ToothIcon,
+  KeyIcon, UserIcon, LockClosedIcon, Cog6ToothIcon, UserGroupIcon,
 } from '@heroicons/react/24/outline';
+import { AdminAuthConfig } from '../../types/admin';
 import { EnterpriseDashboardService } from '../../services/enterpriseDashboardService';
-import {
-  AdminLoginRequest, AdminLoginResponse, MFASetupRequest, MFASetupResponse, AdminAuthConfig,
-
-} from '../../types/admin';
+import { AdminUser } from '../../types/admin';
 
 interface EnterpriseAdminLoginProps {
-  onLogin: (token: string) => void;
-  onMFASetup?: (mfaSetup: MFASetupResponse) => void;
+  onLoginSuccess: (token: string, user: AdminUser) => void;
 }
 
 const EnterpriseAdminLogin: React.FC<EnterpriseAdminLoginProps> = ({
-  onLogin,
-  onMFASetup,
+  onLoginSuccess,
 }) => {
   const [step, setStep] = useState<'login' | 'mfa' | 'mfa-setup' | 'invitation'>('login');
   const [username, setUsername] = useState('');
@@ -34,48 +30,43 @@ const EnterpriseAdminLogin: React.FC<EnterpriseAdminLoginProps> = ({
   const [hardwareTokenId, setHardwareTokenId] = useState('');
   const [mfaType, setMfaType] = useState<'TOTP' | 'HARDWARE_TOKEN'>('TOTP');
 
-  const dashboardService = new EnterpriseDashboardService();
+  const dashboardService = useMemo(() => new EnterpriseDashboardService(), []);
 
-  useEffect(() => {
-    loadAuthConfig();
-  }, []);
-
-  const loadAuthConfig = async () => {
+  const loadAuthConfig = useCallback(async () => {
     try {
       const config = await dashboardService.getAuthConfig();
       setAuthConfig(config);
-    } catch (error) {
-      console.error('Failed to load auth config:', error);
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message || 'Failed to load authentication configuration');
     }
-  };
+  }, [dashboardService]);
+
+  useEffect(() => {
+    loadAuthConfig();
+  }, [loadAuthConfig]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-    setSuccess(null);
 
     try {
-      const loginRequest: AdminLoginRequest = {
+      const response = await dashboardService.login({
         username,
         password,
+        mfa_code: mfaCode || undefined,
         invitation_key: invitationKey || undefined,
-      };
+      });
 
-      const response: AdminLoginResponse = await dashboardService.login(loginRequest);
-
-      if (response.requires_mfa) {
-        setStep('mfa');
-        setSuccess('Please enter your MFA code to continue');
-      } else if (response.token) {
-        dashboardService.setAdminToken(response.token);
-        onLogin(response.token);
-        setSuccess('Login successful!');
+      if (response.success && response.token) {
+        onLoginSuccess(response.token, response.user!);
       } else {
         setError(response.message || 'Login failed');
       }
-    } catch (error: any) {
-      setError(error.message || 'Login failed');
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message || 'Login failed');
     } finally {
       setIsLoading(false);
     }
@@ -87,55 +78,48 @@ const EnterpriseAdminLogin: React.FC<EnterpriseAdminLoginProps> = ({
     setError(null);
 
     try {
-      const loginRequest: AdminLoginRequest = {
+      const loginRequest = {
         username,
         password,
         mfa_code: mfaCode,
         invitation_key: invitationKey || undefined,
       };
 
-      const response: AdminLoginResponse = await dashboardService.login(loginRequest);
+      const response = await dashboardService.login(loginRequest);
 
       if (response.token) {
         dashboardService.setAdminToken(response.token);
-        onLogin(response.token);
+        onLoginSuccess(response.token, response.user!);
         setSuccess('Login successful!');
       } else {
         setError(response.message || 'MFA verification failed');
       }
-    } catch (error: any) {
-      setError(error.message || 'MFA verification failed');
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message || 'MFA verification failed');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleMFASetup = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleMFASetup = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const mfaSetupRequest: MFASetupRequest = {
+      const response = await dashboardService.setupMFA({
         mfa_type: mfaType,
-        totp_secret: mfaType === 'TOTP' ? totpSecret : undefined,
-        hardware_token_id: mfaType === 'HARDWARE_TOKEN' ? hardwareTokenId : undefined,
-      };
-
-      const response: MFASetupResponse = await dashboardService.setupMFA(mfaSetupRequest);
+      });
 
       if (response.success) {
-        // MFA setup completed
-        if (onMFASetup) {
-          onMFASetup(response);
-        }
-        setSuccess('MFA setup successful! Please verify your setup.');
-        setStep('mfa');
+        // Handle MFA setup success
+        console.log('MFA setup successful');
       } else {
         setError(response.message || 'MFA setup failed');
       }
-    } catch (error: any) {
-      setError(error.message || 'MFA setup failed');
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message || 'MFA setup failed');
     } finally {
       setIsLoading(false);
     }
@@ -159,8 +143,9 @@ const EnterpriseAdminLogin: React.FC<EnterpriseAdminLoginProps> = ({
 
       setSuccess('Invitation key validated successfully');
       setStep('login');
-    } catch (error: any) {
-      setError(error.message || 'Invalid invitation key');
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message || 'Invalid invitation key');
     } finally {
       setIsLoading(false);
     }

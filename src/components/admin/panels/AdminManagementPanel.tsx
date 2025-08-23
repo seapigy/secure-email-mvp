@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  UserGroupIcon, ArrowPathIcon, ExclamationTriangleIcon, CheckCircleIcon, EyeIcon, EyeSlashIcon,
-  PlusIcon, KeyIcon, TrashIcon, ClockIcon, ShieldCheckIcon, UserIcon,
+  UserGroupIcon, KeyIcon, ClockIcon, CheckCircleIcon, PlusIcon, TrashIcon,
+  EyeIcon, EyeSlashIcon, ShieldCheckIcon, ExclamationTriangleIcon, UserIcon, ArrowPathIcon,
 } from '@heroicons/react/24/outline';
-import { EnterpriseDashboardService } from '../../../services/enterpriseDashboardService';
 import {
-  AdminUser, InvitationKey, AdminInvitationRequest, AdminActionApproval,
+  AdminUser, InvitationKey, AdminActionApproval, AdminInvitationRequest,
 } from '../../../types/admin';
+import { EnterpriseDashboardService } from '../../../services/enterpriseDashboardService';
 
 interface AdminManagementPanelProps {
   isLoading: boolean;
@@ -26,15 +26,9 @@ const AdminManagementPanel: React.FC<AdminManagementPanelProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const dashboardService = new EnterpriseDashboardService();
+  const dashboardService = useMemo(() => new EnterpriseDashboardService(), []);
 
-  useEffect(() => {
-    loadData();
-    const user = dashboardService.getCurrentUser();
-    setCurrentUser(user);
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [adminsData, invitationsData, approvalsData] = await Promise.all([
         dashboardService.listAdmins(),
@@ -44,41 +38,48 @@ const AdminManagementPanel: React.FC<AdminManagementPanelProps> = ({
       setAdmins(adminsData);
       setInvitations(invitationsData);
       setPendingApprovals(approvalsData);
-    } catch (error: any) {
-      setError(error.message || 'Failed to load admin data');
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message || 'Failed to load admin data');
     }
-  };
+  }, [dashboardService]);
 
-  const handleCreateInvitation = async (invitationData: AdminInvitationRequest) => {
+  useEffect(() => {
+    loadData();
+    const user = dashboardService.getCurrentUser();
+    setCurrentUser(user);
+  }, [dashboardService, loadData]);
+
+  const handleCreateInvitation = async (request: AdminInvitationRequest) => {
     try {
-      await dashboardService.createInvitationKey(invitationData);
-      setSuccess('Invitation created successfully');
-      setShowInviteForm(false);
-      loadData();
-    } catch (error: any) {
-      setError(error.message || 'Failed to create invitation');
+      setError(null);
+      await dashboardService.createInvitationKey(request);
+      await loadData();
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message || 'Failed to create invitation');
     }
   };
 
   const handleRevokeInvitation = async (key: string) => {
     try {
+      setError(null);
       await dashboardService.revokeInvitationKey(key);
-      setSuccess('Invitation revoked successfully');
-      loadData();
-    } catch (error: any) {
-      setError(error.message || 'Failed to revoke invitation');
+      await loadData();
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message || 'Failed to revoke invitation');
     }
   };
-
-
 
   const handleDeactivateAdmin = async (adminId: string) => {
     try {
       await dashboardService.deactivateAdmin(adminId);
       setSuccess('Admin deactivated successfully');
       loadData();
-    } catch (error: any) {
-      setError(error.message || 'Failed to deactivate admin');
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message || 'Failed to deactivate admin');
     }
   };
 
@@ -87,8 +88,9 @@ const AdminManagementPanel: React.FC<AdminManagementPanelProps> = ({
       await dashboardService.approveAction(approvalId, approved, reason);
       setSuccess(`Action ${approved ? 'approved' : 'rejected'} successfully`);
       loadData();
-    } catch (error: any) {
-      setError(error.message || 'Failed to process approval');
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message || 'Failed to process approval');
     }
   };
 
@@ -137,7 +139,7 @@ const AdminManagementPanel: React.FC<AdminManagementPanelProps> = ({
             <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">Access Restricted</h3>
             <p className="mt-1 text-sm text-gray-500">
-              You don't have permission to manage admin accounts.
+              You don&apos;t have permission to manage admin accounts.
             </p>
           </div>
         </div>

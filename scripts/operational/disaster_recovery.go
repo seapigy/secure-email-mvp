@@ -815,22 +815,22 @@ func (dr *DisasterRecoveryManager) verifyBackup(backupDir string, metadata *Back
 
 	// Test ZKID mappings
 	if err := dr.loadEncryptedData(filepath.Join(backupDir, "zkid_mappings.json"), &testData); err != nil {
-		return fmt.Errorf("ZKID mappings integrity check failed: %w", err)
+		return fmt.Errorf("zkid mappings integrity check failed: %w", err)
 	}
 
 	// Test PQC keys
 	if err := dr.loadEncryptedData(filepath.Join(backupDir, "pqc_keys.json"), &testData); err != nil {
-		return fmt.Errorf("PQC keys integrity check failed: %w", err)
+		return fmt.Errorf("pqc keys integrity check failed: %w", err)
 	}
 
 	// Test audit logs
 	if err := dr.loadEncryptedData(filepath.Join(backupDir, "audit_logs.json"), &testData); err != nil {
-		return fmt.Errorf("Audit logs integrity check failed: %w", err)
+		return fmt.Errorf("audit logs integrity check failed: %w", err)
 	}
 
 	// Test admin sessions
 	if err := dr.loadEncryptedData(filepath.Join(backupDir, "admin_sessions.json"), &testData); err != nil {
-		return fmt.Errorf("Admin sessions integrity check failed: %w", err)
+		return fmt.Errorf("admin sessions integrity check failed: %w", err)
 	}
 
 	dr.logger.Println("Backup verification completed successfully")

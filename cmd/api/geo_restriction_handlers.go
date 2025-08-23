@@ -17,42 +17,42 @@ import (
 
 // GeoRestrictionRuleRequest represents a request to create or update a geo-restriction rule
 type GeoRestrictionRuleRequest struct {
-	EmailID     string                           `json:"email_id"`
-	Type        georestriction.RestrictionType   `json:"type"`
-	Countries   []string                         `json:"countries,omitempty"`
-	Cities      []string                         `json:"cities,omitempty"`
-	Description string                           `json:"description,omitempty"`
+	EmailID     string                         `json:"email_id"`
+	Type        georestriction.RestrictionType `json:"type"`
+	Countries   []string                       `json:"countries,omitempty"`
+	Cities      []string                       `json:"cities,omitempty"`
+	Description string                         `json:"description,omitempty"`
 }
 
 // GeoRestrictionConfigRequest represents a request to update geo-restriction configuration
 type GeoRestrictionConfigRequest struct {
-	EmailID                    string                           `json:"email_id"`
-	Enabled                    bool                             `json:"enabled"`
-	DefaultAction              georestriction.RestrictionType   `json:"default_action"`
-	StrictMode                 bool                             `json:"strict_mode"`
-	LogViolations              bool                             `json:"log_violations"`
-	BlockOnGeolocationFailure  bool                             `json:"block_on_geolocation_failure"`
+	EmailID                   string                         `json:"email_id"`
+	Enabled                   bool                           `json:"enabled"`
+	DefaultAction             georestriction.RestrictionType `json:"default_action"`
+	StrictMode                bool                           `json:"strict_mode"`
+	LogViolations             bool                           `json:"log_violations"`
+	BlockOnGeolocationFailure bool                           `json:"block_on_geolocation_failure"`
 }
 
 // GeoRestrictionResponse represents the response for geo-restriction operations
 type GeoRestrictionResponse struct {
-	Success bool                   `json:"success"`
-	Message string                 `json:"message,omitempty"`
+	Success bool                                `json:"success"`
+	Message string                              `json:"message,omitempty"`
 	Rules   []georestriction.GeoRestrictionRule `json:"rules,omitempty"`
-	Config  georestriction.GeoRestrictionConfig  `json:"config,omitempty"`
+	Config  georestriction.GeoRestrictionConfig `json:"config,omitempty"`
 }
 
 // GeoRestrictionStatusResponse represents the status of geo-restrictions for an email
 type GeoRestrictionStatusResponse struct {
-	EmailID                    string                           `json:"email_id"`
-	Enabled                    bool                             `json:"enabled"`
-	RulesCount                 int                              `json:"rules_count"`
-	ViolationsCount            int                              `json:"violations_count"`
-	LastViolation              *time.Time                       `json:"last_violation,omitempty"`
-	Config                     georestriction.GeoRestrictionConfig `json:"config"`
-	CurrentLocation            *geolocation.Location            `json:"current_location,omitempty"`
-	AccessAllowed              bool                             `json:"access_allowed"`
-	AccessReason               string                           `json:"access_reason,omitempty"`
+	EmailID         string                              `json:"email_id"`
+	Enabled         bool                                `json:"enabled"`
+	RulesCount      int                                 `json:"rules_count"`
+	ViolationsCount int                                 `json:"violations_count"`
+	LastViolation   *time.Time                          `json:"last_violation,omitempty"`
+	Config          georestriction.GeoRestrictionConfig `json:"config"`
+	CurrentLocation *geolocation.Location               `json:"current_location,omitempty"`
+	AccessAllowed   bool                                `json:"access_allowed"`
+	AccessReason    string                              `json:"access_reason,omitempty"`
 }
 
 // geoRestrictionHandlers provides HTTP handlers for geo-restriction management
@@ -399,11 +399,11 @@ func (h *geoRestrictionHandlers) updateGeoRestrictionConfigHandler(w http.Respon
 
 	// Create configuration
 	config := georestriction.GeoRestrictionConfig{
-		Enabled:                    req.Enabled,
-		DefaultAction:              req.DefaultAction,
-		StrictMode:                 req.StrictMode,
-		LogViolations:              req.LogViolations,
-		BlockOnGeolocationFailure:  req.BlockOnGeolocationFailure,
+		Enabled:                   req.Enabled,
+		DefaultAction:             req.DefaultAction,
+		StrictMode:                req.StrictMode,
+		LogViolations:             req.LogViolations,
+		BlockOnGeolocationFailure: req.BlockOnGeolocationFailure,
 	}
 
 	// Save configuration to database
@@ -599,13 +599,6 @@ func (h *geoRestrictionHandlers) getGeoRestrictionViolations(emailID string) (in
 	}
 	return violationsCount, nil, nil
 }
-
-func (h *geoRestrictionHandlers) incrementGeoRestrictionViolations(emailID string) error {
-	_, err := h.db.Exec("UPDATE emails SET geo_restriction_violations = geo_restriction_violations + 1, geo_restriction_last_violation = CURRENT_TIMESTAMP WHERE email_id = ?", emailID)
-	return err
-}
-
-
 
 // generateUUID generates a simple UUID-like string
 func generateUUID() string {

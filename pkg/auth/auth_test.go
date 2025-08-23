@@ -313,10 +313,3 @@ func TestAuthenticateIntegration(t *testing.T) {
 		t.Error("Authenticate should have failed with wrong TOTP")
 	}
 }
-
-// Helper function to generate TOTP code for testing
-func generateTOTPCode(secret string) (string, error) {
-	// This is a simplified version for testing
-	// In a real implementation, you would use the actual TOTP library
-	return "123456", nil
-}

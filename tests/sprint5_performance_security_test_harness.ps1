@@ -1,10 +1,10 @@
 # Sprint 5 Performance & Security Test Harness
 # Tests the complete performance, security, and monitoring systems
 
-Write-Host "Sprint 5 Performance & Security Test Harness" -ForegroundColor Cyan
-Write-Host "=============================================" -ForegroundColor Cyan
-Write-Host "Testing Performance Benchmarks + Load Testing + Security Testing + Monitoring" -ForegroundColor White
-Write-Host ""
+Write-Output "Sprint 5 Performance & Security Test Harness"
+Write-Output "============================================="
+Write-Output "Testing Performance Benchmarks + Load Testing + Security Testing + Monitoring"
+Write-Output ""
 
 # Initialize test results
 $TestResults = @{
@@ -19,21 +19,21 @@ function Write-TestResult {
     $TestResults.Total++
     if ($Success) {
         $TestResults.Passed++
-        Write-Host "PASS: $TestName" -ForegroundColor Green
-        if ($Message) { Write-Host "   $Message" -ForegroundColor Gray }
+        Write-Output "PASS: $TestName"
+        if ($Message) { Write-Output "   $Message" }
     } else {
         $TestResults.Failed++
         $TestResults.Errors += "${TestName}: ${Message}"
-        Write-Host "FAIL: $TestName" -ForegroundColor Red
-        if ($Message) { Write-Host "   $Message" -ForegroundColor Gray }
+        Write-Output "FAIL: $TestName"
+        if ($Message) { Write-Output "   $Message" }
     }
 }
 
 # =============================================================================
 # SPRINT 5: PERFORMANCE & SECURITY VALIDATION
 # =============================================================================
-Write-Host "`nSPRINT 5: Performance & Security Validation" -ForegroundColor Yellow
-Write-Host "===============================================" -ForegroundColor Yellow
+Write-Output "`nSPRINT 5: Performance & Security Validation"
+Write-Output "==============================================="
 
 # Test 1: Sprint 5 Design Document
 $TestName = "Sprint 5 Design Document"
@@ -157,7 +157,7 @@ try {
         "pkg/e2e/loadtest_test.go",
         "pkg/e2e/security_test_suite_test.go"
     )
-    
+
     $allTestsExist = $true
     foreach ($testFile in $testFiles) {
         if (-not (Test-Path $testFile)) {
@@ -165,7 +165,7 @@ try {
             break
         }
     }
-    
+
     if ($allTestsExist) {
         Write-TestResult $TestName $true "All Sprint 5 unit test files exist"
     } else {
@@ -303,59 +303,59 @@ try {
 # =============================================================================
 # FINAL RESULTS & SUMMARY
 # =============================================================================
-Write-Host "`nSPRINT 5 TEST RESULTS" -ForegroundColor Cyan
-Write-Host "======================" -ForegroundColor Cyan
+Write-Output "`nSPRINT 5 TEST RESULTS"
+Write-Output "======================"
 
 $successRate = if ($TestResults.Total -gt 0) { [math]::Round(($TestResults.Passed / $TestResults.Total) * 100, 2) } else { 0 }
 
-Write-Host "Total Tests: $($TestResults.Total)" -ForegroundColor White
-Write-Host "Passed: $($TestResults.Passed)" -ForegroundColor Green
-Write-Host "Failed: $($TestResults.Failed)" -ForegroundColor Red
-Write-Host "Success Rate: $successRate%" -ForegroundColor $(if ($successRate -ge 90) { "Green" } elseif ($successRate -ge 75) { "Yellow" } else { "Red" })
+Write-Output "Total Tests: $($TestResults.Total)"
+Write-Output "Passed: $($TestResults.Passed)"
+Write-Output "Failed: $($TestResults.Failed)"
+Write-Output "Success Rate: $successRate%" -ForegroundColor $(if ($successRate -ge 90) { "Green" } elseif ($successRate -ge 75) { "Yellow" } else { "Red" })
 
 if ($TestResults.Errors.Count -gt 0) {
-    Write-Host "`nFAILED TESTS:" -ForegroundColor Red
+    Write-Output "`nFAILED TESTS:"
     foreach ($err in $TestResults.Errors) {
-        Write-Host "   - $err" -ForegroundColor Gray
+        Write-Output "   - $err"
     }
 }
 
-Write-Host "`nSPRINT 5 COMPONENTS VALIDATED:" -ForegroundColor Cyan
-Write-Host "===============================" -ForegroundColor Cyan
+Write-Output "`nSPRINT 5 COMPONENTS VALIDATED:"
+Write-Output "==============================="
 
 $components = @(
     "Performance Benchmarking Suite",
-    "Load Testing Framework", 
+    "Load Testing Framework",
     "Security Testing Suite",
     "Performance Monitoring System",
     "Compliance Testing Framework"
 )
 
 foreach ($component in $components) {
-    Write-Host "  ✓ $component" -ForegroundColor Green
+    Write-Output "  ✓ $component"
 }
 
-Write-Host "`nOVERALL ASSESSMENT:" -ForegroundColor Cyan
-Write-Host "===================" -ForegroundColor Cyan
+Write-Output "`nOVERALL ASSESSMENT:"
+Write-Output "==================="
 
 if ($successRate -ge 95) {
-    Write-Host "EXCELLENT! Sprint 5 is complete and ready for production!" -ForegroundColor Green
-    Write-Host "The performance, security, and monitoring systems are fully operational." -ForegroundColor Green
+    Write-Output "EXCELLENT! Sprint 5 is complete and ready for production!"
+    Write-Output "The performance, security, and monitoring systems are fully operational."
 } elseif ($successRate -ge 85) {
-    Write-Host "GOOD! Sprint 5 is mostly complete with minor issues to address." -ForegroundColor Yellow
-    Write-Host "Review failed tests and complete missing implementations." -ForegroundColor Yellow
+    Write-Output "GOOD! Sprint 5 is mostly complete with minor issues to address."
+    Write-Output "Review failed tests and complete missing implementations."
 } elseif ($successRate -ge 70) {
-    Write-Host "FAIR! Significant work remains to complete Sprint 5." -ForegroundColor Yellow
-    Write-Host "Focus on fixing build issues and completing core functionality." -ForegroundColor Yellow
+    Write-Output "FAIR! Significant work remains to complete Sprint 5."
+    Write-Output "Focus on fixing build issues and completing core functionality."
 } else {
-    Write-Host "NEEDS WORK! Core Sprint 5 components are missing or broken." -ForegroundColor Red
-    Write-Host "Address build failures and implement missing components." -ForegroundColor Red
+    Write-Output "NEEDS WORK! Core Sprint 5 components are missing or broken."
+    Write-Output "Address build failures and implement missing components."
 }
 
-Write-Host "`nSTATUS: SPRINT 5 $(if ($successRate -ge 90) { "COMPLETE" } else { "IN PROGRESS" }) - $(if ($successRate -ge 90) { "Ready for Sprint 6 (Canary Rollout)" } else { "Address failing tests before proceeding" })" -ForegroundColor $(if ($successRate -ge 90) { "Green" } else { "Yellow" })
+Write-Output "`nSTATUS: SPRINT 5 $(if ($successRate -ge 90) { "COMPLETE" } else { "IN PROGRESS" }) - $(if ($successRate -ge 90) { "Ready for Sprint 6 (Canary Rollout)" } else { "Address failing tests before proceeding" })" -ForegroundColor $(if ($successRate -ge 90) { "Green" } else { "Yellow" })
 
-Write-Host ""
+Write-Output ""
 $separatorLine = "=" * 60
 Write-Host $separatorLine
-Write-Host "Sprint 5 Performance and Security Test Harness Complete!" -ForegroundColor Cyan
+Write-Output "Sprint 5 Performance and Security Test Harness Complete!"
 Write-Host $separatorLine

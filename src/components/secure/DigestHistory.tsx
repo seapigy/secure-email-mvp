@@ -247,7 +247,7 @@ const DigestHistory: React.FC = () => {
           <Input
             type="text"
             value={selectedDate}
-            onChange={(e: any) => setSelectedDate(e.target.value)}
+            onChange={(value: string) => setSelectedDate(value)}
             placeholder="Select date (YYYY-MM-DD)"
             className="w-48"
           />

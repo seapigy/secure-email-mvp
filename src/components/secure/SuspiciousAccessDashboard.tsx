@@ -39,7 +39,7 @@ interface SuspiciousAccessEvent {
   is_vpn: boolean;
   is_proxy: boolean;
   threat_intel_match: boolean;
-  threat_intel_details?: any;
+  threat_intel_details?: Record<string, unknown>;
   auto_blocked: boolean;
   manual_reviewed: boolean;
   review_notes?: string;
@@ -595,7 +595,7 @@ const SuspiciousAccessDashboard: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={settings.enabled}
-                          onChange={(e: any) => setSettings(prev => ({ ...prev, enabled: e.target.checked }))}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({ ...prev, enabled: e.target.checked }))}
                           className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                         />
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Enable suspicious access detection</span>
@@ -606,7 +606,7 @@ const SuspiciousAccessDashboard: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={settings.autoBlockEnabled}
-                          onChange={(e: any) => setSettings(prev => ({ ...prev, autoBlockEnabled: e.target.checked }))}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({ ...prev, autoBlockEnabled: e.target.checked }))}
                           className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                         />
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Enable automatic blocking</span>
@@ -628,7 +628,7 @@ const SuspiciousAccessDashboard: React.FC = () => {
                         min="0"
                         max="100"
                         value={settings.riskThreshold}
-                        onChange={(e: any) => setSettings(prev => ({ ...prev, riskThreshold: parseInt(e.target.value) }))}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({ ...prev, riskThreshold: parseInt(e.target.value) }))}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
                     </div>
@@ -641,7 +641,7 @@ const SuspiciousAccessDashboard: React.FC = () => {
                         min="0"
                         max="100"
                         value={settings.autoBlockThreshold}
-                        onChange={(e: any) => setSettings(prev => ({ ...prev, autoBlockThreshold: parseInt(e.target.value) }))}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({ ...prev, autoBlockThreshold: parseInt(e.target.value) }))}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
                     </div>
@@ -657,7 +657,7 @@ const SuspiciousAccessDashboard: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={settings.emailNotifications}
-                          onChange={(e: any) => setSettings(prev => ({ ...prev, emailNotifications: e.target.checked }))}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({ ...prev, emailNotifications: e.target.checked }))}
                           className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                         />
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Email notifications</span>
@@ -668,7 +668,7 @@ const SuspiciousAccessDashboard: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={settings.smsNotifications}
-                          onChange={(e: any) => setSettings(prev => ({ ...prev, smsNotifications: e.target.checked }))}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({ ...prev, smsNotifications: e.target.checked }))}
                           className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                         />
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">SMS notifications</span>
@@ -679,7 +679,7 @@ const SuspiciousAccessDashboard: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={settings.pushNotifications}
-                          onChange={(e: any) => setSettings(prev => ({ ...prev, pushNotifications: e.target.checked }))}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({ ...prev, pushNotifications: e.target.checked }))}
                           className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                         />
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Push notifications</span>
@@ -697,7 +697,7 @@ const SuspiciousAccessDashboard: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={settings.vpnDetectionEnabled}
-                          onChange={(e: any) => setSettings(prev => ({ ...prev, vpnDetectionEnabled: e.target.checked }))}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({ ...prev, vpnDetectionEnabled: e.target.checked }))}
                           className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                         />
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">VPN detection</span>
@@ -708,7 +708,7 @@ const SuspiciousAccessDashboard: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={settings.torDetectionEnabled}
-                          onChange={(e: any) => setSettings(prev => ({ ...prev, torDetectionEnabled: e.target.checked }))}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({ ...prev, torDetectionEnabled: e.target.checked }))}
                           className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                         />
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Tor network detection</span>
@@ -719,7 +719,7 @@ const SuspiciousAccessDashboard: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={settings.proxyDetectionEnabled}
-                          onChange={(e: any) => setSettings(prev => ({ ...prev, proxyDetectionEnabled: e.target.checked }))}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({ ...prev, proxyDetectionEnabled: e.target.checked }))}
                           className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                         />
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Proxy detection</span>
@@ -730,7 +730,7 @@ const SuspiciousAccessDashboard: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={settings.threatIntelligenceEnabled}
-                          onChange={(e: any) => setSettings(prev => ({ ...prev, threatIntelligenceEnabled: e.target.checked }))}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({ ...prev, threatIntelligenceEnabled: e.target.checked }))}
                           className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                         />
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Threat intelligence</span>

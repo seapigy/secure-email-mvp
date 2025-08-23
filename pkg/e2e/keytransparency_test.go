@@ -314,6 +314,7 @@ func TestKeyTransparency_HelperFunctions(t *testing.T) {
 	expiry := kt.calculateKeyExpiry()
 	if expiry == nil {
 		t.Error("calculateKeyExpiry() returned nil")
+		return
 	}
 
 	if expiry.Before(time.Now()) {

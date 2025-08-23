@@ -7,9 +7,9 @@ param(
     [string]$TestPassword = "testpassword123"
 )
 
-Write-Host "=== Testing Password Protection for Email Access (Micro-Iteration 4.14) ===" -ForegroundColor Green
-Write-Host "API URL: $ApiUrl" -ForegroundColor Yellow
-Write-Host ""
+Write-Output "=== Testing Password Protection for Email Access (Micro-Iteration 4.14) ==="
+Write-Output "API URL: $ApiUrl"
+Write-Output ""
 
 # Function to make API requests
 function Invoke-ApiRequest {
@@ -19,10 +19,10 @@ function Invoke-ApiRequest {
         [object]$Body = $null,
         [hashtable]$Headers = @{}
     )
-    
+
     $uri = "$ApiUrl$Endpoint"
     $headers["Content-Type"] = "application/json"
-    
+
     try {
         if ($Body) {
             $jsonBody = $Body | ConvertTo-Json -Depth 10
@@ -50,22 +50,22 @@ function Invoke-ApiRequest {
 }
 
 # Test 1: Login to get authentication token
-Write-Host "1. Testing authentication..." -ForegroundColor Cyan
+Write-Output "1. Testing authentication..."
 $loginResponse = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/login" -Body @{
     email = $TestEmail
     password = $TestPassword
 }
 
 if (-not $loginResponse.Success) {
-    Write-Host "❌ Login failed: $($loginResponse.Error)" -ForegroundColor Red
+    Write-Output "❌ Login failed: $($loginResponse.Error)"
     exit 1
 }
 
 $token = $loginResponse.Data.token
-Write-Host "✅ Login successful" -ForegroundColor Green
+Write-Output "✅ Login successful"
 
 # Test 2: Send email with password protection
-Write-Host "`n2. Testing email with password protection..." -ForegroundColor Cyan
+Write-Output "`n2. Testing email with password protection..."
 $passwordEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - Password Protected"
@@ -74,59 +74,59 @@ $passwordEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -H
 }
 
 if (-not $passwordEmail.Success) {
-    Write-Host "❌ Failed to send password-protected email: $($passwordEmail.Error)" -ForegroundColor Red
+    Write-Output "❌ Failed to send password-protected email: $($passwordEmail.Error)"
     exit 1
 }
 
-Write-Host "✅ Password-protected email sent successfully" -ForegroundColor Green
+Write-Output "✅ Password-protected email sent successfully"
 $passwordEmailId = $passwordEmail.Data.blob_id
 
 # Test 3: Attempt to access email without password (should fail)
-Write-Host "`n3. Testing access without password..." -ForegroundColor Cyan
+Write-Output "`n3. Testing access without password..."
 $noPasswordAccess = Invoke-ApiRequest -Method "GET" -Endpoint "/api/email/view/$passwordEmailId" -Headers @{ "Authorization" = "Bearer $token" }
 
 if ($noPasswordAccess.Success) {
-    Write-Host "❌ Access was successful without password (should have failed)" -ForegroundColor Red
+    Write-Output "❌ Access was successful without password (should have failed)"
 } else {
-    Write-Host "✅ Access correctly blocked without password" -ForegroundColor Green
-    Write-Host "   Status: $($noPasswordAccess.StatusCode)" -ForegroundColor Yellow
+    Write-Output "✅ Access correctly blocked without password"
+    Write-Output "   Status: $($noPasswordAccess.StatusCode)"
     if ($noPasswordAccess.StatusCode -eq 401) {
-        Write-Host "   ✅ Correct 401 Unauthorized status" -ForegroundColor Green
+        Write-Output "   ✅ Correct 401 Unauthorized status"
     }
 }
 
 # Test 4: Attempt to access email with wrong password (should fail)
-Write-Host "`n4. Testing access with wrong password..." -ForegroundColor Cyan
+Write-Output "`n4. Testing access with wrong password..."
 $wrongPasswordAccess = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/view/$passwordEmailId" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     password = "wrongpassword"
 }
 
 if ($wrongPasswordAccess.Success) {
-    Write-Host "❌ Access was successful with wrong password (should have failed)" -ForegroundColor Red
+    Write-Output "❌ Access was successful with wrong password (should have failed)"
 } else {
-    Write-Host "✅ Access correctly blocked with wrong password" -ForegroundColor Green
-    Write-Host "   Status: $($wrongPasswordAccess.StatusCode)" -ForegroundColor Yellow
+    Write-Output "✅ Access correctly blocked with wrong password"
+    Write-Output "   Status: $($wrongPasswordAccess.StatusCode)"
     if ($wrongPasswordAccess.StatusCode -eq 401) {
-        Write-Host "   ✅ Correct 401 Unauthorized status" -ForegroundColor Green
+        Write-Output "   ✅ Correct 401 Unauthorized status"
     }
 }
 
 # Test 5: Access email with correct password (should succeed)
-Write-Host "`n5. Testing access with correct password..." -ForegroundColor Cyan
+Write-Output "`n5. Testing access with correct password..."
 $correctPasswordAccess = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/view/$passwordEmailId" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     password = "securepassword123"
 }
 
 if ($correctPasswordAccess.Success) {
-    Write-Host "✅ Access successful with correct password" -ForegroundColor Green
-    Write-Host "   Subject: $($correctPasswordAccess.Data.subject)" -ForegroundColor Yellow
-    Write-Host "   Body: $($correctPasswordAccess.Data.body)" -ForegroundColor Yellow
+    Write-Output "✅ Access successful with correct password"
+    Write-Output "   Subject: $($correctPasswordAccess.Data.subject)"
+    Write-Output "   Body: $($correctPasswordAccess.Data.body)"
 } else {
-    Write-Host "❌ Access failed with correct password: $($correctPasswordAccess.Error)" -ForegroundColor Red
+    Write-Output "❌ Access failed with correct password: $($correctPasswordAccess.Error)"
 }
 
 # Test 6: Send email without password protection (should work normally)
-Write-Host "`n6. Testing email without password protection..." -ForegroundColor Cyan
+Write-Output "`n6. Testing email without password protection..."
 $normalEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - No Password Protection"
@@ -134,24 +134,24 @@ $normalEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Hea
 }
 
 if (-not $normalEmail.Success) {
-    Write-Host "❌ Failed to send normal email: $($normalEmail.Error)" -ForegroundColor Red
+    Write-Output "❌ Failed to send normal email: $($normalEmail.Error)"
 } else {
-    Write-Host "✅ Normal email sent successfully" -ForegroundColor Green
+    Write-Output "✅ Normal email sent successfully"
     $normalEmailId = $normalEmail.Data.blob_id
-    
+
     # Test normal access (should work)
-    Write-Host "   Testing normal access..." -ForegroundColor Yellow
+    Write-Output "   Testing normal access..."
     $normalAccess = Invoke-ApiRequest -Method "GET" -Endpoint "/api/email/view/$normalEmailId" -Headers @{ "Authorization" = "Bearer $token" }
-    
+
     if ($normalAccess.Success) {
-        Write-Host "   ✅ Normal access successful" -ForegroundColor Green
+        Write-Output "   ✅ Normal access successful"
     } else {
-        Write-Host "   ❌ Normal access failed: $($normalAccess.Error)" -ForegroundColor Red
+        Write-Output "   ❌ Normal access failed: $($normalAccess.Error)"
     }
 }
 
 # Test 7: Test password validation with weak password (should fail)
-Write-Host "`n7. Testing password validation with weak password..." -ForegroundColor Cyan
+Write-Output "`n7. Testing password validation with weak password..."
 $weakPasswordEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - Weak Password"
@@ -160,17 +160,17 @@ $weakPasswordEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send
 }
 
 if ($weakPasswordEmail.Success) {
-    Write-Host "❌ Weak password was accepted (should have failed)" -ForegroundColor Red
+    Write-Output "❌ Weak password was accepted (should have failed)"
 } else {
-    Write-Host "✅ Weak password correctly rejected" -ForegroundColor Green
-    Write-Host "   Status: $($weakPasswordEmail.StatusCode)" -ForegroundColor Yellow
+    Write-Output "✅ Weak password correctly rejected"
+    Write-Output "   Status: $($weakPasswordEmail.StatusCode)"
     if ($weakPasswordEmail.StatusCode -eq 400) {
-        Write-Host "   ✅ Correct 400 Bad Request status" -ForegroundColor Green
+        Write-Output "   ✅ Correct 400 Bad Request status"
     }
 }
 
 # Test 8: Test password validation with common weak password (should fail)
-Write-Host "`n8. Testing password validation with common weak password..." -ForegroundColor Cyan
+Write-Output "`n8. Testing password validation with common weak password..."
 $commonWeakPasswordEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/send" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     recipient = "recipient@example.com"
     subject = "Test Email - Common Weak Password"
@@ -179,61 +179,61 @@ $commonWeakPasswordEmail = Invoke-ApiRequest -Method "POST" -Endpoint "/api/emai
 }
 
 if ($commonWeakPasswordEmail.Success) {
-    Write-Host "❌ Common weak password was accepted (should have failed)" -ForegroundColor Red
+    Write-Output "❌ Common weak password was accepted (should have failed)"
 } else {
-    Write-Host "✅ Common weak password correctly rejected" -ForegroundColor Green
-    Write-Host "   Status: $($commonWeakPasswordEmail.StatusCode)" -ForegroundColor Yellow
+    Write-Output "✅ Common weak password correctly rejected"
+    Write-Output "   Status: $($commonWeakPasswordEmail.StatusCode)"
     if ($commonWeakPasswordEmail.StatusCode -eq 400) {
-        Write-Host "   ✅ Correct 400 Bad Request status" -ForegroundColor Green
+        Write-Output "   ✅ Correct 400 Bad Request status"
     }
 }
 
 # Test 9: Test brute-force protection with multiple wrong passwords
-Write-Host "`n9. Testing brute-force protection with multiple wrong passwords..." -ForegroundColor Cyan
+Write-Output "`n9. Testing brute-force protection with multiple wrong passwords..."
 
 for ($i = 1; $i -le 4; $i++) {
-    Write-Host "   Attempt $i with wrong password..." -ForegroundColor Yellow
+    Write-Output "   Attempt $i with wrong password..."
     $wrongPasswordAttempt = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/view/$passwordEmailId" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
         password = "wrongpassword$i"
     }
-    
+
     if ($wrongPasswordAttempt.Success) {
-        Write-Host "   ❌ Wrong password was accepted (should have failed)" -ForegroundColor Red
+        Write-Output "   ❌ Wrong password was accepted (should have failed)"
     } else {
-        Write-Host "   ✅ Wrong password correctly rejected" -ForegroundColor Green
+        Write-Output "   ✅ Wrong password correctly rejected"
     }
-    
+
     # Small delay between attempts
     Start-Sleep -Milliseconds 100
 }
 
 # Test 10: Test lockout after multiple failed attempts
-Write-Host "`n10. Testing lockout after multiple failed attempts..." -ForegroundColor Cyan
+Write-Output "`n10. Testing lockout after multiple failed attempts..."
 $lockoutAttempt = Invoke-ApiRequest -Method "POST" -Endpoint "/api/email/view/$passwordEmailId" -Headers @{ "Authorization" = "Bearer $token" } -Body @{
     password = "anotherwrongpassword"
 }
 
 if ($lockoutAttempt.Success) {
-    Write-Host "❌ Access was successful after multiple failed attempts (should have failed)" -ForegroundColor Red
+    Write-Output "❌ Access was successful after multiple failed attempts (should have failed)"
 } else {
-    Write-Host "✅ Access correctly blocked after multiple failed attempts" -ForegroundColor Green
-    Write-Host "   Status: $($lockoutAttempt.StatusCode)" -ForegroundColor Yellow
+    Write-Output "✅ Access correctly blocked after multiple failed attempts"
+    Write-Output "   Status: $($lockoutAttempt.StatusCode)"
     if ($lockoutAttempt.StatusCode -eq 403) {
-        Write-Host "   ✅ Correct 403 Forbidden status (likely IP lockout)" -ForegroundColor Green
+        Write-Output "   ✅ Correct 403 Forbidden status (likely IP lockout)"
     }
 }
 
-Write-Host "`n=== Test Summary ===" -ForegroundColor Green
-Write-Host "✅ Password protection tests completed" -ForegroundColor Green
-Write-Host "🔒 Password validation working correctly" -ForegroundColor Yellow
-Write-Host "🛡️ Weak password rejection working" -ForegroundColor Yellow
-Write-Host "📧 Integration with brute-force protection working" -ForegroundColor Yellow
-Write-Host "🌐 Integration with IP tracking working" -ForegroundColor Yellow
+Write-Output "`n=== Test Summary ==="
+Write-Output "✅ Password protection tests completed"
+Write-Output "🔒 Password validation working correctly"
+Write-Output "🛡️ Weak password rejection working"
+Write-Output "📧 Integration with brute-force protection working"
+Write-Output "🌐 Integration with IP tracking working"
 
-Write-Host "`nNote: The password protection feature is now active with:" -ForegroundColor Cyan
-Write-Host "- Argon2id password hashing with random salt" -ForegroundColor White
-Write-Host "- Password strength validation (8-128 characters)" -ForegroundColor White
-Write-Host "- Common weak password rejection" -ForegroundColor White
-Write-Host "- Integration with existing security layers" -ForegroundColor White
-Write-Host "- Generic 'Access denied' messages for security" -ForegroundColor White
-Write-Host "- Automatic reset of failed attempts on success" -ForegroundColor White
+Write-Output "`nNote: The password protection feature is now active with:"
+Write-Output "- Argon2id password hashing with random salt"
+Write-Output "- Password strength validation (8-128 characters)"
+Write-Output "- Common weak password rejection"
+Write-Output "- Integration with existing security layers"
+Write-Output "- Generic 'Access denied' messages for security"
+Write-Output "- Automatic reset of failed attempts on success"

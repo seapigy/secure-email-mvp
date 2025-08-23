@@ -84,8 +84,14 @@ func TestClient_EncryptDecryptMessage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			plaintext := []byte(tt.plaintext)
 
-			// Alice encrypts message for Bob
-			message, err := alice.EncryptMessage(plaintext, bob.GetPublicKey(), "thread123", "bob")
+			// Generate proper KEM key pair for recipient (Bob)
+			bobKEMKeyPair, err := alice.cryptoProvider.GenerateKeyPair("kyber768")
+			if err != nil {
+				t.Fatalf("Failed to generate Bob's KEM key pair: %v", err)
+			}
+
+			// Alice encrypts message for Bob using proper KEM key
+			message, err := alice.EncryptMessage(plaintext, bobKEMKeyPair.PublicKey, "thread123", "bob")
 			if err != nil {
 				t.Fatalf("EncryptMessage() error = %v", err)
 			}
@@ -110,8 +116,8 @@ func TestClient_EncryptDecryptMessage(t *testing.T) {
 				t.Error("Message CreatedAt is zero")
 			}
 
-			// Bob decrypts message
-			decrypted, err := bob.DecryptMessage(message, alice.GetPublicKey())
+			// Bob decrypts message using his KEM private key and Alice's signature public key
+			decrypted, err := bob.cryptoProvider.DecryptMessage(message.Envelope, bobKEMKeyPair.PrivateKey, alice.GetPublicKey())
 			if err != nil {
 				t.Fatalf("DecryptMessage() error = %v", err)
 			}
@@ -132,24 +138,34 @@ func TestClient_EncryptDecryptMessage_WrongRecipient(t *testing.T) {
 		t.Fatalf("Failed to create Alice client: %v", err)
 	}
 
-	bob, err := NewClient(config, "bob")
-	if err != nil {
-		t.Fatalf("Failed to create Bob client: %v", err)
-	}
+	// Bob client not needed for this test since we generate KEM keys directly
 
 	charlie, err := NewClient(config, "charlie")
 	if err != nil {
 		t.Fatalf("Failed to create Charlie client: %v", err)
 	}
 
-	// Alice encrypts message for Bob
-	message, err := alice.EncryptMessage([]byte("Hello, Bob!"), bob.GetPublicKey(), "thread123", "bob")
+	// Generate proper KEM key pair for Bob
+	bobKEMKeyPair, err := alice.cryptoProvider.GenerateKeyPair("kyber768")
+	if err != nil {
+		t.Fatalf("Failed to generate Bob's KEM key pair: %v", err)
+	}
+
+	// Alice encrypts message for Bob using proper KEM key
+	message, err := alice.EncryptMessage([]byte("Hello, Bob!"), bobKEMKeyPair.PublicKey, "thread123", "bob")
 	if err != nil {
 		t.Fatalf("EncryptMessage() error = %v", err)
 	}
 
 	// Charlie tries to decrypt message (should fail)
-	_, err = charlie.DecryptMessage(message, alice.GetPublicKey())
+	// Charlie needs his own KEM key pair to attempt decryption
+	charlieKEMKeyPair, err := charlie.cryptoProvider.GenerateKeyPair("kyber768")
+	if err != nil {
+		t.Fatalf("Failed to generate Charlie's KEM key pair: %v", err)
+	}
+
+	// Try to decrypt with wrong key (should fail)
+	_, err = charlie.cryptoProvider.DecryptMessage(message.Envelope, charlieKEMKeyPair.PrivateKey, alice.GetPublicKey())
 	if err == nil {
 		t.Error("DecryptMessage() should fail for wrong recipient")
 	}
@@ -376,8 +392,9 @@ func TestClient_GetKeyInfo(t *testing.T) {
 	keyInfo := client.GetKeyInfo()
 
 	// Verify key info structure
-	if keyInfo["algorithm"] != config.Crypto.KEMAlgorithm {
-		t.Errorf("Key info algorithm = %v, want %v", keyInfo["algorithm"], config.Crypto.KEMAlgorithm)
+	// Client now uses signature algorithm for its primary key pair
+	if keyInfo["algorithm"] != config.Crypto.SignatureAlgorithm {
+		t.Errorf("Key info algorithm = %v, want %v", keyInfo["algorithm"], config.Crypto.SignatureAlgorithm)
 	}
 	if keyInfo["created_at"] == nil {
 		t.Error("Key info created_at is nil")

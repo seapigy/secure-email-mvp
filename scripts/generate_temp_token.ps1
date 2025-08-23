@@ -27,7 +27,7 @@ function Write-ColorOutput {
         [string]$Message,
         [string]$Color = "White"
     )
-    Write-Host $Message -ForegroundColor $Color
+    Write-Output $Message
 }
 
 function Write-Success {
@@ -57,17 +57,17 @@ function Invoke-ApiRequest {
         [hashtable]$Headers = @{},
         [string]$Body = ""
     )
-    
+
     $uri = "$($TestConfig.BaseUrl)$Endpoint"
-    
+
     $requestHeaders = @{
         "Content-Type" = "application/json"
     }
-    
+
     foreach ($key in $Headers.Keys) {
         $requestHeaders[$key] = $Headers[$key]
     }
-    
+
     try {
         if ($Method -eq "GET" -or $Body -eq "") {
             $response = Invoke-RestMethod -Uri $uri -Method $Method -Headers $requestHeaders -ErrorAction Stop
@@ -82,7 +82,7 @@ function Invoke-ApiRequest {
     } catch {
         $statusCode = $_.Exception.Response.StatusCode.value__
         $errorMessage = $_.Exception.Message
-        
+
         try {
             $errorResponse = $_.Exception.Response.GetResponseStream()
             $reader = New-Object System.IO.StreamReader($errorResponse)
@@ -90,7 +90,7 @@ function Invoke-ApiRequest {
         } catch {
             $errorBody = "Unable to read error response"
         }
-        
+
         return @{
             Success = $false
             StatusCode = $statusCode
@@ -106,20 +106,24 @@ function Generate-TempJWTToken {
         [string]$Email,
         [string]$Role = "user"
     )
-    
+
     Write-Info "Generating temporary JWT token for development testing"
-    
+
     # Get JWT secret from environment (same as main application)
     $jwtSecret = $env:JWT_SECRET
     if (-not $jwtSecret) {
-        $jwtSecret = "test_jwt_secret_for_development_only_32_bytes_long"
-        Write-Warning "JWT_SECRET not found in environment, using default development secret"
+        # Generate a secure random secret for development
+        $randomBytes = New-Object byte[] 32
+        $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+        $rng.GetBytes($randomBytes)
+        $jwtSecret = [Convert]::ToBase64String($randomBytes)
+        Write-Warning "JWT_SECRET not found in environment, generated secure development secret"
     }
-    
+
     # Create JWT payload
     $now = [DateTimeOffset]::UtcNow
     $expiration = $now.AddHours($TestConfig.ExpirationHours)
-    
+
     $payload = @{
         user_id = $UserID
         email = $Email
@@ -130,49 +134,49 @@ function Generate-TempJWTToken {
         aud = "secure-email-api"
         temp_token = $true  # Mark as temporary token
     }
-    
+
     # Convert to JSON
     $payloadJson = $payload | ConvertTo-Json -Compress
-    
+
     # Create JWT header
     $header = @{
         alg = "HS256"
         typ = "JWT"
     }
     $headerJson = $header | ConvertTo-Json -Compress
-    
+
     # Base64 encode header and payload
     $headerBytes = [System.Text.Encoding]::UTF8.GetBytes($headerJson)
     $payloadBytes = [System.Text.Encoding]::UTF8.GetBytes($payloadJson)
-    
+
     $headerB64 = [Convert]::ToBase64String($headerBytes).Replace('+', '-').Replace('/', '_').TrimEnd('=')
     $payloadB64 = [Convert]::ToBase64String($payloadBytes).Replace('+', '-').Replace('/', '_').TrimEnd('=')
-    
+
     # Create signature
     $signatureInput = "$headerB64.$payloadB64"
     $signatureBytes = [System.Security.Cryptography.HMACSHA256]::new([System.Text.Encoding]::UTF8.GetBytes($jwtSecret)).ComputeHash([System.Text.Encoding]::UTF8.GetBytes($signatureInput))
     $signatureB64 = [Convert]::ToBase64String($signatureBytes).Replace('+', '-').Replace('/', '_').TrimEnd('=')
-    
+
     # Combine to create JWT
     $jwtToken = "$headerB64.$payloadB64.$signatureB64"
-    
+
     Write-Success "Temporary JWT token generated successfully"
     Write-Info "Token expires: $($expiration.ToString('yyyy-MM-dd HH:mm:ss UTC'))"
-    
+
     return $jwtToken
 }
 
 function Test-TempToken {
     param([string]$Token)
-    
+
     Write-Info "Testing temporary token with API endpoints"
-    
+
     # Test 1: User compliance status endpoint
     Write-Info "Testing user compliance status endpoint"
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/user/compliance/status" -Headers @{
         "Authorization" = "Bearer $Token"
     }
-    
+
     if ($response.Success) {
         Write-Success "User compliance status endpoint test PASSED"
         Write-Info "Response: $($response.Data | ConvertTo-Json)"
@@ -181,13 +185,13 @@ function Test-TempToken {
         Write-Info "Status: $($response.StatusCode)"
         Write-Info "Error: $($response.Error)"
     }
-    
+
     # Test 2: User compliance policies endpoint
     Write-Info "Testing user compliance policies endpoint"
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/user/compliance/policies" -Headers @{
         "Authorization" = "Bearer $Token"
     }
-    
+
     if ($response.Success) {
         Write-Success "User compliance policies endpoint test PASSED"
         Write-Info "Response: $($response.Data | ConvertTo-Json)"
@@ -200,18 +204,18 @@ function Test-TempToken {
 
 function Generate-AdminToken {
     param([string]$UserID, [string]$Email)
-    
+
     Write-Info "Generating temporary admin JWT token"
-    
+
     # Generate admin token with admin role
     $adminToken = Generate-TempJWTToken -UserID $UserID -Email $Email -Role "admin"
-    
+
     # Test admin endpoints
     Write-Info "Testing admin transparency settings endpoint"
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/admin/compliance/settings/user-transparency" -Headers @{
         "Authorization" = "Bearer $adminToken"
     }
-    
+
     if ($response.Success) {
         Write-Success "Admin transparency settings endpoint test PASSED"
         Write-Info "Response: $($response.Data | ConvertTo-Json)"
@@ -220,75 +224,75 @@ function Generate-AdminToken {
         Write-Info "Status: $($response.StatusCode)"
         Write-Info "Error: $($response.Error)"
     }
-    
+
     return $adminToken
 }
 
 # Main function
 function Start-TempTokenGeneration {
-    Write-Host ""
-    Write-Host "TEMPORARY TOKEN GENERATOR (DEVELOPMENT ONLY)" -ForegroundColor Yellow
-    Write-Host "Base URL: $($TestConfig.BaseUrl)" -ForegroundColor Gray
-    Write-Host "User Email: $($TestConfig.UserEmail)" -ForegroundColor Gray
-    Write-Host "User ID: $($TestConfig.UserID)" -ForegroundColor Gray
-    Write-Host "Expiration: $($TestConfig.ExpirationHours) hours" -ForegroundColor Gray
-    
-    Write-Host ""
+    Write-Output ""
+    Write-Output "TEMPORARY TOKEN GENERATOR (DEVELOPMENT ONLY)"
+    Write-Output "Base URL: $($TestConfig.BaseUrl)"
+    Write-Output "User Email: $($TestConfig.UserEmail)"
+    Write-Output "User ID: $($TestConfig.UserID)"
+    Write-Output "Expiration: $($TestConfig.ExpirationHours) hours"
+
+    Write-Output ""
     Write-Warning "WARNING: This generates temporary tokens for development testing only!"
     Write-Warning "Remove this script before production deployment."
-    
+
     # Generate user token
-    Write-Host ""
-    Write-Host "=" * 80 -ForegroundColor Cyan
-    Write-Host " Generating User Token" -ForegroundColor Cyan
-    Write-Host "=" * 80 -ForegroundColor Cyan
-    
+    Write-Output ""
+    Write-Output "=" * 80
+    Write-Output " Generating User Token"
+    Write-Output "=" * 80
+
     $userToken = Generate-TempJWTToken -UserID $TestConfig.UserID -Email $TestConfig.UserEmail -Role "user"
-    
+
     # Test user token
     Test-TempToken -Token $userToken
-    
+
     # Generate admin token
-    Write-Host ""
-    Write-Host "=" * 80 -ForegroundColor Cyan
-    Write-Host " Generating Admin Token" -ForegroundColor Cyan
-    Write-Host "=" * 80 -ForegroundColor Cyan
-    
+    Write-Output ""
+    Write-Output "=" * 80
+    Write-Output " Generating Admin Token"
+    Write-Output "=" * 80
+
     $adminToken = Generate-AdminToken -UserID $TestConfig.UserID -Email $TestConfig.UserEmail
-    
+
     # Display results
-    Write-Host ""
-    Write-Host "=" * 80 -ForegroundColor Green
-    Write-Host " Temporary Tokens Generated Successfully" -ForegroundColor Green
-    Write-Host "=" * 80 -ForegroundColor Green
-    
-    Write-Host ""
-    Write-Host "User Token (first 50 chars):" -ForegroundColor White
-    Write-Host "  $($userToken.Substring(0, [Math]::Min(50, $userToken.Length)))..." -ForegroundColor Gray
-    
-    Write-Host ""
-    Write-Host "Admin Token (first 50 chars):" -ForegroundColor White
-    Write-Host "  $($adminToken.Substring(0, [Math]::Min(50, $adminToken.Length)))..." -ForegroundColor Gray
-    
-    Write-Host ""
-    Write-Host "Next Steps:" -ForegroundColor White
-    Write-Host "  Run Micro-Iteration 4.31 tests with these tokens:" -ForegroundColor Yellow
-    Write-Host "  .\scripts\test_user_compliance_transparency.ps1 -UserToken $userToken -AdminToken $adminToken -EnableUserPortal" -ForegroundColor Cyan
-    
-    Write-Host ""
-    Write-Host "Notes:" -ForegroundColor White
-    Write-Host "  - Tokens expire in $($TestConfig.ExpirationHours) hours" -ForegroundColor Gray
-    Write-Host "  - These are temporary tokens for development only" -ForegroundColor Gray
-    Write-Host "  - Remove this script before production deployment" -ForegroundColor Gray
-    
+    Write-Output ""
+    Write-Output "=" * 80
+    Write-Output " Temporary Tokens Generated Successfully"
+    Write-Output "=" * 80
+
+    Write-Output ""
+    Write-Output "User Token (first 50 chars):"
+    Write-Output "  $($userToken.Substring(0, [Math]::Min(50, $userToken.Length)))..."
+
+    Write-Output ""
+    Write-Output "Admin Token (first 50 chars):"
+    Write-Output "  $($adminToken.Substring(0, [Math]::Min(50, $adminToken.Length)))..."
+
+    Write-Output ""
+    Write-Output "Next Steps:"
+    Write-Output "  Run Micro-Iteration 4.31 tests with these tokens:"
+    Write-Output "  .\scripts\test_user_compliance_transparency.ps1 -UserToken $userToken -AdminToken $adminToken -EnableUserPortal"
+
+    Write-Output ""
+    Write-Output "Notes:"
+    Write-Output "  - Tokens expire in $($TestConfig.ExpirationHours) hours"
+    Write-Output "  - These are temporary tokens for development only"
+    Write-Output "  - Remove this script before production deployment"
+
     # Save tokens to environment variables
     $env:TEMP_USER_TOKEN = $userToken
     $env:TEMP_ADMIN_TOKEN = $adminToken
-    
-    Write-Host ""
-    Write-Host "Tokens saved to environment variables:" -ForegroundColor White
-    Write-Host "  `$env:TEMP_USER_TOKEN" -ForegroundColor Gray
-    Write-Host "  `$env:TEMP_ADMIN_TOKEN" -ForegroundColor Gray
+
+    Write-Output ""
+    Write-Output "Tokens saved to environment variables:"
+    Write-Output "  `$env:TEMP_USER_TOKEN"
+    Write-Output "  `$env:TEMP_ADMIN_TOKEN"
 }
 
 # Script execution

@@ -279,7 +279,7 @@ const PerformanceOperationalPanel: React.FC<PerformanceOperationalPanelProps> = 
             <div className="mt-4 bg-gray-50 rounded-lg p-3">
               <h5 className="text-xs font-medium text-gray-700 mb-2">Recent Load Tests</h5>
               <div className="space-y-2">
-                {metrics.load_test_results.slice(0, 2).map((result: any) => (
+                {metrics.load_test_results.slice(0, 2).map((result: { id: string; concurrent_users: number; success: boolean; requests_per_second: number; average_response_time_ms: number; error_rate: number }) => (
                   <div key={result.id} className="text-xs bg-white rounded p-2">
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-gray-700">

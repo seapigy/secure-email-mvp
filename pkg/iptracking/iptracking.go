@@ -273,5 +273,5 @@ func (s *IPStatus) GetLockoutRemainingTime() time.Duration {
 	if s.LockoutUntil == nil || time.Now().After(*s.LockoutUntil) {
 		return 0
 	}
-	return s.LockoutUntil.Sub(time.Now())
+	return time.Until(*s.LockoutUntil)
 }

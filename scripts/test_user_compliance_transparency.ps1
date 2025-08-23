@@ -30,10 +30,10 @@ $TestResults = @{
 # Utility functions
 function Write-TestHeader {
     param([string]$Title)
-    Write-Host "`n" -NoNewline
-    Write-Host "=" * 80 -ForegroundColor Cyan
-    Write-Host " $Title" -ForegroundColor Cyan
-    Write-Host "=" * 80 -ForegroundColor Cyan
+    Write-Output "`n" -NoNewline
+    Write-Output "=" * 80 -ForegroundColor Cyan
+    Write-Output " $Title"
+    Write-Output "=" * 80 -ForegroundColor Cyan
 }
 
 function Write-TestResult {
@@ -42,17 +42,17 @@ function Write-TestResult {
         [bool]$Success,
         [string]$Message = ""
     )
-    
+
     $TestResults.TotalTests++
-    
+
     if ($Success) {
         $TestResults.PassedTests++
-        Write-Host "✅ PASS: $TestName" -ForegroundColor Green
-        if ($Message) { Write-Host "   $Message" -ForegroundColor Gray }
+        Write-Output "✅ PASS: $TestName"
+        if ($Message) { Write-Output "   $Message" }
     } else {
         $TestResults.FailedTests++
-        Write-Host "❌ FAIL: $TestName" -ForegroundColor Red
-        if ($Message) { Write-Host "   $Message" -ForegroundColor Red }
+        Write-Output "❌ FAIL: $TestName"
+        if ($Message) { Write-Output "   $Message" }
     }
 }
 
@@ -63,17 +63,17 @@ function Invoke-ApiRequest {
         [hashtable]$Headers = @{},
         [string]$Body = ""
     )
-    
+
     $uri = "$($TestConfig.BaseUrl)$Endpoint"
-    
+
     $requestHeaders = @{
         "Content-Type" = "application/json"
     }
-    
+
     foreach ($key in $Headers.Keys) {
         $requestHeaders[$key] = $Headers[$key]
     }
-    
+
     try {
         if ($Method -eq "GET" -or $Body -eq "") {
             $response = Invoke-RestMethod -Uri $uri -Method $Method -Headers $requestHeaders -ErrorAction Stop
@@ -88,7 +88,7 @@ function Invoke-ApiRequest {
     } catch {
         $statusCode = $_.Exception.Response.StatusCode.value__
         $errorMessage = $_.Exception.Message
-        
+
         try {
             $errorResponse = $_.Exception.Response.GetResponseStream()
             $reader = New-Object System.IO.StreamReader($errorResponse)
@@ -96,7 +96,7 @@ function Invoke-ApiRequest {
         } catch {
             $errorBody = "Unable to read error response"
         }
-        
+
         return @{
             Success = $false
             StatusCode = $statusCode
@@ -129,39 +129,39 @@ function New-TestEnterpriseData {
 # Test functions
 function Test-UserCompliancePortalDisabled {
     Write-TestHeader "Testing User Compliance Portal (Disabled)"
-    
+
     # Test user compliance status endpoint when portal is disabled
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/user/compliance/status" -Headers @{
         "Authorization" = "Bearer $($TestConfig.UserToken)"
     }
-    
+
     $expectedStatus = 503  # Service Unavailable
     $success = -not $response.Success -and $response.StatusCode -eq $expectedStatus
-    
+
     Write-TestResult -TestName "User Compliance Portal Disabled" -Success $success -Message "Expected 503 Service Unavailable when portal is disabled"
 }
 
 function Test-UserComplianceStatus {
     Write-TestHeader "Testing User Compliance Status Endpoint"
-    
+
     # Test user compliance status endpoint
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/user/compliance/status" -Headers @{
         "Authorization" = "Bearer $($TestConfig.UserToken)"
     }
-    
+
     if ($response.Success) {
         $data = $response.Data
-        
+
         # Validate response structure
         $validStructure = $data.PSObject.Properties.Name -contains "success" -and
                          $data.PSObject.Properties.Name -contains "data" -and
                          $data.success -eq $true
-        
+
         Write-TestResult -TestName "User Compliance Status Response Structure" -Success $validStructure
-        
+
         if ($validStructure -and $data.data) {
             $userData = $data.data
-            
+
             # Validate user compliance status fields
             $validFields = $userData.PSObject.Properties.Name -contains "user_id" -and
                           $userData.PSObject.Properties.Name -contains "domain" -and
@@ -169,16 +169,16 @@ function Test-UserComplianceStatus {
                           $userData.PSObject.Properties.Name -contains "applicable_policies" -and
                           $userData.PSObject.Properties.Name -contains "compliance_score" -and
                           $userData.PSObject.Properties.Name -contains "transparency_settings"
-            
+
             Write-TestResult -TestName "User Compliance Status Data Fields" -Success $validFields
-            
+
             # Validate transparency settings
             if ($userData.transparency_settings) {
                 $validSettings = $userData.transparency_settings.PSObject.Properties.Name -contains "show_retention_rules" -and
                                 $userData.transparency_settings.PSObject.Properties.Name -contains "show_compliance_frameworks" -and
                                 $userData.transparency_settings.PSObject.Properties.Name -contains "show_violations" -and
                                 $userData.transparency_settings.PSObject.Properties.Name -contains "cache_ttl_minutes"
-                
+
                 Write-TestResult -TestName "Transparency Settings Structure" -Success $validSettings
             }
         }
@@ -189,46 +189,46 @@ function Test-UserComplianceStatus {
 
 function Test-UserCompliancePolicies {
     Write-TestHeader "Testing User Compliance Policies Endpoint"
-    
+
     # Test user compliance policies endpoint
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/user/compliance/policies" -Headers @{
         "Authorization" = "Bearer $($TestConfig.UserToken)"
     }
-    
+
     if ($response.Success) {
         $data = $response.Data
-        
+
         # Validate response structure
         $validStructure = $data.PSObject.Properties.Name -contains "success" -and
                          $data.PSObject.Properties.Name -contains "data" -and
                          $data.success -eq $true
-        
+
         Write-TestResult -TestName "User Compliance Policies Response Structure" -Success $validStructure
-        
+
         if ($validStructure -and $data.data) {
             $policies = $data.data
-            
+
             # Validate policies array
             $validArray = $policies -is [array]
             Write-TestResult -TestName "Policies Array Structure" -Success $validArray
-            
+
             if ($validArray -and $policies.Count -gt 0) {
                 $firstPolicy = $policies[0]
-                
+
                 # Validate policy structure
                 $validPolicy = $firstPolicy.PSObject.Properties.Name -contains "policy_id" -and
                               $firstPolicy.PSObject.Properties.Name -contains "policy_name" -and
                               $firstPolicy.PSObject.Properties.Name -contains "policy_type" -and
                               $firstPolicy.PSObject.Properties.Name -contains "retention_period_days" -and
                               $firstPolicy.PSObject.Properties.Name -contains "human_readable_summary"
-                
+
                 Write-TestResult -TestName "Policy Data Structure" -Success $validPolicy
-                
+
                 # Validate human-readable summary
                 if ($firstPolicy.human_readable_summary) {
                     $validSummary = $firstPolicy.human_readable_summary.Length -gt 0 -and
                                    $firstPolicy.human_readable_summary -match "days"
-                    
+
                     Write-TestResult -TestName "Human-Readable Policy Summary" -Success $validSummary
                 }
             }
@@ -240,34 +240,34 @@ function Test-UserCompliancePolicies {
 
 function Test-AdminTransparencySettings {
     Write-TestHeader "Testing Admin Transparency Settings Endpoints"
-    
+
     # Test GET admin transparency settings
     $getResponse = Invoke-ApiRequest -Method "GET" -Endpoint "/api/admin/compliance/settings/user-transparency" -Headers @{
         "Authorization" = "Bearer $($TestConfig.AdminToken)"
     }
-    
+
     if ($getResponse.Success) {
         $data = $getResponse.Data
-        
+
         # Validate response structure
         $validStructure = $data.PSObject.Properties.Name -contains "success" -and
                          $data.PSObject.Properties.Name -contains "data" -and
                          $data.success -eq $true
-        
+
         Write-TestResult -TestName "Admin GET Transparency Settings Response" -Success $validStructure
-        
+
         if ($validStructure -and $data.data) {
             $settings = $data.data
-            
+
             # Validate settings structure
             $validSettings = $settings.PSObject.Properties.Name -contains "show_retention_rules" -and
                             $settings.PSObject.Properties.Name -contains "show_compliance_frameworks" -and
                             $settings.PSObject.Properties.Name -contains "show_violations" -and
                             $settings.PSObject.Properties.Name -contains "show_compliance_rules" -and
                             $settings.PSObject.Properties.Name -contains "cache_ttl_minutes"
-            
+
             Write-TestResult -TestName "Admin Transparency Settings Structure" -Success $validSettings
-            
+
             # Test PUT admin transparency settings
             $updateSettings = @{
                 show_retention_rules = $true
@@ -276,16 +276,16 @@ function Test-AdminTransparencySettings {
                 show_compliance_rules = $true
                 cache_ttl_minutes = 30
             }
-            
+
             $putResponse = Invoke-ApiRequest -Method "PUT" -Endpoint "/api/admin/compliance/settings/user-transparency" -Headers @{
                 "Authorization" = "Bearer $($TestConfig.AdminToken)"
             } -Body ($updateSettings | ConvertTo-Json)
-            
+
             if ($putResponse.Success) {
                 $putData = $putResponse.Data
                 $validPutResponse = $putData.PSObject.Properties.Name -contains "success" -and
                                    $putData.success -eq $true
-                
+
                 Write-TestResult -TestName "Admin PUT Transparency Settings" -Success $validPutResponse
             } else {
                 Write-TestResult -TestName "Admin PUT Transparency Settings" -Success $false -Message "Request failed: $($putResponse.StatusCode)"
@@ -298,41 +298,41 @@ function Test-AdminTransparencySettings {
 
 function Test-UserComplianceUnauthorized {
     Write-TestHeader "Testing User Compliance Unauthorized Access"
-    
+
     # Test without authentication
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/user/compliance/status"
-    
+
     $expectedStatus = 401  # Unauthorized
     $success = -not $response.Success -and $response.StatusCode -eq $expectedStatus
-    
+
     Write-TestResult -TestName "User Compliance Status Unauthorized" -Success $success -Message "Expected 401 Unauthorized without authentication"
-    
+
     # Test with invalid token
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/user/compliance/status" -Headers @{
         "Authorization" = "Bearer invalid-token"
     }
-    
+
     $expectedStatus = 401  # Unauthorized
     $success = -not $response.Success -and $response.StatusCode -eq $expectedStatus
-    
+
     Write-TestResult -TestName "User Compliance Status Invalid Token" -Success $success -Message "Expected 401 Unauthorized with invalid token"
 }
 
 function Test-AdminTransparencyUnauthorized {
     Write-TestHeader "Testing Admin Transparency Settings Unauthorized Access"
-    
+
     # Test without authentication
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/api/admin/compliance/settings/user-transparency"
-    
+
     $expectedStatus = 401  # Unauthorized
     $success = -not $response.Success -and $response.StatusCode -eq $expectedStatus
-    
+
     Write-TestResult -TestName "Admin Transparency Settings Unauthorized" -Success $success -Message "Expected 401 Unauthorized without authentication"
 }
 
 function Test-TransparencySettingsValidation {
     Write-TestHeader "Testing Transparency Settings Validation"
-    
+
     # Test invalid cache TTL (too low)
     $invalidSettings = @{
         show_retention_rules = $true
@@ -341,71 +341,71 @@ function Test-TransparencySettingsValidation {
         show_compliance_rules = $true
         cache_ttl_minutes = 0  # Invalid: must be >= 1
     }
-    
+
     $response = Invoke-ApiRequest -Method "PUT" -Endpoint "/api/admin/compliance/settings/user-transparency" -Headers @{
         "Authorization" = "Bearer $($TestConfig.AdminToken)"
     } -Body ($invalidSettings | ConvertTo-Json)
-    
+
     $expectedStatus = 400  # Bad Request
     $success = -not $response.Success -and $response.StatusCode -eq $expectedStatus
-    
+
     Write-TestResult -TestName "Invalid Cache TTL Validation" -Success $success -Message "Expected 400 Bad Request for invalid cache TTL"
-    
+
     # Test invalid cache TTL (too high)
     $invalidSettings.cache_ttl_minutes = 1441  # Invalid: must be <= 1440
-    
+
     $response = Invoke-ApiRequest -Method "PUT" -Endpoint "/api/admin/compliance/settings/user-transparency" -Headers @{
         "Authorization" = "Bearer $($TestConfig.AdminToken)"
     } -Body ($invalidSettings | ConvertTo-Json)
-    
+
     $expectedStatus = 400  # Bad Request
     $success = -not $response.Success -and $response.StatusCode -eq $expectedStatus
-    
+
     Write-TestResult -TestName "Invalid Cache TTL (High) Validation" -Success $success -Message "Expected 400 Bad Request for invalid cache TTL"
 }
 
 # Main test execution
 function Start-UserComplianceTests {
-    Write-Host "`n" -NoNewline
-    Write-Host "🚀 Starting Micro-Iteration 4.31: User Transparency Layer Tests" -ForegroundColor Yellow
-    Write-Host "Base URL: $($TestConfig.BaseUrl)" -ForegroundColor Gray
-    
+    Write-Output "`n" -NoNewline
+    Write-Output "🚀 Starting Micro-Iteration 4.31: User Transparency Layer Tests"
+    Write-Output "Base URL: $($TestConfig.BaseUrl)"
+
     # Check if user portal is enabled
     if (-not $TestConfig.EnableUserPortal) {
-        Write-Host "`n⚠️  User Compliance Portal is disabled. Some tests will be skipped." -ForegroundColor Yellow
+        Write-Output "`n⚠️  User Compliance Portal is disabled. Some tests will be skipped."
         Test-UserCompliancePortalDisabled
     } else {
-        Write-Host "`n✅ User Compliance Portal is enabled. Running full test suite." -ForegroundColor Green
-        
+        Write-Output "`n✅ User Compliance Portal is enabled. Running full test suite."
+
         # Run user compliance tests
         Test-UserComplianceStatus
         Test-UserCompliancePolicies
         Test-UserComplianceUnauthorized
-        
+
         # Run admin transparency tests
         Test-AdminTransparencySettings
         Test-AdminTransparencyUnauthorized
         Test-TransparencySettingsValidation
     }
-    
+
     # Display test results
     Write-TestHeader "Test Results Summary"
-    Write-Host "Total Tests: $($TestResults.TotalTests)" -ForegroundColor White
-    Write-Host "Passed: $($TestResults.PassedTests)" -ForegroundColor Green
-    Write-Host "Failed: $($TestResults.FailedTests)" -ForegroundColor Red
-    
+    Write-Output "Total Tests: $($TestResults.TotalTests)"
+    Write-Output "Passed: $($TestResults.PassedTests)"
+    Write-Output "Failed: $($TestResults.FailedTests)"
+
     if ($TestResults.FailedTests -gt 0) {
-        Write-Host "`n❌ Some tests failed. Check the output above for details." -ForegroundColor Red
+        Write-Output "`n❌ Some tests failed. Check the output above for details."
         exit 1
     } else {
-        Write-Host "`n✅ All tests passed!" -ForegroundColor Green
+        Write-Output "`n✅ All tests passed!"
     }
 }
 
 # Script execution
 if (-not $TestConfig.UserToken -or -not $TestConfig.AdminToken) {
-    Write-Host "❌ Error: Both UserToken and AdminToken are required for testing." -ForegroundColor Red
-    Write-Host "Usage: .\test_user_compliance_transparency.ps1 -UserToken 'your-user-token' -AdminToken 'your-admin-token' [-EnableUserPortal]" -ForegroundColor Yellow
+    Write-Output "❌ Error: Both UserToken and AdminToken are required for testing."
+    Write-Output "Usage: .\test_user_compliance_transparency.ps1 -UserToken 'your-user-token' -AdminToken 'your-admin-token' [-EnableUserPortal]"
     exit 1
 }
 

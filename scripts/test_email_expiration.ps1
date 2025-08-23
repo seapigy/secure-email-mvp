@@ -8,7 +8,7 @@ param(
     [string]$TestTotp = "123456"
 )
 
-Write-Host "=== Testing Email Expiration Functionality ===" -ForegroundColor Cyan
+Write-Output "=== Testing Email Expiration Functionality ==="
 
 # Helper function to print colored output
 function Write-Status {
@@ -16,11 +16,11 @@ function Write-Status {
         [string]$Status,
         [string]$Message
     )
-    
+
     switch ($Status) {
-        "SUCCESS" { Write-Host "✓ $Message" -ForegroundColor Green }
-        "ERROR" { Write-Host "✗ $Message" -ForegroundColor Red }
-        "INFO" { Write-Host "ℹ $Message" -ForegroundColor Yellow }
+        "SUCCESS" { Write-Output "✓ $Message" }
+        "ERROR" { Write-Output "✗ $Message" }
+        "INFO" { Write-Output "ℹ $Message" }
     }
 }
 
@@ -45,7 +45,7 @@ $loginBody = @{
 try {
     $loginResponse = Invoke-RestMethod -Uri "$ApiBase/api/auth/login" -Method POST -Body $loginBody -ContentType "application/json"
     $token = $loginResponse.token
-    
+
     if (-not $token) {
         Write-Status "ERROR" "Failed to get JWT token. Login response: $($loginResponse | ConvertTo-Json)"
         exit 1
@@ -71,10 +71,10 @@ try {
         "Authorization" = "Bearer $token"
         "Content-Type" = "application/json"
     }
-    
+
     $sendResponse = Invoke-RestMethod -Uri "$ApiBase/api/email/send" -Method POST -Body $sendBody -Headers $headers
     $emailId = $sendResponse.blob_id -replace '\.blob$', ''
-    
+
     if (-not $emailId) {
         Write-Status "ERROR" "Failed to send email. Response: $($sendResponse | ConvertTo-Json)"
         exit 1
@@ -114,7 +114,7 @@ $sendBody = @{
 try {
     $sendResponse = Invoke-RestMethod -Uri "$ApiBase/api/email/send" -Method POST -Body $sendBody -Headers $headers
     $validEmailId = $sendResponse.blob_id -replace '\.blob$', ''
-    
+
     if (-not $validEmailId) {
         Write-Status "ERROR" "Failed to send valid email. Response: $($sendResponse | ConvertTo-Json)"
         exit 1
@@ -182,18 +182,20 @@ try {
 }
 
 Write-Status "SUCCESS" "Email expiration functionality test completed successfully!"
-Write-Host ""
-Write-Host "Test Summary:" -ForegroundColor Cyan
-Write-Host "- ✓ API server running"
-Write-Host "- ✓ JWT authentication working"
-Write-Host "- ✓ Expired email correctly returns 410 Gone"
-Write-Host "- ✓ Valid email with future expiration accessible"
-Write-Host "- ✓ Invalid expiration format rejected"
-Write-Host "- ✓ Past expiration time rejected"
-Write-Host "- ✓ Email properly deleted when expired"
+Write-Output ""
+Write-Output "Test Summary:"
+Write-Output "- ✓ API server running"
+Write-Output "- ✓ JWT authentication working"
+Write-Output "- ✓ Expired email correctly returns 410 Gone"
+Write-Output "- ✓ Valid email with future expiration accessible"
+Write-Output "- ✓ Invalid expiration format rejected"
+Write-Output "- ✓ Past expiration time rejected"
+Write-Output "- ✓ Email properly deleted when expired"
 
-Write-Host ""
+Write-Output ""
 Write-Status "INFO" "Email expiration functionality is working correctly!"
+
+
 
 
 

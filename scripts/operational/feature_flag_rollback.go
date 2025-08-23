@@ -915,46 +915,4 @@ func generateRollbackTestID() string {
 	return fmt.Sprintf("rollback_test_%d", time.Now().Unix())
 }
 
-// Example usage function
-func runFeatureFlagRollbackExample() {
-	configPath := "scripts/operational/feature_flag_config.json"
 
-	fft, err := NewFeatureFlagTester(configPath)
-	if err != nil {
-		log.Fatalf("Failed to create feature flag tester: %v", err)
-	}
-	defer fft.Close()
-
-	// Run rollback test
-	results, err := fft.RunRollbackTest()
-	if err != nil {
-		log.Fatalf("Rollback test failed: %v", err)
-	}
-
-	// Save results
-	if err := fft.SaveResults(); err != nil {
-		log.Printf("Warning: failed to save results: %v", err)
-	}
-
-	// Print summary
-	fmt.Printf("Feature Flag Rollback Test Results:\n")
-	fmt.Printf("Test ID: %s\n", results.TestID)
-	fmt.Printf("Duration: %v\n", results.Duration)
-	fmt.Printf("Rollback Success: %v\n", results.RollbackSuccess)
-	fmt.Printf("Data Integrity: %v\n", results.DataIntegrity)
-	fmt.Printf("Features Tested: %v\n", results.FeaturesTested)
-
-	if len(results.Errors) > 0 {
-		fmt.Printf("\nErrors:\n")
-		for _, err := range results.Errors {
-			fmt.Printf("- %s: %s\n", err.Step, err.Error)
-		}
-	}
-
-	if len(results.Recommendations) > 0 {
-		fmt.Printf("\nRecommendations:\n")
-		for _, rec := range results.Recommendations {
-			fmt.Printf("- %s\n", rec)
-		}
-	}
-}

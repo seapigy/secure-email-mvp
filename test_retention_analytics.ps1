@@ -1,7 +1,7 @@
 # Test script for Micro-Iteration 4.25: Advanced Notification & Retention Analytics Enhancements
 # This script demonstrates and tests the new retention notification and analytics features
 
-Write-Host "=== Micro-Iteration 4.25: Retention Analytics & Notifications Test ===" -ForegroundColor Green
+Write-Output "=== Micro-Iteration 4.25: Retention Analytics & Notifications Test ==="
 
 # Configuration
 $API_BASE = "http://localhost:8080"
@@ -14,7 +14,7 @@ $env:ENABLE_CLEANUP_NOTIFICATIONS_SENDER = "true"
 $env:ANALYTICS_CACHE_DURATION_MINUTES = "30"
 $env:ANALYTICS_MAX_RECORDS = "500"
 
-Write-Host "Environment variables set for testing..." -ForegroundColor Yellow
+Write-Output "Environment variables set for testing..."
 
 # Function to make authenticated API calls
 function Invoke-AuthenticatedAPI {
@@ -23,84 +23,84 @@ function Invoke-AuthenticatedAPI {
         [string]$Endpoint,
         [object]$Body = $null
     )
-    
+
     $headers = @{
         "Authorization" = "Bearer $JWT_TOKEN"
         "Content-Type" = "application/json"
     }
-    
+
     $params = @{
         Method = $Method
         Uri = "$API_BASE$Endpoint"
         Headers = $headers
     }
-    
+
     if ($Body) {
         $params.Body = $Body | ConvertTo-Json -Depth 10
     }
-    
+
     try {
         $response = Invoke-RestMethod @params
         return $response
     }
     catch {
-        Write-Host "API Error: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Error "API Error: $($_.Exception.Message)"
         return $null
     }
 }
 
 # Test 1: Get comprehensive retention analytics
-Write-Host "`n1. Testing comprehensive retention analytics..." -ForegroundColor Cyan
+Write-Output "`n1. Testing comprehensive retention analytics..."
 $analyticsResponse = Invoke-AuthenticatedAPI -Method "GET" -Endpoint "/api/admin/email/retention-analytics?limit=10&offset=0"
 if ($analyticsResponse) {
-    Write-Host "✓ Analytics retrieved successfully" -ForegroundColor Green
-    Write-Host "  - Overall stats: $($analyticsResponse.overall_stats.total_emails) total emails" -ForegroundColor White
-    Write-Host "  - Expired emails: $($analyticsResponse.overall_stats.expired_count)" -ForegroundColor White
-    Write-Host "  - Self-destructed emails: $($analyticsResponse.overall_stats.self_destructed_count)" -ForegroundColor White
-    Write-Host "  - Average retention time: $($analyticsResponse.overall_stats.avg_retention_hours) hours" -ForegroundColor White
+    Write-Output "✓ Analytics retrieved successfully"
+    Write-Output "  - Overall stats: $($analyticsResponse.overall_stats.total_emails) total emails"
+    Write-Output "  - Expired emails: $($analyticsResponse.overall_stats.expired_count)"
+    Write-Output "  - Self-destructed emails: $($analyticsResponse.overall_stats.self_destructed_count)"
+    Write-Output "  - Average retention time: $($analyticsResponse.overall_stats.avg_retention_hours) hours"
 } else {
-    Write-Host "✗ Failed to retrieve analytics" -ForegroundColor Red
+    Write-Output "✗ Failed to retrieve analytics"
 }
 
 # Test 2: Get analytics summary for dashboard
-Write-Host "`n2. Testing analytics summary..." -ForegroundColor Cyan
+Write-Output "`n2. Testing analytics summary..."
 $summaryResponse = Invoke-AuthenticatedAPI -Method "GET" -Endpoint "/api/admin/email/retention-analytics-summary"
 if ($summaryResponse) {
-    Write-Host "✓ Summary retrieved successfully" -ForegroundColor Green
-    Write-Host "  - Total emails: $($summaryResponse.total_emails)" -ForegroundColor White
-    Write-Host "  - Pending expiration: $($summaryResponse.pending_expiration)" -ForegroundColor White
-    Write-Host "  - Recent cleanups: $($summaryResponse.recent_cleanups)" -ForegroundColor White
+    Write-Output "✓ Summary retrieved successfully"
+    Write-Output "  - Total emails: $($summaryResponse.total_emails)"
+    Write-Output "  - Pending expiration: $($summaryResponse.pending_expiration)"
+    Write-Output "  - Recent cleanups: $($summaryResponse.recent_cleanups)"
 } else {
-    Write-Host "✗ Failed to retrieve summary" -ForegroundColor Red
+    Write-Output "✗ Failed to retrieve summary"
 }
 
 # Test 3: Get retention notifications history
-Write-Host "`n3. Testing retention notifications history..." -ForegroundColor Cyan
+Write-Output "`n3. Testing retention notifications history..."
 $notificationsResponse = Invoke-AuthenticatedAPI -Method "GET" -Endpoint "/api/admin/email/retention-notifications?limit=5&offset=0"
 if ($notificationsResponse) {
-    Write-Host "✓ Notifications history retrieved successfully" -ForegroundColor Green
-    Write-Host "  - Total notifications: $($notificationsResponse.total_count)" -ForegroundColor White
-    Write-Host "  - Recent notifications: $($notificationsResponse.notifications.Count)" -ForegroundColor White
+    Write-Output "✓ Notifications history retrieved successfully"
+    Write-Output "  - Total notifications: $($notificationsResponse.total_count)"
+    Write-Output "  - Recent notifications: $($notificationsResponse.notifications.Count)"
     foreach ($notification in $notificationsResponse.notifications) {
-        Write-Host "    - $($notification.notification_type) for email $($notification.email_id) at $($notification.sent_at)" -ForegroundColor Gray
+        Write-Output "    - $($notification.notification_type) for email $($notification.email_id) at $($notification.sent_at)"
     }
 } else {
-    Write-Host "✗ Failed to retrieve notifications history" -ForegroundColor Red
+    Write-Output "✗ Failed to retrieve notifications history"
 }
 
 # Test 4: Get retention notification preferences
-Write-Host "`n4. Testing notification preferences..." -ForegroundColor Cyan
+Write-Output "`n4. Testing notification preferences..."
 $preferencesResponse = Invoke-AuthenticatedAPI -Method "GET" -Endpoint "/api/admin/email/retention-notification-preferences?user_id=test_user"
 if ($preferencesResponse) {
-    Write-Host "✓ Preferences retrieved successfully" -ForegroundColor Green
-    Write-Host "  - Expiration notifications: $($preferencesResponse.expiration_notifications)" -ForegroundColor White
-    Write-Host "  - Cleanup notifications: $($preferencesResponse.cleanup_notifications)" -ForegroundColor White
+    Write-Output "✓ Preferences retrieved successfully"
+    Write-Output "  - Expiration notifications: $($preferencesResponse.expiration_notifications)"
+    Write-Output "  - Cleanup notifications: $($preferencesResponse.cleanup_notifications)"
 } else {
-    Write-Host "✗ Failed to retrieve preferences" -ForegroundColor Red
+    Write-Output "✗ Failed to retrieve preferences"
 }
 
 # Test 5: Update notification preferences
-Write-Host "`n5. Testing preference updates..." -ForegroundColor Cyan
+Write-Output "`n5. Testing preference updates..."
 $updateBody = @{
     user_id = "test_user"
     expiration_notifications = $true
@@ -109,61 +109,61 @@ $updateBody = @{
 }
 $updateResponse = Invoke-AuthenticatedAPI -Method "PUT" -Endpoint "/api/admin/email/retention-notification-preferences" -Body $updateBody
 if ($updateResponse) {
-    Write-Host "✓ Preferences updated successfully" -ForegroundColor Green
+    Write-Output "✓ Preferences updated successfully"
 } else {
-    Write-Host "✗ Failed to update preferences" -ForegroundColor Red
+    Write-Output "✗ Failed to update preferences"
 }
 
 # Test 6: Test analytics with filters
-Write-Host "`n6. Testing filtered analytics..." -ForegroundColor Cyan
+Write-Output "`n6. Testing filtered analytics..."
 $filteredResponse = Invoke-AuthenticatedAPI -Method "GET" -Endpoint "/api/admin/email/retention-analytics?status=expired&limit=5&offset=0"
 if ($filteredResponse) {
-    Write-Host "✓ Filtered analytics retrieved successfully" -ForegroundColor Green
-    Write-Host "  - Filtered results: $($filteredResponse.overall_stats.total_emails) emails" -ForegroundColor White
+    Write-Output "✓ Filtered analytics retrieved successfully"
+    Write-Output "  - Filtered results: $($filteredResponse.overall_stats.total_emails) emails"
 } else {
-    Write-Host "✗ Failed to retrieve filtered analytics" -ForegroundColor Red
+    Write-Output "✗ Failed to retrieve filtered analytics"
 }
 
 # Test 7: Test analytics with date range
-Write-Host "`n7. Testing date range analytics..." -ForegroundColor Cyan
+Write-Output "`n7. Testing date range analytics..."
 $dateRangeResponse = Invoke-AuthenticatedAPI -Method "GET" -Endpoint "/api/admin/email/retention-analytics?start_date=2024-01-01&end_date=2024-12-31&limit=5"
 if ($dateRangeResponse) {
-    Write-Host "✓ Date range analytics retrieved successfully" -ForegroundColor Green
-    Write-Host "  - Date range results: $($dateRangeResponse.overall_stats.total_emails) emails" -ForegroundColor White
+    Write-Output "✓ Date range analytics retrieved successfully"
+    Write-Output "  - Date range results: $($dateRangeResponse.overall_stats.total_emails) emails"
 } else {
-    Write-Host "✗ Failed to retrieve date range analytics" -ForegroundColor Red
+    Write-Output "✗ Failed to retrieve date range analytics"
 }
 
 # Test 8: Test cleanup logs
-Write-Host "`n8. Testing cleanup logs..." -ForegroundColor Cyan
+Write-Output "`n8. Testing cleanup logs..."
 $cleanupLogsResponse = Invoke-AuthenticatedAPI -Method "GET" -Endpoint "/api/admin/email/retention-analytics?include_cleanup_logs=true&limit=3"
 if ($cleanupLogsResponse -and $cleanupLogsResponse.cleanup_logs) {
-    Write-Host "✓ Cleanup logs retrieved successfully" -ForegroundColor Green
-    Write-Host "  - Cleanup operations: $($cleanupLogsResponse.cleanup_logs.Count)" -ForegroundColor White
+    Write-Output "✓ Cleanup logs retrieved successfully"
+    Write-Output "  - Cleanup operations: $($cleanupLogsResponse.cleanup_logs.Count)"
     foreach ($log in $cleanupLogsResponse.cleanup_logs) {
-        Write-Host "    - $($log.initiator) processed $($log.emails_processed) emails, deleted $($log.emails_deleted) at $($log.timestamp)" -ForegroundColor Gray
+        Write-Output "    - $($log.initiator) processed $($log.emails_processed) emails, deleted $($log.emails_deleted) at $($log.timestamp)"
     }
 } else {
-    Write-Host "✗ Failed to retrieve cleanup logs or no logs available" -ForegroundColor Red
+    Write-Output "✗ Failed to retrieve cleanup logs or no logs available"
 }
 
-Write-Host "`n=== Test Summary ===" -ForegroundColor Green
-Write-Host "Micro-Iteration 4.25 features tested:" -ForegroundColor White
-Write-Host "✓ Comprehensive retention analytics" -ForegroundColor Green
-Write-Host "✓ Analytics summary for dashboards" -ForegroundColor Green
-Write-Host "✓ Retention notifications history" -ForegroundColor Green
-Write-Host "✓ Notification preferences management" -ForegroundColor Green
-Write-Host "✓ Filtered and date-range analytics" -ForegroundColor Green
-Write-Host "✓ Cleanup logs integration" -ForegroundColor Green
+Write-Output "`n=== Test Summary ==="
+Write-Output "Micro-Iteration 4.25 features tested:"
+Write-Output "✓ Comprehensive retention analytics"
+Write-Output "✓ Analytics summary for dashboards"
+Write-Output "✓ Retention notifications history"
+Write-Output "✓ Notification preferences management"
+Write-Output "✓ Filtered and date-range analytics"
+Write-Output "✓ Cleanup logs integration"
 
-Write-Host "`nTo run the enhanced cleanup worker with notifications:" -ForegroundColor Yellow
-Write-Host "1. Set environment variables:" -ForegroundColor White
-Write-Host "   `$env:ENABLE_EXPIRATION_NOTIFICATIONS = 'true'" -ForegroundColor Gray
-Write-Host "   `$env:ENABLE_CLEANUP_NOTIFICATIONS_SENDER = 'true'" -ForegroundColor Gray
-Write-Host "2. Run the enhanced worker:" -ForegroundColor White
-Write-Host "   go run ./cmd/workers/enhanced_email_cleanup_worker.go" -ForegroundColor Gray
+Write-Output "`nTo run the enhanced cleanup worker with notifications:"
+Write-Output "1. Set environment variables:"
+Write-Output "   `$env:ENABLE_EXPIRATION_NOTIFICATIONS = 'true'"
+Write-Output "   `$env:ENABLE_CLEANUP_NOTIFICATIONS_SENDER = 'true'"
+Write-Output "2. Run the enhanced worker:"
+Write-Output "   go run ./cmd/workers/enhanced_email_cleanup_worker.go"
 
-Write-Host "`nTest completed successfully!" -ForegroundColor Green
+Write-Output "`nTest completed successfully!"
 
 
 

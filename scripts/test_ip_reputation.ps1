@@ -27,10 +27,10 @@ function Invoke-ApiRequest {
         [object]$Body = $null,
         [hashtable]$Headers = @{}
     )
-    
+
     $uri = "$BaseUrl$Endpoint"
     $headers["Content-Type"] = "application/json"
-    
+
     try {
         if ($Body) {
             $jsonBody = $Body | ConvertTo-Json -Depth 10
@@ -63,21 +63,21 @@ function Invoke-ApiRequest {
 
 function Test-SignupWithIPReputation {
     Write-ColorOutput "`n=== Testing Signup with IP Reputation ===" $Yellow
-    
+
     $testEmail = "testuser$(Get-Random)@securesystem.email"
     $testPassword = "SecurePassword123!"
     $fallbackEmail = "fallback$(Get-Random)@example.com"
-    
+
     $signupData = @{
         email = $testEmail
         password = $testPassword
         fallback_email = $fallbackEmail
     }
-    
+
     Write-ColorOutput "Attempting signup with email: $testEmail" $White
-    
+
     $response = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/signup" -Body $signupData
-    
+
     if ($response.Success) {
         Write-ColorOutput "[SUCCESS] Signup successful - IP reputation check passed" $Green
         return $testEmail
@@ -92,24 +92,24 @@ function Test-SignupWithIPReputation {
 
 function Test-LoginWithIPReputation {
     param([string]$Email)
-    
+
     Write-ColorOutput "`n=== Testing Login with IP Reputation ===" $Yellow
-    
+
     if (-not $Email) {
         Write-ColorOutput "Skipping login test - no valid email from signup" $Yellow
         return
     }
-    
+
     $loginData = @{
         email = $Email
         password = "SecurePassword123!"
         totp_code = "123456"  # This will fail, but we're testing IP reputation, not auth
     }
-    
+
     Write-ColorOutput "Attempting login with email: $Email" $White
-    
+
     $response = Invoke-ApiRequest -Method "POST" -Endpoint "/api/auth/login" -Body $loginData
-    
+
     if ($response.StatusCode -eq 403 -and $response.Error -like "*IP reputation*") {
         Write-ColorOutput "[SUCCESS] Login blocked by IP reputation service (expected behavior)" $Green
     } elseif ($response.StatusCode -eq 401) {
@@ -121,13 +121,13 @@ function Test-LoginWithIPReputation {
 
 function Test-IPReputationConfiguration {
     Write-ColorOutput "`n=== Testing IP Reputation Configuration ===" $Yellow
-    
+
     if ($ApiKey) {
         Write-ColorOutput "[SUCCESS] IP_REPUTATION_API_KEY is configured" $Green
     } else {
         Write-ColorOutput "[WARNING] IP_REPUTATION_API_KEY is not configured - service will allow all IPs" $Yellow
     }
-    
+
     $threshold = $env:IP_REPUTATION_THRESHOLD
     if ($threshold) {
         Write-ColorOutput "[SUCCESS] IP_REPUTATION_THRESHOLD is set to: $threshold" $Green
@@ -138,9 +138,9 @@ function Test-IPReputationConfiguration {
 
 function Test-HealthCheck {
     Write-ColorOutput "`n=== Testing Health Check ===" $Yellow
-    
+
     $response = Invoke-ApiRequest -Method "GET" -Endpoint "/health"
-    
+
     if ($response.Success) {
         Write-ColorOutput "[SUCCESS] Health check passed" $Green
         return $true

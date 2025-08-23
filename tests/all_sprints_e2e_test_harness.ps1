@@ -1,9 +1,9 @@
 # All Sprints E2E Test Harness
 # Tests the complete E2E PQC system across all 3 sprints
-Write-Host "All Sprints E2E Test Harness" -ForegroundColor Cyan
-Write-Host "============================" -ForegroundColor Cyan
-Write-Host "Testing Sprint 0 (Design) + Sprint 1 (Core) + Sprint 2 (KT/HSM) + Sprint 3 (Hardware/Mixnet)" -ForegroundColor White
-Write-Host ""
+Write-Output "All Sprints E2E Test Harness"
+Write-Output "============================"
+Write-Output "Testing Sprint 0 (Design) + Sprint 1 (Core) + Sprint 2 (KT/HSM) + Sprint 3 (Hardware/Mixnet)"
+Write-Output ""
 
 # Initialize test results
 $TestResults = @{
@@ -18,21 +18,21 @@ function Write-TestResult {
     $TestResults.Total++
     if ($Success) {
         $TestResults.Passed++
-                        Write-Host "PASS: $TestName" -ForegroundColor Green
-        if ($Message) { Write-Host "   $Message" -ForegroundColor Gray }
+                        Write-Output "PASS: $TestName"
+        if ($Message) { Write-Output "   $Message" }
     } else {
         $TestResults.Failed++
         $TestResults.Errors += "${TestName}: ${Message}"
-                        Write-Host "FAIL: $TestName" -ForegroundColor Red
-        if ($Message) { Write-Host "   $Message" -ForegroundColor Gray }
+                        Write-Output "FAIL: $TestName"
+        if ($Message) { Write-Output "   $Message" }
     }
 }
 
 # =============================================================================
 # SPRINT 0: DESIGN & FOUNDATION TESTS
 # =============================================================================
-        Write-Host "`nSPRINT 0: Design & Foundation Validation" -ForegroundColor Yellow
-        Write-Host "=============================================" -ForegroundColor Yellow
+        Write-Output "`nSPRINT 0: Design & Foundation Validation"
+        Write-Output "============================================="
 
 # Test 1: Design Document Exists
 $TestName = "Sprint 0 Design Document"
@@ -88,8 +88,8 @@ try {
 # =============================================================================
 # SPRINT 1: CORE CRYPTO & CLIENT SDK TESTS
 # =============================================================================
-        Write-Host "`nSPRINT 1: Core Crypto & Client SDK Validation" -ForegroundColor Yellow
-        Write-Host "=================================================" -ForegroundColor Yellow
+        Write-Output "`nSPRINT 1: Core Crypto & Client SDK Validation"
+        Write-Output "================================================="
 
 # Test 4: Core Crypto Provider
 $TestName = "Core Crypto Provider Implementation"
@@ -147,8 +147,8 @@ try {
 # =============================================================================
 # SPRINT 2: KEY TRANSPARENCY & THRESHOLD HSM TESTS
 # =============================================================================
-        Write-Host "`nSPRINT 2: Key Transparency & Threshold HSM Validation" -ForegroundColor Yellow
-        Write-Host "=========================================================" -ForegroundColor Yellow
+        Write-Output "`nSPRINT 2: Key Transparency & Threshold HSM Validation"
+        Write-Output "========================================================="
 
 # Test 7: Key Transparency System
 $TestName = "Key Transparency Implementation"
@@ -225,8 +225,8 @@ try {
 # =============================================================================
 # SPRINT 3: HARDWARE KEYS & MIXNET TESTS
 # =============================================================================
-        Write-Host "`nSPRINT 3: Hardware Keys & Mixnet Validation" -ForegroundColor Yellow
-        Write-Host "===============================================" -ForegroundColor Yellow
+        Write-Output "`nSPRINT 3: Hardware Keys & Mixnet Validation"
+        Write-Output "==============================================="
 
 # Test 11: Hardware Key Manager Interface
 $TestName = "Hardware Key Manager Interface"
@@ -285,8 +285,8 @@ try {
 # =============================================================================
 # INTEGRATION & COMPREHENSIVE TESTS
 # =============================================================================
-        Write-Host "`nINTEGRATION & COMPREHENSIVE TESTS" -ForegroundColor Yellow
-        Write-Host "====================================" -ForegroundColor Yellow
+        Write-Output "`nINTEGRATION & COMPREHENSIVE TESTS"
+        Write-Output "===================================="
 
 # Test 14: Enhanced E2E Client Integration
 $TestName = "Enhanced E2E Client Integration"
@@ -347,12 +347,12 @@ $TestName = "Unit Tests Coverage"
 try {
     $testFiles = @(
         "pkg/e2e/crypto_test.go",
-        "pkg/e2e/client_test.go", 
+        "pkg/e2e/client_test.go",
         "pkg/e2e/keytransparency_test.go",
         "pkg/e2e/thresholdHSM_test.go",
         "pkg/e2e/metadata_test.go"
     )
-    
+
     $allTestsExist = $true
     foreach ($testFile in $testFiles) {
         if (-not (Test-Path $testFile)) {
@@ -360,7 +360,7 @@ try {
             break
         }
     }
-    
+
     if ($allTestsExist) {
         Write-TestResult $TestName $true "All unit test files exist"
     } else {
@@ -401,11 +401,11 @@ $TestName = "Documentation Completeness"
 try {
     $docs = @(
         "docs/sprint0_e2e_pqc_design.md",
-        "docs/sprint1_completion_summary.md", 
+        "docs/sprint1_completion_summary.md",
         "docs/sprint2_completion_summary.md",
         "docs/sprint3_hardware_mixnet_design.md"
     )
-    
+
     $allDocsExist = $true
     foreach ($doc in $docs) {
         if (-not (Test-Path $doc)) {
@@ -413,7 +413,7 @@ try {
             break
         }
     }
-    
+
     if ($allDocsExist) {
         Write-TestResult $TestName $true "All sprint documentation exists"
     } else {
@@ -426,83 +426,83 @@ try {
 # =============================================================================
 # FINAL RESULTS & SUMMARY
 # =============================================================================
-        Write-Host "`nFINAL TEST RESULTS" -ForegroundColor Cyan
-        Write-Host "===================" -ForegroundColor Cyan
+        Write-Output "`nFINAL TEST RESULTS"
+        Write-Output "==================="
 
 $successRate = if ($TestResults.Total -gt 0) { [math]::Round(($TestResults.Passed / $TestResults.Total) * 100, 2) } else { 0 }
 
-Write-Host "Total Tests: $($TestResults.Total)" -ForegroundColor White
-Write-Host "Passed: $($TestResults.Passed)" -ForegroundColor Green
-Write-Host "Failed: $($TestResults.Failed)" -ForegroundColor Red
-Write-Host "Success Rate: $successRate%" -ForegroundColor $(if ($successRate -ge 90) { "Green" } elseif ($successRate -ge 75) { "Yellow" } else { "Red" })
+Write-Output "Total Tests: $($TestResults.Total)"
+Write-Output "Passed: $($TestResults.Passed)"
+Write-Output "Failed: $($TestResults.Failed)"
+Write-Output "Success Rate: $successRate%" -ForegroundColor $(if ($successRate -ge 90) { "Green" } elseif ($successRate -ge 75) { "Yellow" } else { "Red" })
 
 if ($TestResults.Errors.Count -gt 0) {
-    Write-Host "`nFAILED TESTS:" -ForegroundColor Red
+    Write-Output "`nFAILED TESTS:"
     foreach ($err in $TestResults.Errors) {
-        Write-Host "   - $err" -ForegroundColor Gray
+        Write-Output "   - $err"
     }
 }
 
-        Write-Host "`nSPRINT STATUS SUMMARY:" -ForegroundColor Cyan
-        Write-Host "=========================" -ForegroundColor Cyan
+        Write-Output "`nSPRINT STATUS SUMMARY:"
+        Write-Output "========================="
 
 # Sprint 0 Status (Design & Foundation)
 $sprint0Tests = @(1, 2, 3)
 $sprint0Passed = ($sprint0Tests | ForEach-Object { $TestResults.Passed -ge $_ }).Count
 $sprint0Total = $sprint0Tests.Count
 $sprint0Rate = if ($sprint0Total -gt 0) { [math]::Round(($sprint0Passed / $sprint0Total) * 100, 2) } else { 0 }
-Write-Host "Sprint 0 (Design): $sprint0Passed/$sprint0Total ($sprint0Rate%)" -ForegroundColor $(if ($sprint0Rate -eq 100) { "Green" } else { "Yellow" })
+Write-Output "Sprint 0 (Design): $sprint0Passed/$sprint0Total ($sprint0Rate%)" -ForegroundColor $(if ($sprint0Rate -eq 100) { "Green" } else { "Yellow" })
 
 # Sprint 1 Status (Core Crypto)
 $sprint1Tests = @(4, 5, 6)
 $sprint1Passed = ($sprint1Tests | ForEach-Object { $TestResults.Passed -ge $_ }).Count
 $sprint1Total = $sprint1Tests.Count
 $sprint1Rate = if ($sprint1Total -gt 0) { [math]::Round(($sprint1Passed / $sprint1Total) * 100, 2) } else { 0 }
-Write-Host "Sprint 1 (Core): $sprint1Passed/$sprint1Total ($sprint1Rate%)" -ForegroundColor $(if ($sprint1Rate -eq 100) { "Green" } else { "Yellow" })
+Write-Output "Sprint 1 (Core): $sprint1Passed/$sprint1Total ($sprint1Rate%)" -ForegroundColor $(if ($sprint1Rate -eq 100) { "Green" } else { "Yellow" })
 
 # Sprint 2 Status (KT & HSM)
 $sprint2Tests = @(7, 8, 9, 10)
 $sprint2Passed = ($sprint2Tests | ForEach-Object { $TestResults.Passed -ge $_ }).Count
 $sprint2Total = $sprint2Tests.Count
 $sprint2Rate = if ($sprint2Total -gt 0) { [math]::Round(($sprint2Passed / $sprint2Total) * 100, 2) } else { 0 }
-Write-Host "Sprint 2 (KT/HSM): $sprint2Passed/$sprint2Total ($sprint2Rate%)" -ForegroundColor $(if ($sprint2Rate -eq 100) { "Green" } else { "Yellow" })
+Write-Output "Sprint 2 (KT/HSM): $sprint2Passed/$sprint2Total ($sprint2Rate%)" -ForegroundColor $(if ($sprint2Rate -eq 100) { "Green" } else { "Yellow" })
 
 # Sprint 3 Status (Hardware & Mixnet)
 $sprint3Tests = @(11, 12, 13)
 $sprint3Passed = ($sprint3Tests | ForEach-Object { $TestResults.Passed -ge $_ }).Count
 $sprint3Total = $sprint3Tests.Count
 $sprint3Rate = if ($sprint3Total -gt 0) { [math]::Round(($sprint3Passed / $sprint3Total) * 100, 2) } else { 0 }
-Write-Host "Sprint 3 (Hardware/Mixnet): $sprint3Passed/$sprint3Total ($sprint3Rate%)" -ForegroundColor $(if ($sprint3Rate -eq 100) { "Green" } else { "Yellow" })
+Write-Output "Sprint 3 (Hardware/Mixnet): $sprint3Passed/$sprint3Total ($sprint3Rate%)" -ForegroundColor $(if ($sprint3Rate -eq 100) { "Green" } else { "Yellow" })
 
 # Integration Status
 $integrationTests = @(14, 15, 16, 17, 18, 19, 20)
 $integrationPassed = ($integrationTests | ForEach-Object { $TestResults.Passed -ge $_ }).Count
 $integrationTotal = $integrationTests.Count
 $integrationRate = if ($integrationTotal -gt 0) { [math]::Round(($integrationPassed / $integrationTotal) * 100, 2) } else { 0 }
-Write-Host "Integration: $integrationPassed/$integrationTotal ($integrationRate%)" -ForegroundColor $(if ($integrationRate -eq 100) { "Green" } else { "Yellow" })
+Write-Output "Integration: $integrationPassed/$integrationTotal ($integrationRate%)" -ForegroundColor $(if ($integrationRate -eq 100) { "Green" } else { "Yellow" })
 
-        Write-Host "`nOVERALL ASSESSMENT:" -ForegroundColor Cyan
-        Write-Host "====================" -ForegroundColor Cyan
+        Write-Output "`nOVERALL ASSESSMENT:"
+        Write-Output "===================="
 
 if ($successRate -ge 95) {
-    Write-Host "EXCELLENT! All sprints are complete and well-integrated!" -ForegroundColor Green
-    Write-Host "The E2E PQC system is ready for production deployment." -ForegroundColor Green
+    Write-Output "EXCELLENT! All sprints are complete and well-integrated!"
+    Write-Output "The E2E PQC system is ready for production deployment."
 } elseif ($successRate -ge 85) {
-    Write-Host "GOOD! Most components are complete with minor issues to address." -ForegroundColor Yellow
-    Write-Host "Review failed tests and complete missing implementations." -ForegroundColor Yellow
+    Write-Output "GOOD! Most components are complete with minor issues to address."
+    Write-Output "Review failed tests and complete missing implementations."
 } elseif ($successRate -ge 70) {
-    Write-Host "FAIR! Significant work remains to complete the system." -ForegroundColor Yellow
-    Write-Host "Focus on completing core functionality before advanced features." -ForegroundColor Yellow
+    Write-Output "FAIR! Significant work remains to complete the system."
+    Write-Output "Focus on completing core functionality before advanced features."
 } else {
-    Write-Host "NEEDS WORK! Core components are missing or incomplete." -ForegroundColor Red
-    Write-Host "Prioritize Sprint 1 (Core) implementation before proceeding." -ForegroundColor Red
+    Write-Output "NEEDS WORK! Core components are missing or incomplete."
+    Write-Output "Prioritize Sprint 1 (Core) implementation before proceeding."
 }
 
-        Write-Host "`nNEXT STEPS:" -ForegroundColor White
-Write-Host "1. Address any failed tests above" -ForegroundColor White
-Write-Host "2. Complete missing Sprint 3 implementations" -ForegroundColor White
-Write-Host "3. Run integration tests with real hardware" -ForegroundColor White
-Write-Host "4. Perform security audit and penetration testing" -ForegroundColor White
-Write-Host "5. Prepare for production deployment" -ForegroundColor White
+        Write-Output "`nNEXT STEPS:"
+Write-Output "1. Address any failed tests above"
+Write-Output "2. Complete missing Sprint 3 implementations"
+Write-Output "3. Run integration tests with real hardware"
+Write-Output "4. Perform security audit and penetration testing"
+Write-Output "5. Prepare for production deployment"
 
-        Write-Host "`nAll Sprints E2E Test Harness Complete!" -ForegroundColor Cyan
+        Write-Output "`nAll Sprints E2E Test Harness Complete!"

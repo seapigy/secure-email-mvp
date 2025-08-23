@@ -28,7 +28,8 @@ type PasswordResetResponse struct {
 }
 
 // passwordResetHandler handles password reset requests with comprehensive validation
-func passwordResetHandler(db *sql.DB) http.HandlerFunc {
+// TODO: Wire up to routes in future micro-iteration
+func passwordResetHandler(db *sql.DB) http.HandlerFunc { //nolint:unused
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Only allow POST method
 		if r.Method != http.MethodPost {
@@ -154,7 +155,8 @@ func verifyAndUpdatePassword(db *sql.DB, email, newPassword, resetToken string) 
 }
 
 // initiatePasswordResetHandler handles the initiation of password reset
-func initiatePasswordResetHandler(db *sql.DB) http.HandlerFunc {
+// TODO: Wire up to routes in future micro-iteration
+func initiatePasswordResetHandler(db *sql.DB) http.HandlerFunc { //nolint:unused
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Only allow POST method
 		if r.Method != http.MethodPost {
@@ -244,12 +246,3 @@ func generateAndSendResetToken(db *sql.DB, email string) error {
 	log.Printf("Password reset token generated for user %s", email)
 	return nil
 }
-
-
-
-
-
-
-
-
-
