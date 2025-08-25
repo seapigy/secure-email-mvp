@@ -7,6 +7,7 @@ import {
   TrashIcon,
   Cog6ToothIcon,
   PlusIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 
 /**
@@ -42,6 +43,11 @@ const Sidebar: React.FC = () => {
       href: '/drafts',
       icon: DocumentTextIcon,
       count: 3, // Mock count - will be replaced with actual draft count from API
+    },
+    {
+      name: 'Monitoring',
+      href: '/monitoring',
+      icon: ChartBarIcon,
     },
     {
       name: 'Trash',

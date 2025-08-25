@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY,                 -- Auto-incrementing integer ID
     email TEXT NOT NULL UNIQUE,             -- Email address (unique constraint)
     password TEXT NOT NULL,                 -- Bcrypt hash of password
+    totp_secret TEXT,                       -- TOTP secret for 2FA authentication
     fallback_email TEXT,                    -- Fallback email for recovery
     fallback_token TEXT,                    -- Secure token for fallback verification
     fallback_confirmed BOOLEAN DEFAULT FALSE, -- Whether fallback email is confirmed

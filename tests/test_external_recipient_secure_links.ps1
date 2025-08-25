@@ -88,7 +88,10 @@ function Test-UserAuthentication {
     $loginData = @{
         email = $Email
         password = $Password
-        totp_code = "123456"  # Default TOTP for testing
+        # Generate correct TOTP code for test user
+$totpOutput = & "$PSScriptRoot\..\scripts\generate_totp.ps1" -Secret "JBSWY3DPEHPK3PXP"
+$currentTOTPCode = $totpOutput.Split("`n") | Where-Object { $_ -match 'CURRENT:' } | ForEach-Object { $_.Split(':')[1].Trim() }
+totp_code = $currentTOTPCode
     }
     
     $response = Test-APIEndpoint -Method "POST" -Endpoint "/api/auth/login" -Body $loginData -Description "User authentication for $Email"

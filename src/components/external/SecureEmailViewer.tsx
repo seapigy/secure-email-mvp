@@ -1,256 +1,442 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Mail, Download, Reply, AlertTriangle } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import SecurityValidationModal from './SecurityValidationModal';
+import ReplyComposer from './ReplyComposer';
+import { Lock, Shield, Clock, MapPin, Eye, AlertTriangle, CheckCircle, Reply } from 'lucide-react';
 
-// =============================================================================
-// EXTERNAL SECURE EMAIL VIEWER
-// =============================================================================
-
-interface SecureEmailViewerProps {
-  linkId: string;
-  sessionToken?: string;
+// Types for secure link data
+interface SecuritySettings {
+  require_password: boolean;
+  require_mfa: boolean;
+  mfa_type?: string;
+  geolocation_restriction: boolean;
+  allowed_countries?: string[];
+  allowed_cities?: string[];
+  time_lock: boolean;
+  time_lock_until?: number;
+  read_once: boolean;
+  auto_destruct: boolean;
+  expires_at?: number;
+  max_access_attempts: number;
+  current_attempts: number;
 }
 
-interface EmailData {
+interface SecureLinkMetadata {
+  link_id: string;
+  subject: string;
+  sender_email: string;
+  sender_name?: string;
+  security_settings: SecuritySettings;
+  status: string;
+  message?: string;
+}
+
+interface SecureEmailContent {
+  link_id: string;
   subject: string;
   body: string;
-  senderName: string;
-  senderEmail: string;
-  sentAt: string;
-  attachments: Attachment[];
-  securityInfo: SecurityInfo;
+  sender_email: string;
+  sender_name?: string;
+  read_once: boolean;
+  auto_destruct: boolean;
 }
 
-interface Attachment {
-  id: string;
-  name: string;
-  size: number;
-  contentType: string;
-  secureUrl: string;
+interface SecurityValidationRequest {
+  link_id: string;
+  password?: string;
+  mfa_code?: string;
+  mfa_type?: string;
+  ip_address?: string;
+  user_agent?: string;
 }
 
-interface SecurityInfo {
-  isSecure: boolean;
-  encryptionType: string;
-  expiresAt?: string;
-  readOnce: boolean;
-  autoDestruct: boolean;
+interface SecurityValidationResponse {
+  success: boolean;
+  validated: boolean;
+  requires_mfa?: boolean;
+  mfa_type?: string;
+  requires_geo?: boolean;
+  error?: string;
+  error_code?: string;
+  decoy_message?: string;
 }
 
-export const SecureEmailViewer: React.FC<SecureEmailViewerProps> = ({ linkId, sessionToken }) => {
-  const [emailData, setEmailData] = useState<EmailData | null>(null);
+const SecureEmailViewer: React.FC = () => {
+  const { linkID } = useParams<{ linkID: string }>();
+  const navigate = useNavigate();
+  
+  const [metadata, setMetadata] = useState<SecureLinkMetadata | null>(null);
+  const [content, setContent] = useState<SecureEmailContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showReply, setShowReply] = useState(false);
-  const [replyText, setReplyText] = useState('');
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [showReplyComposer, setShowReplyComposer] = useState(false);
+  const [securityStep, setSecurityStep] = useState<'password' | 'mfa' | 'geo' | 'complete'>('password');
+  const [validationData, setValidationData] = useState<SecurityValidationRequest>({
+    link_id: linkID || '',
+  });
 
   useEffect(() => {
-    loadEmailData();
-  }, [linkId, sessionToken]);
+    if (linkID) {
+      loadSecureLinkMetadata();
+    }
+  }, [linkID]);
 
-  const loadEmailData = async () => {
+  const loadSecureLinkMetadata = async () => {
     try {
       setLoading(true);
-      // TODO: Implement API call to load secure email data
-      console.log('Loading email data for link:', linkId);
+      const response = await fetch(`/api/v/${linkID}`);
       
-      // Mock data for now
-      const mockData: EmailData = {
-        subject: 'Secure Email Subject',
-        body: 'This is a secure email body content.',
-        senderName: 'John Doe',
-        senderEmail: 'john@company.com',
-        sentAt: new Date().toISOString(),
-        attachments: [],
-        securityInfo: {
-          isSecure: true,
-          encryptionType: 'AES-256-GCM',
-          readOnce: false,
-          autoDestruct: false
-        }
-      };
-      
-      setEmailData(mockData);
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.message || 'Failed to load secure link');
+        return;
+      }
+
+      const data: SecureLinkMetadata = await response.json();
+      setMetadata(data);
+
+      // Check if link is accessible
+      if (data.status !== 'active') {
+        setError(data.message || 'This secure link is not accessible');
+        return;
+      }
+
+      // Check if security validation is required
+      if (data.security_settings.require_password || 
+          data.security_settings.require_mfa || 
+          data.security_settings.geolocation_restriction) {
+        setShowSecurityModal(true);
+        setSecurityStep('password');
+      } else {
+        // No security required, load content directly
+        await loadSecureEmailContent();
+      }
     } catch (err) {
-      setError('Failed to load email data');
-      console.error('Error loading email:', err);
+      setError('Failed to load secure link metadata');
+      console.error('Error loading metadata:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReply = async () => {
+  const loadSecureEmailContent = async () => {
     try {
-      // TODO: Implement secure reply functionality
-      console.log('Sending reply:', replyText);
-      setShowReply(false);
-      setReplyText('');
+      const response = await fetch(`/api/v/${linkID}/content`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(validationData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.message || 'Failed to load email content');
+        return;
+      }
+
+      const data: SecureEmailContent = await response.json();
+      setContent(data);
+      setShowSecurityModal(false);
     } catch (err) {
-      console.error('Error sending reply:', err);
+      setError('Failed to load email content');
+      console.error('Error loading content:', err);
     }
   };
 
-  const downloadAttachment = async (attachment: Attachment) => {
+  const handleSecurityValidation = async (validationRequest: SecurityValidationRequest) => {
     try {
-      // TODO: Implement secure attachment download
-      console.log('Downloading attachment:', attachment.name);
+      const response = await fetch(`/api/v/${linkID}/validate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(validationRequest),
+      });
+
+      const data: SecurityValidationResponse = await response.json();
+
+      if (!data.success) {
+        // Handle validation errors
+        if (data.error_code === 'LINK_DESTROYED') {
+          setError('This secure link has been destroyed due to too many failed attempts');
+          setShowSecurityModal(false);
+          return;
+        }
+        
+        // Show error in modal
+        return { error: data.error, decoyMessage: data.decoy_message };
+      }
+
+      if (data.validated) {
+        // All security checks passed
+        setValidationData(validationRequest);
+        await loadSecureEmailContent();
+        return { success: true };
+      } else {
+        // More security steps required
+        if (data.requires_mfa) {
+          setSecurityStep('mfa');
+          return { requiresMFA: true, mfaType: data.mfa_type };
+        } else if (data.requires_geo) {
+          setSecurityStep('geo');
+          return { requiresGeo: true };
+        }
+      }
     } catch (err) {
-      console.error('Error downloading attachment:', err);
+      console.error('Error during security validation:', err);
+      return { error: 'Security validation failed' };
     }
+  };
+
+  const handleModalClose = () => {
+    setShowSecurityModal(false);
+    navigate('/');
+  };
+
+  const handleReplySent = (replyID: string) => {
+    setShowReplyComposer(false);
+    // Optionally show a success message or update the UI
+    console.log('Reply sent successfully:', replyID);
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div
+        className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center"
+        style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%239C92AC" fill-opacity="0.1"%3E%3Ccircle cx="30" cy="30" r="4"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}
+      >
+        <div className="text-center max-w-md mx-auto px-4">
+          {/* Security Branding */}
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full shadow-lg mb-6">
+            <Lock className="h-8 w-8 text-blue-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Secure Email System</h1>
+          <p className="text-sm text-gray-600 mb-8">Enterprise-grade secure messaging</p>
+          
+          {/* Loading Animation */}
+          <div className="bg-white rounded-lg shadow-xl p-8">
+            <div className="flex items-center justify-center mb-6">
+              <div className="relative">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Shield className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Verifying Access</h2>
+            <p className="text-sm text-gray-600 mb-4">Please wait while we securely validate your access...</p>
+            
+            {/* Progress Steps */}
+            <div className="space-y-3">
+              <div className="flex items-center text-sm text-gray-600">
+                <div className="w-2 h-2 bg-blue-600 rounded-full mr-3"></div>
+                <span>Validating secure link</span>
+              </div>
+              <div className="flex items-center text-sm text-gray-500">
+                <div className="w-2 h-2 bg-gray-300 rounded-full mr-3"></div>
+                <span>Checking security requirements</span>
+              </div>
+              <div className="flex items-center text-sm text-gray-500">
+                <div className="w-2 h-2 bg-gray-300 rounded-full mr-3"></div>
+                <span>Loading secure content</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Security Notice */}
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <div className="flex items-start">
+              <Shield className="h-4 w-4 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-blue-800">Security Information</p>
+                <p className="text-sm text-blue-700 mt-1">
+                  All access attempts are logged for security monitoring. Your privacy and security are our top priority.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <AlertTriangle className="mx-auto h-12 w-12 text-red-600" />
-          <h2 className="mt-4 text-xl font-semibold text-gray-900">Error Loading Email</h2>
-          <p className="mt-2 text-gray-600">{error}</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => navigate('/')}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Return Home
+          </button>
         </div>
       </div>
     );
   }
 
-  if (!emailData) {
+  if (content) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Mail className="mx-auto h-12 w-12 text-gray-400" />
-          <h2 className="mt-4 text-xl font-semibold text-gray-900">No Email Data</h2>
-        </div>
-      </div>
-    );
-  }
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4">
+          {/* Header */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{content.subject}</h1>
+                <p className="text-gray-600">
+                  From: {content.sender_name || content.sender_email}
+                </p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+                <span className="text-sm text-green-600 font-medium">Verified</span>
+              </div>
+            </div>
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Security Banner */}
-      <div className="bg-green-600 text-white px-4 py-3">
-        <div className="flex items-center justify-center">
-          <Shield className="h-5 w-5 mr-2" />
-          <span className="text-sm font-medium">
-            This email is secured with {emailData.securityInfo.encryptionType} encryption
-          </span>
-        </div>
-      </div>
-
-      {/* Email Content */}
-      <div className="max-w-4xl mx-auto py-8 px-4">
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          {/* Email Header */}
-          <div className="border-b border-gray-200 px-6 py-4">
-            <h1 className="text-2xl font-bold text-gray-900">{emailData.subject}</h1>
-            <div className="mt-2 flex items-center text-sm text-gray-600">
-              <span>From: {emailData.senderName} &lt;{emailData.senderEmail}&gt;</span>
-              <span className="mx-2">•</span>
-              <span>{new Date(emailData.sentAt).toLocaleString()}</span>
+            {/* Security Indicators */}
+            <div className="flex flex-wrap gap-2">
+              {content.read_once && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                  <Eye className="h-3 w-3 mr-1" />
+                  One-time viewing
+                </span>
+              )}
+              {content.auto_destruct && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Auto-destruct enabled
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Security Info */}
-          {(emailData.securityInfo.readOnce || emailData.securityInfo.autoDestruct || emailData.securityInfo.expiresAt) && (
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-              <div className="flex">
-                <AlertTriangle className="h-5 w-5 text-yellow-400" />
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-yellow-800">Security Notice</h3>
-                  <div className="mt-2 text-sm text-yellow-700">
-                    {emailData.securityInfo.readOnce && <p>• This email can only be viewed once</p>}
-                    {emailData.securityInfo.autoDestruct && <p>• This email will self-destruct after viewing</p>}
-                    {emailData.securityInfo.expiresAt && (
-                      <p>• This email expires on {new Date(emailData.securityInfo.expiresAt).toLocaleString()}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Email Body */}
-          <div className="px-6 py-6">
+          {/* Email Content */}
+          <div className="bg-white rounded-lg shadow-md p-6">
             <div className="prose max-w-none">
-              <div dangerouslySetInnerHTML={{ __html: emailData.body.replace(/\n/g, '<br />') }} />
+              <div dangerouslySetInnerHTML={{ __html: content.body }} />
             </div>
           </div>
-
-          {/* Attachments */}
-          {emailData.attachments.length > 0 && (
-            <div className="border-t border-gray-200 px-6 py-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Attachments</h3>
-              <div className="space-y-2">
-                {emailData.attachments.map((attachment) => (
-                  <div
-                    key={attachment.id}
-                    className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
-                  >
-                    <div className="flex items-center">
-                      <Download className="h-5 w-5 text-gray-400 mr-3" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{attachment.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {(attachment.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => downloadAttachment(attachment)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700"
-                    >
-                      Download
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Reply Section */}
-          <div className="border-t border-gray-200 px-6 py-4">
-            {!showReply ? (
+          <div className="mt-6 border-t border-gray-200 pt-6">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                <p>This secure message was delivered using SecureMail's encrypted email system.</p>
+                {content.read_once && (
+                  <p className="mt-2 text-red-600">
+                    ⚠️ This message has been destroyed after viewing for security.
+                  </p>
+                )}
+              </div>
               <button
-                onClick={() => setShowReply(true)}
-                className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                onClick={() => setShowReplyComposer(true)}
+                className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
               >
                 <Reply className="h-4 w-4 mr-2" />
                 Reply Securely
               </button>
-            ) : (
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900">Secure Reply</h3>
-                <textarea
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="Type your secure reply here..."
-                  className="w-full h-32 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <div className="flex space-x-3">
-                  <button
-                    onClick={handleReply}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                  >
-                    Send Reply
-                  </button>
-                  <button
-                    onClick={() => setShowReply(false)}
-                    className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
+
+          {/* Reply Composer Modal */}
+          {showReplyComposer && (
+            <ReplyComposer
+              isOpen={showReplyComposer}
+              linkID={linkID || ''}
+              originalSubject={content.subject}
+              originalSenderEmail={content.sender_email}
+              originalSenderName={content.sender_name}
+              onReplySent={handleReplySent}
+              onCancel={() => setShowReplyComposer(false)}
+            />
+          )}
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (metadata) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4">
+          {/* Header */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{metadata.subject}</h1>
+                <p className="text-gray-600">
+                  From: {metadata.sender_name || metadata.sender_email}
+                </p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Shield className="h-5 w-5 text-blue-500" />
+                <span className="text-sm text-blue-600 font-medium">Secure Message</span>
+              </div>
+            </div>
+
+            {/* Security Features */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              {metadata.security_settings.require_password && (
+                <div className="flex items-center space-x-2">
+                  <Lock className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">Password Protected</span>
+                </div>
+              )}
+              {metadata.security_settings.require_mfa && (
+                <div className="flex items-center space-x-2">
+                  <Shield className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">
+                    {metadata.security_settings.mfa_type} Verification Required
+                  </span>
+                </div>
+              )}
+              {metadata.security_settings.geolocation_restriction && (
+                <div className="flex items-center space-x-2">
+                  <MapPin className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">Location Restricted</span>
+                </div>
+              )}
+              {metadata.security_settings.time_lock && (
+                <div className="flex items-center space-x-2">
+                  <Clock className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">Time-locked Access</span>
+                </div>
+              )}
+            </div>
+
+            {/* Access Attempts */}
+            <div className="bg-gray-50 rounded-md p-3">
+              <p className="text-sm text-gray-600">
+                Access attempts: {metadata.security_settings.current_attempts} / {metadata.security_settings.max_access_attempts}
+              </p>
+            </div>
+          </div>
+
+                     {/* Security Validation Modal */}
+           {showSecurityModal && (
+             <SecurityValidationModal
+               isOpen={showSecurityModal}
+               onClose={handleModalClose}
+               onValidate={handleSecurityValidation}
+               securitySettings={metadata.security_settings}
+               currentStep={securityStep}
+               linkID={linkID || ''}
+             />
+           )}
+
+
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 };
 
 export default SecureEmailViewer;

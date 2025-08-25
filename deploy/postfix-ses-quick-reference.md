@@ -147,3 +147,4 @@ sudo /usr/local/bin/rotate-ses-credentials.sh "emergency_user" "emergency_pass"
 
 **Remember**: Always test with verified email addresses in SES sandbox mode!
 
+

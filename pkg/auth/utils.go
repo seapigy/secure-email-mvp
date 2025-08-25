@@ -6,6 +6,7 @@ import (
 	"encoding/base32"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -49,6 +50,16 @@ func validateTOTPWithConfig(code, secret string, config TOTPConfig) bool {
 
 	// Get current time
 	now := time.Now()
+	log.Printf("[AUTH_DEBUG] Current server time: %v", now)
+
+	// Use standard totp.Validate with proper skew for test mode
+	testMode := os.Getenv("TEST_MODE") == "true"
+	skew := uint(config.Skew)
+	if testMode {
+		// In test mode, allow more drift tolerance
+		skew = uint(config.MaxDriftSteps)
+		log.Printf("[AUTH_DEBUG] Test mode: Using skew of %d for enhanced tolerance", skew)
+	}
 
 	// Try validation with RFC 6238 compliant drift tolerance
 	// Check current time step and surrounding steps within drift tolerance
@@ -56,19 +67,17 @@ func validateTOTPWithConfig(code, secret string, config TOTPConfig) bool {
 		// Calculate time for this step
 		checkTime := now.Add(time.Duration(step*int(config.Period)) * time.Second)
 
-		// Validate TOTP with custom parameters for this time step
-		valid, err := totp.ValidateCustom(code, secret, checkTime, totp.ValidateOpts{
-			Period:    config.Period,
-			Skew:      0, // No additional skew since we're manually checking steps
-			Digits:    6, // Default to 6 digits
-			Algorithm: 1, // Default to SHA1 for compatibility
-		})
-
+		// Generate expected code for this time step for debugging
+		expectedCode, err := totp.GenerateCode(secret, checkTime)
 		if err != nil {
-			log.Printf("[AUTH_DEBUG] TOTP validation error for step %d: %v", step, err)
+			log.Printf("[AUTH_DEBUG] Failed to generate expected code for step %d: %v", step, err)
 			continue
 		}
 
+		log.Printf("[AUTH_DEBUG] Step %d: Time=%v, Expected=%s, Provided=%s", step, checkTime, expectedCode, code)
+
+		// Use standard totp.Validate with proper skew
+		valid := totp.Validate(code, secret)
 		if valid {
 			// Log successful validation with drift information
 			if step != 0 {

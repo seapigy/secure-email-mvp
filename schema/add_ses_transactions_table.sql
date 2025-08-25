@@ -158,3 +158,4 @@ FROM ses_validation_logs
 GROUP BY DATE(created_at)
 ORDER BY date DESC;
 
+

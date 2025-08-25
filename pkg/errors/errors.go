@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -136,6 +137,9 @@ type ErrorResponseWriter struct {
 // WriteHeader overrides the default WriteHeader to standardize error responses
 func (w *ErrorResponseWriter) WriteHeader(statusCode int) {
 	if statusCode >= 400 && !w.written {
+		// Check if we're in test mode for debug-friendly error messages
+		testMode := os.Getenv("TEST_MODE") == "true"
+
 		// Determine error code based on status code
 		var code ErrorCode
 		var message string
@@ -143,31 +147,77 @@ func (w *ErrorResponseWriter) WriteHeader(statusCode int) {
 		switch statusCode {
 		case http.StatusBadRequest:
 			code = ErrorCodeInvalidRequest
-			message = "Invalid request"
+			if testMode {
+				message = "Bad Request - Check request format and required fields"
+			} else {
+				message = "Invalid request"
+			}
 		case http.StatusUnauthorized:
 			code = ErrorCodeAuthRequired
-			message = "Authentication required"
+			if testMode {
+				message = "Authentication Failed - Check credentials, password, and TOTP code"
+			} else {
+				message = "Authentication required"
+			}
 		case http.StatusForbidden:
 			code = ErrorCodeForbidden
-			message = "Access forbidden"
+			if testMode {
+				message = "Access Forbidden - Insufficient permissions or blocked"
+			} else {
+				message = "Access forbidden"
+			}
 		case http.StatusNotFound:
 			code = ErrorCodeNotFound
-			message = "Resource not found"
+			if testMode {
+				message = "Resource Not Found - Check URL and resource existence"
+			} else {
+				message = "Resource not found"
+			}
 		case http.StatusTooManyRequests:
 			code = ErrorCodeRateLimitExceeded
-			message = "Rate limit exceeded"
+			if testMode {
+				message = "Rate Limit Exceeded - Too many requests, try again later"
+			} else {
+				message = "Rate limit exceeded"
+			}
 		case http.StatusInternalServerError:
 			code = ErrorCodeInternalServer
-			message = "Internal server error"
+			if testMode {
+				message = "Internal Server Error - Check server logs for details"
+			} else {
+				message = "Internal server error"
+			}
 		case http.StatusServiceUnavailable:
 			code = ErrorCodeServiceUnavailable
-			message = "Service unavailable"
+			if testMode {
+				message = "Service Unavailable - Server temporarily unavailable"
+			} else {
+				message = "Service unavailable"
+			}
 		default:
 			code = ErrorCodeInternalServer
-			message = fmt.Sprintf("HTTP %d error", statusCode)
+			if testMode {
+				message = fmt.Sprintf("HTTP %d Error - Unexpected status code", statusCode)
+			} else {
+				message = fmt.Sprintf("HTTP %d error", statusCode)
+			}
 		}
 
-		WriteErrorResponseWithPath(w.ResponseWriter, statusCode, code, message, nil, w.Request.URL.Path)
+		// Add debug information in test mode
+		var details map[string]interface{}
+		if testMode {
+			details = map[string]interface{}{
+				"debug_info": map[string]interface{}{
+					"status_code": statusCode,
+					"path":        w.Request.URL.Path,
+					"method":      w.Request.Method,
+					"timestamp":   time.Now().UTC(),
+					"test_mode":   true,
+				},
+			}
+		}
+
+		WriteErrorResponseWithPath(w.ResponseWriter, statusCode, code, message, details, w.Request.URL.Path)
 		w.written = true
 		return
 	}

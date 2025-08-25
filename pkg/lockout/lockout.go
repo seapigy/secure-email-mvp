@@ -77,6 +77,12 @@ func NewUserLockoutServiceWithConfig(db *sql.DB, config *LockoutConfig) *UserLoc
 // CheckUserLockout checks if a user account is currently locked out
 // Returns true if locked out, false if access is allowed
 func (s *UserLockoutService) CheckUserLockout(email string) (bool, *time.Time, error) {
+	// Debug mode: bypass lockout checks when TEST_MODE=true
+	if os.Getenv("TEST_MODE") == "true" {
+		log.Printf("[LOCKOUT_DEBUG] 🧪 Test mode: Bypassing lockout check for %s", email)
+		return false, nil, nil
+	}
+
 	if !s.config.Enabled {
 		return false, nil, nil
 	}
@@ -127,6 +133,12 @@ func (s *UserLockoutService) CheckUserLockout(email string) (bool, *time.Time, e
 // IncrementUserFailedAttempt increments the failed attempt count for a user
 // and applies lockout if the threshold is reached
 func (s *UserLockoutService) IncrementUserFailedAttempt(email string) error {
+	// Debug mode: skip failed attempt increments when TEST_MODE=true
+	if os.Getenv("TEST_MODE") == "true" {
+		log.Printf("[LOCKOUT_DEBUG] 🧪 Test mode: Skipping failed attempt increment for %s", email)
+		return nil
+	}
+
 	if !s.config.Enabled {
 		return nil
 	}

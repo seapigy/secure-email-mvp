@@ -1,15 +1,28 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import Layout from '@/components/layout/Layout';
 import SimpleLoginForm from '@/components/auth/SimpleLoginForm';
-import Dashboard from '@/components/pages/Dashboard';
-import Send from '@/components/pages/Send';
-import View from '@/components/pages/View';
-import SecureEmailPage from '@/components/secure/SecureEmailPage';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+
+// Lazy load heavy components to reduce initial bundle size
+const Dashboard = lazy(() => import('@/components/pages/Dashboard'));
+const Send = lazy(() => import('@/components/pages/Send'));
+const View = lazy(() => import('@/components/pages/View'));
+const SecureEmailPage = lazy(() => import('@/components/secure/SecureEmailPage'));
+const MonitoringDashboard = lazy(() => import('@/components/dashboard/MonitoringDashboard'));
+
+// Loading component for Suspense fallback
+const LoadingSpinner: React.FC = () => (
+  <div className="min-h-screen bg-secondary-50 dark:bg-secondary-900 flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+      <p className="text-secondary-600 dark:text-secondary-400">Loading...</p>
+    </div>
+  </div>
+);
 
 /**
  * ProtectedRoute Component
@@ -27,14 +40,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-secondary-50 dark:bg-secondary-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-secondary-600 dark:text-secondary-400">Loading...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!isAuthenticated) {
@@ -133,7 +139,11 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Send />} />
+              <Route index element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <Send />
+                </Suspense>
+              } />
             </Route>
             
             <Route
@@ -144,7 +154,11 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<View />} />
+              <Route index element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <View />
+              </Suspense>
+            } />
             </Route>
             
             {/* Legacy routes for backward compatibility */}
@@ -156,7 +170,11 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Dashboard />} />
+              <Route index element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <Dashboard />
+                </Suspense>
+              } />
             </Route>
             
             <Route
@@ -167,7 +185,11 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Dashboard />} />
+              <Route index element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <Dashboard />
+                </Suspense>
+              } />
             </Route>
             
             <Route
@@ -178,7 +200,11 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Dashboard />} />
+              <Route index element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <Dashboard />
+                </Suspense>
+              } />
             </Route>
             
             <Route
@@ -189,7 +215,11 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Dashboard />} />
+              <Route index element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <Dashboard />
+                </Suspense>
+              } />
             </Route>
             
             <Route
@@ -200,7 +230,26 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Dashboard />} />
+              <Route index element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <Dashboard />
+                </Suspense>
+              } />
+            </Route>
+            
+            <Route
+              path="/monitoring"
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <MonitoringDashboard />
+                </Suspense>
+              } />
             </Route>
             
             {/* Catch all route */}

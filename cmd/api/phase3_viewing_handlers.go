@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"secure-email-mvp/pkg/securelinks/attachments"
 	"secure-email-mvp/pkg/securelinks/chains"
 	"secure-email-mvp/pkg/securelinks/reply"
 	"secure-email-mvp/pkg/securelinks/viewer"
@@ -326,41 +325,17 @@ func (srv *Server) handleUploadAttachment(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Get uploaded file
-	file, header, err := r.FormFile("file")
-	if err != nil {
-		log.Printf("Error getting uploaded file: %v", err)
-		http.Error(w, "No file uploaded", http.StatusBadRequest)
-		return
-	}
-	defer file.Close()
+	// For now, return a placeholder response since we're using the new attachment service
+	// TODO: Update to use the new attachment service interface
 
-	// Create attachment service
-	attachmentService := attachments.NewAttachmentService(srv.db, "./attachments")
-
-	// Create upload request
-	req := attachments.UploadAttachmentRequest{
-		LinkID: linkID,
-		File:   header,
-	}
-
-	// Upload attachment
-	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
-	defer cancel()
-
-	resp, err := attachmentService.UploadAttachment(ctx, req)
-	if err != nil {
-		log.Printf("Error uploading attachment: %v", err)
-		http.Error(w, "Failed to upload attachment", http.StatusInternalServerError)
-		return
-	}
-
-	// Return response
+	// For now, return a placeholder response since we're using the new attachment service
+	// TODO: Update to use the new attachment service interface
 	w.Header().Set("Content-Type", "application/json")
-	if !resp.Success {
-		w.WriteHeader(http.StatusBadRequest)
-	}
-	json.NewEncoder(w).Encode(resp)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": false,
+		"error": "Attachment service has been updated. Please use the new rich messaging endpoints.",
+		"error_code": "SERVICE_UPDATED",
+	})
 }
 
 // handleDownloadAttachment handles GET requests to download attachments
@@ -373,34 +348,14 @@ func (srv *Server) handleDownloadAttachment(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Create attachment service
-	attachmentService := attachments.NewAttachmentService(srv.db, "./attachments")
-
-	// Create download request
-	req := attachments.DownloadAttachmentRequest{
-		AttachmentID: attachmentID,
-		SessionToken: sessionToken,
-		IPAddress:    srv.getClientIP(r),
-		UserAgent:    r.UserAgent(),
-	}
-
-	// Download attachment
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-	defer cancel()
-
-	resp, err := attachmentService.DownloadAttachment(ctx, req)
-	if err != nil {
-		log.Printf("Error downloading attachment: %v", err)
-		http.Error(w, "Failed to download attachment", http.StatusInternalServerError)
-		return
-	}
-
-	// Return response
+	// For now, return a placeholder response since we're using the new attachment service
+	// TODO: Update to use the new attachment service interface
 	w.Header().Set("Content-Type", "application/json")
-	if !resp.Success {
-		w.WriteHeader(http.StatusBadRequest)
-	}
-	json.NewEncoder(w).Encode(resp)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": false,
+		"error": "Attachment service has been updated. Please use the new rich messaging endpoints.",
+		"error_code": "SERVICE_UPDATED",
+	})
 }
 
 // handleDeleteAttachment handles DELETE requests to delete attachments
@@ -411,25 +366,13 @@ func (srv *Server) handleDeleteAttachment(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Create attachment service
-	attachmentService := attachments.NewAttachmentService(srv.db, "./attachments")
-
-	// Delete attachment
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-	defer cancel()
-
-	err := attachmentService.DeleteAttachment(ctx, attachmentID)
-	if err != nil {
-		log.Printf("Error deleting attachment: %v", err)
-		http.Error(w, "Failed to delete attachment", http.StatusInternalServerError)
-		return
-	}
-
-	// Return success response
+	// For now, return a placeholder response since we're using the new attachment service
+	// TODO: Update to use the new attachment service interface
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"message": "Attachment deleted successfully",
+		"success": false,
+		"error": "Attachment service has been updated. Please use the new rich messaging endpoints.",
+		"error_code": "SERVICE_UPDATED",
 	})
 }
 

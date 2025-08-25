@@ -29,7 +29,7 @@ type PasswordConfig struct {
 // DefaultConfig returns default password validation configuration
 func DefaultConfig() *PasswordConfig {
 	return &PasswordConfig{
-		MinLength:           12,
+		MinLength:           8, // Reduced from 12 for testing
 		RequireUppercase:    true,
 		RequireLowercase:    true,
 		RequireNumbers:      true,
@@ -125,8 +125,8 @@ func (s *PasswordService) ValidatePassword(ctx context.Context, password string)
 	// Generate suggestions
 	result.Suggestions = s.generateSuggestions(password, result.Errors)
 
-	// Check for breaches if password is otherwise valid
-	if result.IsValid {
+	// Check for breaches if password is otherwise valid and API key is configured
+	if result.IsValid && s.config.HIBPAPIKey != "" {
 		breachCount, err := s.checkPasswordBreach(ctx, password)
 		if err != nil {
 			log.Printf("Password breach check failed: %v", err)

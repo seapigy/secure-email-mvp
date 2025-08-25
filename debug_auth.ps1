@@ -63,7 +63,10 @@ function Test-Login {
     $loginData = @{
         email = $TestEmail
         password = $TestPassword
-        totp_code = "123456"  # Test TOTP code
+        # Generate correct TOTP code for test user
+$totpOutput = & "$PSScriptRoot\scripts\generate_totp.ps1" -Secret "JBSWY3DPEHPK3PXP"
+$currentTOTPCode = $totpOutput.Split("`n") | Where-Object { $_ -match 'CURRENT:' } | ForEach-Object { $_.Split(':')[1].Trim() }
+totp_code = $currentTOTPCode
     }
 
     $jsonBody = $loginData | ConvertTo-Json
@@ -160,6 +163,7 @@ if ($signupSuccess) {
 }
 
 Write-Info "=== Debug Complete ==="
+
 
 
 

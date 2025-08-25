@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"os"
+	"strconv"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
@@ -60,125 +61,300 @@ func GenerateTOTPSecret() (string, error) {
 
 // Authenticate verifies credentials (email, password, TOTP) and returns a JWT if successful. Enforces all security checks.
 func Authenticate(db *sql.DB, email, password, totpCode string) (string, string, error) {
-	// DIAGNOSTIC: Log authentication attempt
-	log.Printf("[AUTH_DEBUG] Authentication attempt for email: %s", email)
+	// STRUCTURED DEBUGGING: Initialize authentication trace
+	testMode := os.Getenv("TEST_MODE") == "true"
+	authTrace := map[string]interface{}{
+		"email":           email,
+		"email_normalized": "",
+		"user_found":      false,
+		"account_ok":      false,
+		"locked":          false,
+		"lock_until":      nil,
+		"pw_ok":           false,
+		"totp_required":   false,
+		"totp_ok":         false,
+		"session_ok":      false,
+		"final_auth_ok":   false,
+		"reason":          "",
+	}
 
-	// Validate inputs
+	// ENHANCED DEBUGGING: Log authentication attempt with request details
+	log.Printf("[AUTH_DEBUG] ===== AUTHENTICATION ATTEMPT START =====")
+	log.Printf("[AUTH_DEBUG] Email: %s", email)
+	log.Printf("[AUTH_DEBUG] Password length: %d", len(password))
+	log.Printf("[AUTH_DEBUG] TOTP code: %s", totpCode)
+	log.Printf("[AUTH_DEBUG] Timestamp: %v", time.Now())
+	log.Printf("[AUTH_DEBUG] Test mode: %t", testMode)
+
+	// 1. Email normalization
+	normalizedEmail := normalizeEmail(email)
+	authTrace["email_normalized"] = normalizedEmail
+	log.Printf("[AUTH_DEBUG] Email normalization: '%s' -> '%s'", email, normalizedEmail)
+
+	// 2. Input validation
 	if !ValidateEmail(email) {
-		log.Printf("[AUTH_DEBUG] Email validation failed for: %s", email)
+		authTrace["reason"] = "invalid email format"
+		log.Printf("[AUTH_DEBUG] ❌ Email validation failed for: %s", email)
+		if testMode {
+			log.Printf("[AUTH_DEBUG] AUTH_TRACE: %+v", authTrace)
+		}
 		return "", "", fmt.Errorf("invalid email format")
 	}
+	log.Printf("[AUTH_DEBUG] ✅ Email validation passed")
+
 	if !ValidatePassword(password) {
-		log.Printf("[AUTH_DEBUG] Password validation failed for: %s", email)
+		authTrace["reason"] = "invalid password length"
+		log.Printf("[AUTH_DEBUG] ❌ Password validation failed for: %s (length: %d)", email, len(password))
+		if testMode {
+			log.Printf("[AUTH_DEBUG] AUTH_TRACE: %+v", authTrace)
+		}
 		return "", "", fmt.Errorf("invalid password length")
 	}
+	log.Printf("[AUTH_DEBUG] ✅ Password validation passed")
+
 	if !ValidateTOTP(totpCode) {
-		log.Printf("[AUTH_DEBUG] TOTP validation failed for: %s", email)
+		authTrace["reason"] = "invalid TOTP format"
+		log.Printf("[AUTH_DEBUG] ❌ TOTP validation failed for: %s (code: %s)", email, totpCode)
+		if testMode {
+			log.Printf("[AUTH_DEBUG] AUTH_TRACE: %+v", authTrace)
+		}
 		return "", "", fmt.Errorf("invalid TOTP format")
 	}
+	log.Printf("[AUTH_DEBUG] ✅ TOTP format validation passed")
 
-	// Query user - handle both schema versions
+	// 3. User lookup with normalized email
 	var user struct {
 		ID           string
 		PasswordHash string
 		TOTPSecret   string
+		IsActive     *bool
+		EmailVerified *bool
+		LockedUntil  *time.Time
 	}
+
+	log.Printf("[AUTH_DEBUG] 🔍 Querying user from database with normalized email: %s", normalizedEmail)
 
 	// Try to query with password_hash column first (full schema)
-	err := db.QueryRow("SELECT id, password_hash, totp_secret FROM users WHERE email = ?", email).Scan(&user.ID, &user.PasswordHash, &user.TOTPSecret)
+	err := db.QueryRow("SELECT id, password_hash, totp_secret FROM users WHERE email = ?", normalizedEmail).Scan(&user.ID, &user.PasswordHash, &user.TOTPSecret)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			authTrace["reason"] = "user not found"
+			log.Printf("[AUTH_DEBUG] ❌ User not found in password_hash schema: %s", normalizedEmail)
+			if testMode {
+				log.Printf("[AUTH_DEBUG] AUTH_TRACE: %+v", authTrace)
+			}
 			return "", "", fmt.Errorf("user not found")
 		}
+		log.Printf("[AUTH_DEBUG] ⚠️  password_hash column query failed, trying password column: %v", err)
+
 		// If password_hash column doesn't exist, try with password column (simple schema)
-		err = db.QueryRow("SELECT id, password, totp_secret FROM users WHERE email = ?", email).Scan(&user.ID, &user.PasswordHash, &user.TOTPSecret)
+		err = db.QueryRow("SELECT id, password, totp_secret FROM users WHERE email = ?", normalizedEmail).Scan(&user.ID, &user.PasswordHash, &user.TOTPSecret)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				log.Printf("[AUTH_DEBUG] User not found: %s", email)
+				authTrace["reason"] = "user not found"
+				log.Printf("[AUTH_DEBUG] ❌ User not found in password column schema: %s", normalizedEmail)
+				if testMode {
+					log.Printf("[AUTH_DEBUG] AUTH_TRACE: %+v", authTrace)
+				}
 				return "", "", fmt.Errorf("user not found")
 			}
-			log.Printf("[AUTH_DEBUG] Database error for %s: %v", email, err)
+			authTrace["reason"] = "database error"
+			log.Printf("[AUTH_DEBUG] ❌ Database error for %s: %v", normalizedEmail, err)
+			if testMode {
+				log.Printf("[AUTH_DEBUG] AUTH_TRACE: %+v", authTrace)
+			}
 			return "", "", fmt.Errorf("database error: %v", err)
 		}
+		log.Printf("[AUTH_DEBUG] ✅ User found using password column schema")
+	} else {
+		log.Printf("[AUTH_DEBUG] ✅ User found using password_hash column schema")
 	}
 
-	// DIAGNOSTIC: Log user found and TOTP details
-	log.Printf("[AUTH_DEBUG] User found - ID: %s, Email: %s", user.ID, email)
-	log.Printf("[AUTH_DEBUG] TOTP Secret (base32): %s", user.TOTPSecret)
-	log.Printf("[AUTH_DEBUG] TOTP Code being validated: %s", totpCode)
-	log.Printf("[AUTH_DEBUG] Current timestamp: %v", time.Now())
+	authTrace["user_found"] = true
 
-	// DIAGNOSTIC: Log Argon2 parameters and email normalization
-	normalizedEmail := normalizeEmail(email)
-	log.Printf("[AUTH_DEBUG] Email normalization - Original: '%s', Normalized: '%s'", email, normalizedEmail)
-	log.Printf("[AUTH_DEBUG] Argon2 Parameters - Memory: %d, Iterations: %d, Parallelism: %d, KeyLength: %d",
-		GlobalAuthConfig.Argon2.Memory, GlobalAuthConfig.Argon2.Iterations,
-		GlobalAuthConfig.Argon2.Parallelism, GlobalAuthConfig.Argon2.KeyLength)
+	// ENHANCED DIAGNOSTIC: Log user details
+	log.Printf("[AUTH_DEBUG] 📋 User Details:")
+	log.Printf("[AUTH_DEBUG]   - ID: %s", user.ID)
+	log.Printf("[AUTH_DEBUG]   - Email: %s", normalizedEmail)
+	log.Printf("[AUTH_DEBUG]   - TOTP Secret (base32): %s", user.TOTPSecret)
+	log.Printf("[AUTH_DEBUG]   - TOTP Secret length: %d", len(user.TOTPSecret))
+	log.Printf("[AUTH_DEBUG]   - Password Hash length: %d", len(user.PasswordHash))
+	log.Printf("[AUTH_DEBUG]   - TOTP Code being validated: %s", totpCode)
 
-	// Verify password with Argon2 using new configuration
+	// 4. Account status check
+	if user.IsActive != nil && !*user.IsActive {
+		authTrace["account_ok"] = false
+		authTrace["reason"] = "account disabled"
+		log.Printf("[AUTH_DEBUG] ❌ Account is disabled for user: %s", normalizedEmail)
+		if testMode {
+			log.Printf("[AUTH_DEBUG] AUTH_TRACE: %+v", authTrace)
+		}
+		return "", "", fmt.Errorf("account disabled")
+	}
+
+	if user.EmailVerified != nil && !*user.EmailVerified {
+		authTrace["account_ok"] = false
+		authTrace["reason"] = "email not verified"
+		log.Printf("[AUTH_DEBUG] ❌ Email not verified for user: %s", normalizedEmail)
+		if testMode {
+			log.Printf("[AUTH_DEBUG] AUTH_TRACE: %+v", authTrace)
+		}
+		return "", "", fmt.Errorf("email not verified")
+	}
+
+	if user.LockedUntil != nil && time.Now().Before(*user.LockedUntil) {
+		authTrace["account_ok"] = false
+		authTrace["locked"] = true
+		authTrace["lock_until"] = user.LockedUntil
+		authTrace["reason"] = "account locked"
+		log.Printf("[AUTH_DEBUG] ❌ Account is locked until %v for user: %s", *user.LockedUntil, normalizedEmail)
+		if testMode {
+			log.Printf("[AUTH_DEBUG] AUTH_TRACE: %+v", authTrace)
+		}
+		return "", "", fmt.Errorf("account locked")
+	}
+
+	authTrace["account_ok"] = true
+	log.Printf("[AUTH_DEBUG] ✅ Account status check passed")
+
+	// 5. Password verification with detailed logging
+	log.Printf("[AUTH_DEBUG] 🔐 Starting password verification...")
+	
+	// Log Argon2 configuration
+	log.Printf("[AUTH_DEBUG] 🔧 Argon2 Configuration:")
+	log.Printf("[AUTH_DEBUG]   - Memory: %d", GlobalAuthConfig.Argon2.Memory)
+	log.Printf("[AUTH_DEBUG]   - Iterations: %d", GlobalAuthConfig.Argon2.Iterations)
+	log.Printf("[AUTH_DEBUG]   - Parallelism: %d", GlobalAuthConfig.Argon2.Parallelism)
+	log.Printf("[AUTH_DEBUG]   - KeyLength: %d", GlobalAuthConfig.Argon2.KeyLength)
+	
+	// Check for pepper
+	pepper := os.Getenv("AUTH_PEPPER")
+	pepperSet := pepper != ""
+	log.Printf("[AUTH_DEBUG]   - AUTH_PEPPER_SET: %t", pepperSet)
+	if pepperSet {
+		log.Printf("[AUTH_DEBUG]   - Pepper length: %d", len(pepper))
+	}
+
 	expectedHash := []byte(user.PasswordHash)
-	actualHash, err := hashPasswordWithConfig(password, email, GlobalAuthConfig.Argon2)
+	actualHash, err := hashPasswordWithConfig(password, normalizedEmail, GlobalAuthConfig.Argon2)
 	if err != nil {
-		log.Printf("[AUTH_DEBUG] Password hashing error: %v", err)
-		return "", "", fmt.Errorf("password verification error")
+		authTrace["reason"] = "password hashing error"
+		log.Printf("[AUTH_DEBUG] ❌ Password hashing error: %v", err)
+		if testMode {
+			log.Printf("[AUTH_DEBUG] AUTH_TRACE: %+v", authTrace)
+		}
+		return "", "", fmt.Errorf("password verification error: %v", err)
 	}
 
-	// DIAGNOSTIC: Log hash comparison details
-	logHashComparison(expectedHash, actualHash, email)
+	// ENHANCED DIAGNOSTIC: Log hash comparison details
+	logHashComparison(expectedHash, actualHash, normalizedEmail)
 
 	passwordValid := compareHashes(expectedHash, actualHash)
+	authTrace["pw_ok"] = passwordValid
+	log.Printf("[AUTH_DEBUG] 🔐 Password verification result: %t", passwordValid)
 
 	// Backward compatibility: try old hashing method if new method fails
 	if !passwordValid && !GlobalAuthConfig.UseNewFlow {
-		log.Printf("[AUTH_DEBUG] New hash method failed, trying old method for user: %s", email)
+		log.Printf("[AUTH_DEBUG] ⚠️  New hash method failed, trying old method for user: %s", normalizedEmail)
 
 		// Try old Argon2 parameters (hardcoded values)
 		oldHash := argon2.IDKey([]byte(password), []byte(normalizedEmail), 1, 64*1024, 4, 32)
 		passwordValid = compareHashes(expectedHash, oldHash)
+		authTrace["pw_ok"] = passwordValid
 
 		if passwordValid {
-			log.Printf("[AUTH_DEBUG] Old hash method succeeded, user should be migrated: %s", email)
+			log.Printf("[AUTH_DEBUG] ✅ Old hash method succeeded, user should be migrated: %s", normalizedEmail)
 			// TODO: Implement password rehashing on next login
+		} else {
+			log.Printf("[AUTH_DEBUG] ❌ Old hash method also failed: %s", normalizedEmail)
 		}
 	}
 
 	if !passwordValid {
-		log.Printf("[AUTH_DEBUG] Password verification FAILED for user: %s", email)
+		authTrace["reason"] = "invalid password"
+		log.Printf("[AUTH_DEBUG] ❌ Password verification FAILED for user: %s", normalizedEmail)
+		if testMode {
+			log.Printf("[AUTH_DEBUG] AUTH_TRACE: %+v", authTrace)
+		}
 		return "", "", fmt.Errorf("invalid password")
 	}
 
-	log.Printf("[AUTH_DEBUG] Password verification SUCCESS for user: %s", email)
+	log.Printf("[AUTH_DEBUG] ✅ Password verification SUCCESS for user: %s", normalizedEmail)
 
-	// DIAGNOSTIC: Log TOTP validation details
-	logTOTPValidation(totpCode, user.TOTPSecret, GlobalAuthConfig.TOTP)
+	// 6. TOTP verification with detailed logging
+	authTrace["totp_required"] = true
+	log.Printf("[AUTH_DEBUG] 🔢 Starting TOTP verification...")
+	
+	// Log TOTP configuration
+	totpWindow := 1
+	if testMode {
+		if envWindow := os.Getenv("AUTH_TEST_ALLOW_TOTP_WINDOW"); envWindow != "" {
+			if window, err := strconv.Atoi(envWindow); err == nil {
+				totpWindow = window
+			}
+		}
+	}
+	
+	serverTime := time.Now()
+	log.Printf("[AUTH_DEBUG] 🔧 TOTP Configuration:")
+	log.Printf("[AUTH_DEBUG]   - Window steps: ±%d", totpWindow)
+	log.Printf("[AUTH_DEBUG]   - Server time: %v", serverTime)
+	log.Printf("[AUTH_DEBUG]   - TOTP secret: %s", user.TOTPSecret)
+	log.Printf("[AUTH_DEBUG]   - TOTP code: %s", totpCode)
 
 	// Verify TOTP using new configuration with time skew tolerance
 	totpValid := validateTOTPWithConfig(totpCode, user.TOTPSecret, GlobalAuthConfig.TOTP)
+	authTrace["totp_ok"] = totpValid
+	log.Printf("[AUTH_DEBUG] 🔢 TOTP verification result: %t", totpValid)
 
 	if !totpValid {
-		log.Printf("[AUTH_DEBUG] TOTP verification FAILED for user: %s", email)
+		authTrace["reason"] = "invalid TOTP code"
+		log.Printf("[AUTH_DEBUG] ❌ TOTP verification FAILED for user: %s", normalizedEmail)
+		if testMode {
+			log.Printf("[AUTH_DEBUG] AUTH_TRACE: %+v", authTrace)
+		}
 		return "", "", fmt.Errorf("invalid TOTP code")
 	}
 
-	log.Printf("[AUTH_DEBUG] TOTP verification SUCCESS for user: %s", email)
+	log.Printf("[AUTH_DEBUG] ✅ TOTP verification SUCCESS for user: %s", normalizedEmail)
 
-	// Generate JWT
+	// 7. Session/JWT generation
+	log.Printf("[AUTH_DEBUG] 🎫 Generating JWT token...")
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
+		authTrace["reason"] = "JWT secret not configured"
+		log.Printf("[AUTH_DEBUG] ❌ JWT_SECRET not configured")
+		if testMode {
+			log.Printf("[AUTH_DEBUG] AUTH_TRACE: %+v", authTrace)
+		}
 		return "", "", fmt.Errorf("JWT_SECRET not configured")
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,
-		"email":   email,
+		"email":   normalizedEmail,
 		"exp":     time.Now().Add(24 * time.Hour).Unix(),
 		"iat":     time.Now().Unix(),
 	})
 	tokenString, err := token.SignedString([]byte(jwtSecret))
 	if err != nil {
+		authTrace["reason"] = "JWT signing error"
+		log.Printf("[AUTH_DEBUG] ❌ JWT signing error: %v", err)
+		if testMode {
+			log.Printf("[AUTH_DEBUG] AUTH_TRACE: %+v", authTrace)
+		}
 		return "", "", fmt.Errorf("JWT signing error: %v", err)
 	}
 
+	authTrace["session_ok"] = true
+	authTrace["final_auth_ok"] = true
+	log.Printf("[AUTH_DEBUG] ✅ JWT token generated successfully")
+	log.Printf("[AUTH_DEBUG] ===== AUTHENTICATION ATTEMPT SUCCESS =====")
+	
+	if testMode {
+		log.Printf("[AUTH_DEBUG] AUTH_TRACE: %+v", authTrace)
+	}
+	
 	return tokenString, user.ID, nil
 }
 

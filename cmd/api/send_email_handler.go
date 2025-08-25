@@ -22,6 +22,7 @@ import (
 	"secure-email-mvp/pkg/mfa"
 	"secure-email-mvp/pkg/pqc"
 	"secure-email-mvp/pkg/securelinks"
+	securelinksemail "secure-email-mvp/pkg/securelinks/email"
 	"secure-email-mvp/pkg/securelinks/security"
 	"secure-email-mvp/pkg/storage"
 
@@ -842,5 +843,87 @@ func (srv *Server) createSecureLinkForExternalRecipient(emailID string, req Send
 		return nil, fmt.Errorf("failed to create secure link: %w", err)
 	}
 
+	// Send secure link email to external recipient
+	if err := srv.sendSecureLinkEmail(ctx, response, req, senderID); err != nil {
+		log.Printf("⚠️ Failed to send secure link email: %v", err)
+		// Don't fail the entire operation for email sending errors
+		// The secure link is still created and can be accessed
+	}
+
 	return response, nil
+}
+
+// sendSecureLinkEmail sends a secure link notification email to an external recipient
+func (srv *Server) sendSecureLinkEmail(ctx context.Context, secureLinkResponse *securelinks.CreateSecureLinkResponse, req SendEmailRequest, senderID string) error {
+	// Get sender information
+	var senderName, senderEmail string
+	err := srv.db.QueryRowContext(ctx, "SELECT email FROM users WHERE id = ?", senderID).Scan(&senderEmail)
+	if err != nil {
+		return fmt.Errorf("failed to get sender information: %w", err)
+	}
+
+	// Convert security settings to email service format
+	securityContext := securelinksemail.SecurityContext{
+		RequirePassword:        req.Password != "",
+		RequireMFA:             req.RequireMFA,
+		MFAType:                req.MFAType,
+		GeolocationRestriction: req.GeoVerificationType != "none",
+		AllowedCountries:       []string{},
+		AllowedCities:          []string{},
+		TimeLock:               req.TimeLock,
+		TimeLockUntil:          nil,
+		ReadOnce:               req.BurnAfterRead,
+		AutoDestruct:           req.SelfDestructAfterAttempts,
+		ExpiresAt:              nil,
+	}
+
+	// Set geolocation restrictions
+	if req.GeoVerificationType != "none" {
+		if req.GeoCountry != "" {
+			securityContext.AllowedCountries = []string{req.GeoCountry}
+		}
+		if req.GeoCity != "" {
+			securityContext.AllowedCities = []string{req.GeoCity}
+		}
+	}
+
+	// Set time lock if provided
+	if req.TimeLock && req.UnlockAfter != "" {
+		unlockAt, err := time.Parse(time.RFC3339, req.UnlockAfter)
+		if err == nil {
+			securityContext.TimeLockUntil = &unlockAt
+		}
+	}
+
+	// Set expiration if provided
+	if req.ExpiresAt != "" {
+		expiresAt, err := time.Parse(time.RFC3339, req.ExpiresAt)
+		if err == nil {
+			securityContext.ExpiresAt = &expiresAt
+		}
+	}
+
+	// Create email request
+	emailReq := securelinksemail.SecureLinkEmailRequest{
+		LinkID:          secureLinkResponse.LinkID,
+		RecipientEmail:  req.Recipient,
+		SenderName:      senderName,
+		SenderEmail:     senderEmail,
+		SecurityContext: securityContext,
+		CustomMessage:   nil, // Use default template
+		LinkExpiresAt:   secureLinkResponse.ExpiresAt,
+	}
+
+	// Send the email
+	emailResponse, err := srv.secureLinkEmailService.SendSecureLinkEmail(ctx, emailReq)
+	if err != nil {
+		return fmt.Errorf("failed to send secure link email: %w", err)
+	}
+
+	if !emailResponse.Success {
+		return fmt.Errorf("email service returned failure: %s", emailResponse.Error)
+	}
+
+	log.Printf("✅ Secure link email sent successfully to %s (Transaction ID: %s)", req.Recipient, emailResponse.TransactionID)
+	return nil
 }
