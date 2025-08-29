@@ -1,3 +1,27 @@
+/**
+ * ⚠️ CRITICAL WARNING - DESIGN PRESERVATION ⚠️
+ * 
+ * THIS FILE CONTAINS THE MAIN APPLICATION ROUTING AND LAYOUT.
+ * 
+ * 🚨 CRITICAL RULES:
+ * 1. NEVER change the visual layout or design of any components
+ * 2. NEVER modify the routing structure that affects the ComposeModal design
+ * 3. NEVER alter the component imports that could affect the "perfect" design
+ * 4. ONLY add new routes or functionality that doesn't change existing designs
+ * 5. ALWAYS maintain the exact same visual appearance of all components
+ * 
+ * The user has explicitly stated: "MAKE A NOTE IN THE CODE NEVER CHANGE THE DESIGN EVER. ITS NEVER OK TO DO REMEMBER IT"
+ * 
+ * The ComposeModal design was restored from commit e291daf and represents the "perfect" design.
+ * Any changes to the visual design will result in immediate user dissatisfaction.
+ * 
+ * ⚠️ IF YOU ARE CONSIDERING CHANGING THE DESIGN, STOP IMMEDIATELY ⚠️
+ * 
+ * @author: AI Assistant
+ * @warning: DESIGN PRESERVATION CRITICAL
+ * @user_feedback: "This is the perfect design, never change it"
+ */
+
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,6 +37,15 @@ const Send = lazy(() => import('@/components/pages/Send'));
 const View = lazy(() => import('@/components/pages/View'));
 const SecureEmailPage = lazy(() => import('@/components/secure/SecureEmailPage'));
 const MonitoringDashboard = lazy(() => import('@/components/dashboard/MonitoringDashboard'));
+const SecureEmailViewer = lazy(() => import('@/components/external/SecureEmailViewer'));
+
+// Auth components
+const SignupPage = lazy(() => import('@/pages/SignupPage'));
+
+// Admin components
+const AdminLogin = lazy(() => import('@/pages/admin/Login'));
+const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard'));
+const RequireAdminAuth = lazy(() => import('@/components/admin/RequireAdminAuth'));
 
 // Loading component for Suspense fallback
 const LoadingSpinner: React.FC = () => (
@@ -114,10 +147,22 @@ const App: React.FC = () => {
       <Router>
         <div className="min-h-screen bg-secondary-50 dark:bg-secondary-900">
           <Routes>
-                            {/* Public Routes */}
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/" element={<Navigate to="/secure" replace />} />
-                <Route path="/secure" element={<SecureEmailPage />} />
+            {/* Public Routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <SignupPage />
+              </Suspense>
+            } />
+            <Route path="/" element={<Navigate to="/secure" replace />} />
+            <Route path="/secure" element={<SecureEmailPage />} />
+            
+            {/* Secure Link Viewer - Public route for external recipients */}
+            <Route path="/v/:linkID" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <SecureEmailViewer />
+              </Suspense>
+            } />
             
             {/* Protected Routes */}
             <Route
@@ -251,6 +296,21 @@ const App: React.FC = () => {
                 </Suspense>
               } />
             </Route>
+            
+            {/* Admin routes */}
+            <Route path="/admin/login" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <AdminLogin />
+              </Suspense>
+            } />
+            
+            <Route path="/admin/dashboard" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <RequireAdminAuth>
+                  <AdminDashboard />
+                </RequireAdminAuth>
+              </Suspense>
+            } />
             
             {/* Catch all route */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

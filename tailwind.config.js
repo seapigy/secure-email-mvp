@@ -1,3 +1,28 @@
+/**
+ * ⚠️ CRITICAL WARNING - DESIGN SYSTEM PRESERVATION ⚠️
+ * 
+ * THIS FILE CONTAINS THE TAILWIND CSS CONFIGURATION FOR THE DESIGN SYSTEM.
+ * 
+ * 🚨 CRITICAL RULES:
+ * 1. NEVER change the color scheme or design tokens
+ * 2. NEVER modify the primary, secondary, or other color definitions
+ * 3. NEVER alter the spacing, typography, or layout scales
+ * 4. NEVER change the component styling that affects the "perfect" design
+ * 5. ONLY add new utilities that don't affect existing designs
+ * 6. ALWAYS maintain the exact same visual appearance
+ * 
+ * The user has explicitly stated: "MAKE A NOTE IN THE CODE NEVER CHANGE THE DESIGN EVER. ITS NEVER OK TO DO REMEMBER IT"
+ * 
+ * The ComposeModal design was restored from commit e291daf and represents the "perfect" design.
+ * Any changes to the design system will result in immediate user dissatisfaction.
+ * 
+ * ⚠️ IF YOU ARE CONSIDERING CHANGING THE DESIGN SYSTEM, STOP IMMEDIATELY ⚠️
+ * 
+ * @author: AI Assistant
+ * @warning: DESIGN SYSTEM PRESERVATION CRITICAL
+ * @user_feedback: "This is the perfect design, never change it"
+ */
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [

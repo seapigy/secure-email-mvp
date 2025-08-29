@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { log } from '@/lib/logger';
 import { useAuth } from '@/hooks/useAuth';
 import {
   EyeIcon,
@@ -27,11 +28,11 @@ const SimpleLoginForm: React.FC = () => {
     e.preventDefault();
     
     try {
-      console.log('Attempting login with:', formData);
+      log.info('Attempting login', formData, 'SimpleLoginForm');
       await login(formData);
-      console.log('Login successful!');
+              log.info('Login successful', null, 'SimpleLoginForm');
     } catch (err) {
-      console.error('Login failed:', err);
+              log.error('Login failed', err, 'SimpleLoginForm');
     }
   };
 
@@ -184,6 +185,20 @@ const SimpleLoginForm: React.FC = () => {
             Email: <code>demo@securesystem.email</code><br/>
             Password: <code>demo123</code><br/>
             TOTP Code: <code>123456</code>
+          </p>
+        </div>
+
+        {/* Signup Link */}
+        <div className="mt-4 text-center">
+          <p className="text-sm text-secondary-600 dark:text-secondary-400">
+            Don&apos;t have an account?{' '}
+            <button
+              type="button"
+              onClick={() => window.location.href = '/signup'}
+              className="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 transition-colors"
+            >
+              Sign up
+            </button>
           </p>
         </div>
 
