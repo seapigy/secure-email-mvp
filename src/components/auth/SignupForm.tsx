@@ -74,10 +74,16 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSubmit, initialData, onBack }
 
   const validateEmail = (email: string): string | null => {
     if (!email) return 'Email is required';
-    if (!email.endsWith('@securesystem.email')) {
+    
+    // For free accounts, automatically append @securesystem.email if not present
+    let fullEmail = email;
+    if (!email.includes('@')) {
+      fullEmail = email + '@securesystem.email';
+    } else if (!email.endsWith('@securesystem.email')) {
       return 'Email must end with @securesystem.email';
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fullEmail)) {
       return 'Please enter a valid email address';
     }
     return null;
@@ -145,8 +151,19 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSubmit, initialData, onBack }
       return;
     }
 
-    log.info('Form submitted successfully', { email: formData.email }, 'SignupForm');
-    onSubmit(formData);
+    // Automatically append @securesystem.email if not present
+    let finalEmail = formData.email;
+    if (!formData.email.includes('@')) {
+      finalEmail = formData.email + '@securesystem.email';
+    }
+
+    const finalFormData = {
+      ...formData,
+      email: finalEmail
+    };
+
+    log.info('Form submitted successfully', { email: finalEmail }, 'SignupForm');
+    onSubmit(finalFormData);
   };
 
   return (
@@ -165,36 +182,38 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSubmit, initialData, onBack }
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Email Field */}
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">
-              Email Address
-            </label>
-            <div className="relative">
-              <input
-                id="email"
-                type="email"
-                placeholder="user@securesystem.email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                className={`block w-full rounded-lg border px-3 py-2 text-sm placeholder-secondary-500 focus:outline-none focus:ring-1 transition-colors pr-10 ${
-                  validationErrors.email
-                    ? 'border-error-300 bg-error-50 text-error-900 focus:border-error-500 focus:ring-error-500 dark:border-error-600 dark:bg-error-900/20 dark:text-error-200'
-                    : 'border-secondary-300 bg-white text-secondary-900 focus:border-primary-500 focus:ring-primary-500 dark:border-secondary-600 dark:bg-secondary-800 dark:text-white'
-                }`}
-                required
-              />
-              <EnvelopeIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-secondary-400" />
-            </div>
-            {validationErrors.email && (
-              <p className="mt-1 text-sm text-error-600 dark:text-error-400">
-                {validationErrors.email}
-              </p>
-            )}
-            <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-              Must end with @securesystem.email
-            </p>
-          </div>
+                     {/* Email Field */}
+           <div>
+             <label htmlFor="email" className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">
+               Email Address
+             </label>
+             <div className="relative">
+               <input
+                 id="email"
+                 type="text"
+                 placeholder="username"
+                 value={formData.email}
+                 onChange={(e) => handleInputChange('email', e.target.value)}
+                 className={`block w-full rounded-lg border px-3 py-2 text-sm placeholder-secondary-500 focus:outline-none focus:ring-1 transition-colors pr-32 ${
+                   validationErrors.email
+                     ? 'border-error-300 bg-error-50 text-error-900 focus:border-error-500 focus:ring-error-500 dark:border-error-600 dark:bg-error-900/20 dark:text-error-200'
+                     : 'border-secondary-300 bg-white text-secondary-900 focus:border-primary-500 focus:ring-primary-500 dark:border-secondary-600 dark:bg-secondary-800 dark:text-white'
+                 }`}
+                 required
+               />
+               <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center">
+                 <span className="text-sm text-secondary-500 dark:text-secondary-400 mr-2">
+                   @securesystem.email
+                 </span>
+                 <EnvelopeIcon className="h-5 w-5 text-secondary-400" />
+               </div>
+             </div>
+             {validationErrors.email && (
+               <p className="mt-1 text-sm text-error-600 dark:text-error-400">
+                 {validationErrors.email}
+               </p>
+             )}
+           </div>
 
           {/* Password Field */}
           <div>

@@ -109,7 +109,7 @@ const AccountTypeSelector: React.FC<AccountTypeSelectorProps> = ({ onSelect, sel
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div className="w-full max-w-8xl mx-auto px-4">
       <div className="bg-white dark:bg-secondary-900 rounded-2xl shadow-xl border border-secondary-200 dark:border-secondary-700 p-8">
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-primary-100 dark:bg-primary-900/20 rounded-full flex items-center justify-center mb-4">
@@ -125,17 +125,17 @@ const AccountTypeSelector: React.FC<AccountTypeSelectorProps> = ({ onSelect, sel
           </p>
         </div>
 
-        <div className="space-y-4">
+        <div className="flex flex-col lg:flex-row gap-4">
           {accountTypes.map((option) => (
-            <div
-              key={option.type}
-              className={`relative p-6 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
-                selectedType === option.type
-                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                  : 'border-secondary-200 dark:border-secondary-700 hover:border-primary-300 dark:hover:border-primary-600'
-              }`}
-              onClick={() => handleSelect(option.type)}
-            >
+                         <div
+               key={option.type}
+                               className={`relative p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 flex-1 flex flex-col min-w-[250px] ${
+                 selectedType === option.type
+                   ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                   : 'border-secondary-200 dark:border-secondary-700 hover:border-primary-300 dark:hover:border-primary-600'
+               }`}
+               onClick={() => handleSelect(option.type)}
+             >
               {option.popular && (
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                   <span className="bg-primary-600 text-white text-xs font-medium px-3 py-1 rounded-full">
@@ -144,43 +144,37 @@ const AccountTypeSelector: React.FC<AccountTypeSelectorProps> = ({ onSelect, sel
                 </div>
               )}
 
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className={`p-2 rounded-lg ${
-                    selectedType === option.type
-                      ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
-                      : 'bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-400'
-                  }`}>
-                    {option.icon}
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-secondary-900 dark:text-white">
-                      {option.title}
-                    </h3>
-                    <p className="text-sm text-secondary-600 dark:text-secondary-400">
-                      {option.description}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-secondary-900 dark:text-white">
-                    {option.price}
-                  </div>
-                </div>
-              </div>
+                             <div className="text-center mb-4">
+                 <div className={`inline-flex p-3 rounded-lg mb-3 ${
+                   selectedType === option.type
+                     ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
+                     : 'bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-400'
+                 }`}>
+                   {option.icon}
+                 </div>
+                 <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-1">
+                   {option.title}
+                 </h3>
+                 <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-2">
+                   {option.description}
+                 </p>
+                 <div className="text-2xl font-bold text-secondary-900 dark:text-white">
+                   {option.price}
+                 </div>
+               </div>
 
-              <ul className="space-y-2">
-                {option.features.map((feature, index) => (
-                  <li key={index} className="flex items-center text-sm text-secondary-700 dark:text-secondary-300">
-                    <svg className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    {feature}
-                  </li>
-                ))}
-              </ul>
+                             <ul className="space-y-2 flex-1">
+                 {option.features.map((feature, index) => (
+                   <li key={index} className="flex items-center text-sm text-secondary-700 dark:text-secondary-300">
+                     <svg className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                     </svg>
+                     {feature}
+                   </li>
+                 ))}
+               </ul>
 
-              <div className="mt-4">
+               <div className="mt-auto pt-4">
                 <button
                   type="button"
                   className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${

@@ -89,7 +89,7 @@ const SignupPage: React.FC = () => {
     setCurrentStep('payment');
   };
 
-  const handlePaymentSubmit = (paymentData: any) => {
+  const handlePaymentSubmit = (paymentData: { method: string }) => {
     log.info('Payment submitted', { plan: signupData.selectedPlan }, 'SignupPage');
     setSignupData(prev => ({ ...prev, paymentMethod: paymentData.method }));
     setCurrentStep('confirmation');
@@ -98,7 +98,7 @@ const SignupPage: React.FC = () => {
   const handleCompanyInfoSubmit = (data: Partial<SignupData>) => {
     log.info('Company info submitted', { companyName: data.companyName }, 'SignupPage');
     setSignupData(prev => ({ ...prev, ...data }));
-    setCurrentStep('plan-selection');
+    setCurrentStep('confirmation');
   };
 
   const handleFinalSubmit = async () => {
@@ -108,36 +108,32 @@ const SignupPage: React.FC = () => {
     try {
       log.info('Final signup submission', { accountType: signupData.accountType }, 'SignupPage');
       
-      // Call appropriate signup endpoint based on account type
-      if (signupData.accountType === 'company') {
-        // TODO: Implement company signup endpoint
-        log.warn('Company signup endpoint not implemented yet', null, 'SignupPage');
-      } else {
-        // Use existing signup endpoint
-        const response = await fetch('/api/auth/signup', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: signupData.email,
-            password: signupData.password,
-            fallback_email: signupData.fallbackEmail,
-          }),
-        });
+      // Use the new privacy-compliant signup endpoint for all account types
+      const response = await fetch('/api/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          plan: signupData.accountType,
+          email: signupData.email,
+          password: signupData.password,
+          company_code: signupData.accountType === 'company' ? signupData.companyName : undefined,
+        }),
+      });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Signup failed');
-        }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Signup failed');
       }
 
-      log.info('Signup successful', { email: signupData.email }, 'SignupPage');
+      const result = await response.json();
+      log.info('Signup successful', { user_id: result.user_id, next_step: result.next_step }, 'SignupPage');
       
       // Redirect to login with success message
       navigate('/login', { 
         state: { 
-          message: 'Account created successfully! Please check your fallback email for confirmation.' 
+          message: 'Account created successfully! Please check your email for verification.' 
         } 
       });
     } catch (err) {
@@ -345,7 +341,7 @@ const SignupPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50 dark:from-secondary-900 dark:via-secondary-800 dark:to-secondary-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-8xl">
         <div className="text-center mb-8">
           <div className="mx-auto w-20 h-20 bg-primary-100 dark:bg-primary-900/20 rounded-full flex items-center justify-center mb-6">
             <svg className="h-10 w-10 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
