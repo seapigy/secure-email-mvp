@@ -77,7 +77,7 @@ button {
 /* Dark mode detection and application */
 @media (prefers-color-scheme: dark) {
   html:not(.light) {
-    color-scheme: dark;
+    @apply dark;
   }
 }
 
