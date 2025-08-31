@@ -8,7 +8,7 @@ process.env.NODE_ENV = 'test';
 
 // Database configuration for tests
 process.env.DB_CLIENT = 'sqlite3';
-process.env.DB_FILE = ':memory:'; // Use in-memory database for tests
+process.env.DB_FILE = './data/test.db'; // Use file-based database for tests
 
 // JWT secret for tests
 process.env.JWT_SECRET = 'test-jwt-secret-key-for-testing-only';

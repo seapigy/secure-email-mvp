@@ -15,7 +15,7 @@
 
 import request from 'supertest';
 import { app } from '../app';
-import { db } from '../lib/db';
+import { db, initializeTestDatabase } from '../lib/db';
 import * as argon2 from 'argon2';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -52,6 +52,9 @@ jest.mock('../lib/totp', () => ({
  * Setup test database and user
  */
 beforeAll(async () => {
+  // Ensure database tables exist
+  await initializeTestDatabase();
+  
   // Clear test data
   await db('users').del();
 
@@ -676,12 +679,378 @@ describe('🔐 User Login Flow', () => {
   });
 });
 
+describe('📧 Email Inbox Functionality', () => {
+  let user1Token: string;
+  let user2Token: string;
+  let user1Id: string;
+  let user2Id: string;
+
+  beforeAll(async () => {
+    // Ensure database tables exist before creating test users
+    await initializeTestDatabase();
+    
+    // Create two test users for inbox testing
+    user1Id = uuidv4();
+    user2Id = uuidv4();
+
+    const user1Hash = await argon2.hash('Password123!', {
+      type: argon2.argon2id,
+      memoryCost: 2 ** 16,
+      timeCost: 3,
+      parallelism: 2,
+    });
+
+    const user2Hash = await argon2.hash('Password123!', {
+      type: argon2.argon2id,
+      memoryCost: 2 ** 16,
+      timeCost: 3,
+      parallelism: 2,
+    });
+
+    // Insert test users
+    await db('users').insert([
+      {
+        id: user1Id,
+        email: 'user1@example.com',
+        password: '',
+        password_hash: user1Hash,
+        totp_secret: 'JBSWY3DPEHPK3PXP',
+        name: 'User One',
+        created_at: new Date(),
+        failed_login_attempts: 0,
+        fallback_confirmed: false,
+        is_active: true,
+        email_verified: true,
+        updated_at: new Date()
+      },
+      {
+        id: user2Id,
+        email: 'user2@example.com',
+        password: '',
+        password_hash: user2Hash,
+        totp_secret: 'JBSWY3DPEHPK3PXP',
+        name: 'User Two',
+        created_at: new Date(),
+        failed_login_attempts: 0,
+        fallback_confirmed: false,
+        is_active: true,
+        email_verified: true,
+        updated_at: new Date()
+      }
+    ]);
+
+    // Login to get tokens
+    const user1Login = await request(app)
+      .post('/api/auth/simple-login')
+      .send({
+        email: 'user1@example.com',
+        password: 'Password123!'
+      });
+
+    const user2Login = await request(app)
+      .post('/api/auth/simple-login')
+      .send({
+        email: 'user2@example.com',
+        password: 'Password123!'
+      });
+
+    user1Token = user1Login.body.access_token;
+    user2Token = user2Login.body.access_token;
+  });
+
+  beforeEach(async () => {
+    // Clear emails before each test
+    await db('emails').del();
+  });
+
+  it('should return empty inbox for user with no emails', async () => {
+    const response = await request(app)
+      .get('/api/email/inbox')
+      .set('Authorization', `Bearer ${user1Token}`)
+      .expect(200);
+
+    expect(response.body).toHaveProperty('emails');
+    expect(response.body).toHaveProperty('count', 0);
+    expect(response.body.emails).toEqual([]);
+  });
+
+  it('should return user\'s emails only', async () => {
+    // Create emails for user1
+    await db('emails').insert([
+      {
+        email_id: uuidv4(),
+        sender_id: user2Id,
+        recipient: 'user1@example.com',
+        subject: 'Test Email 1',
+        created_at: new Date(),
+        self_destructed: false
+      },
+      {
+        email_id: uuidv4(),
+        sender_id: user2Id,
+        recipient: 'user1@example.com',
+        subject: 'Test Email 2',
+        created_at: new Date(),
+        self_destructed: false
+      }
+    ]);
+
+    // Create email for user2 (should not appear in user1's inbox)
+    await db('emails').insert({
+      email_id: uuidv4(),
+      sender_id: user1Id,
+      recipient: 'user2@example.com',
+      subject: 'User2 Email',
+      created_at: new Date(),
+      self_destructed: false
+    });
+
+    const response = await request(app)
+      .get('/api/email/inbox')
+      .set('Authorization', `Bearer ${user1Token}`)
+      .expect(200);
+
+    expect(response.body).toHaveProperty('emails');
+    expect(response.body).toHaveProperty('count', 2);
+    expect(response.body.emails).toHaveLength(2);
+    
+    // Verify only user1's emails are returned
+    const subjects = response.body.emails.map((email: any) => email.subject);
+    expect(subjects).toContain('Test Email 1');
+    expect(subjects).toContain('Test Email 2');
+    expect(subjects).not.toContain('User2 Email');
+  });
+
+  it('should include sender information in email list', async () => {
+    await db('emails').insert({
+      email_id: uuidv4(),
+      sender_id: user2Id,
+      recipient: 'user1@example.com',
+      subject: 'Test Email',
+      created_at: new Date(),
+      self_destructed: false
+    });
+
+    const response = await request(app)
+      .get('/api/email/inbox')
+      .set('Authorization', `Bearer ${user1Token}`)
+      .expect(200);
+
+    expect(response.body.emails).toHaveLength(1);
+    expect(response.body.emails[0]).toHaveProperty('sender');
+    expect(response.body.emails[0].sender).toBe('User Two'); // Should use name from users table
+  });
+
+  it('should include security flags in email list', async () => {
+    await db('emails').insert({
+      email_id: uuidv4(),
+      sender_id: user2Id,
+      recipient: 'user1@example.com',
+      subject: 'Secure Email',
+      requires_password: true,
+      burn_after_read: true,
+      require_mfa: true,
+      created_at: new Date(),
+      self_destructed: false
+    });
+
+    const response = await request(app)
+      .get('/api/email/inbox')
+      .set('Authorization', `Bearer ${user1Token}`)
+      .expect(200);
+
+    expect(response.body.emails).toHaveLength(1);
+    expect(response.body.emails[0]).toHaveProperty('securityFlags');
+    expect(response.body.emails[0].securityFlags).toContain('password_protected');
+    expect(response.body.emails[0].securityFlags).toContain('burn_after_read');
+    expect(response.body.emails[0].securityFlags).toContain('mfa_required');
+  });
+
+  it('should exclude self-destructed emails', async () => {
+    await db('emails').insert([
+      {
+        email_id: uuidv4(),
+        sender_id: user2Id,
+        recipient: 'user1@example.com',
+        subject: 'Active Email',
+        created_at: new Date(),
+        self_destructed: false
+      },
+      {
+        email_id: uuidv4(),
+        sender_id: user2Id,
+        recipient: 'user1@example.com',
+        subject: 'Destroyed Email',
+        created_at: new Date(),
+        self_destructed: true
+      }
+    ]);
+
+    const response = await request(app)
+      .get('/api/email/inbox')
+      .set('Authorization', `Bearer ${user1Token}`)
+      .expect(200);
+
+    expect(response.body.emails).toHaveLength(1);
+    expect(response.body.emails[0].subject).toBe('Active Email');
+  });
+
+  it('should order emails by creation date (newest first)', async () => {
+    const oldDate = new Date('2023-01-01T00:00:00.000Z');
+    const newDate = new Date('2023-12-01T00:00:00.000Z');
+
+    await db('emails').insert([
+      {
+        email_id: uuidv4(),
+        sender_id: user2Id,
+        recipient: 'user1@example.com',
+        subject: 'Old Email',
+        created_at: oldDate.toISOString(),
+        self_destructed: false
+      },
+      {
+        email_id: uuidv4(),
+        sender_id: user2Id,
+        recipient: 'user1@example.com',
+        subject: 'New Email',
+        created_at: newDate.toISOString(),
+        self_destructed: false
+      }
+    ]);
+
+    const response = await request(app)
+      .get('/api/email/inbox')
+      .set('Authorization', `Bearer ${user1Token}`)
+      .expect(200);
+
+    expect(response.body.emails).toHaveLength(2);
+    expect(response.body.emails[0].subject).toBe('New Email');
+    expect(response.body.emails[1].subject).toBe('Old Email');
+  });
+
+  it('should handle emails with missing subject', async () => {
+    await db('emails').insert({
+      email_id: uuidv4(),
+      sender_id: user2Id,
+      recipient: 'user1@example.com',
+      subject: null,
+      created_at: new Date(),
+      self_destructed: false
+    });
+
+    const response = await request(app)
+      .get('/api/email/inbox')
+      .set('Authorization', `Bearer ${user1Token}`)
+      .expect(200);
+
+    expect(response.body.emails).toHaveLength(1);
+    expect(response.body.emails[0].subject).toBe('No Subject');
+  });
+
+  it('should handle emails with unknown sender', async () => {
+    await db('emails').insert({
+      email_id: uuidv4(),
+      sender_id: null, // No sender_id
+      recipient: 'user1@example.com',
+      subject: 'Test Email',
+      created_at: new Date(),
+      self_destructed: false
+    });
+
+    const response = await request(app)
+      .get('/api/email/inbox')
+      .set('Authorization', `Bearer ${user1Token}`)
+      .expect(200);
+
+    expect(response.body.emails).toHaveLength(1);
+    expect(response.body.emails[0].sender).toBe('Unknown');
+  });
+
+  it('should reject unauthenticated requests', async () => {
+    const response = await request(app)
+      .get('/api/email/inbox')
+      .expect(401);
+
+    expect(response.body).toHaveProperty('error', 'Access token required');
+  });
+
+  it('should reject requests with invalid token', async () => {
+    const response = await request(app)
+      .get('/api/email/inbox')
+      .set('Authorization', 'Bearer invalid-token')
+      .expect(401);
+
+    expect(response.body).toHaveProperty('error', 'Invalid token');
+  });
+
+  it('should support recipient_id lookup in addition to recipient email', async () => {
+    // Create email using recipient_id instead of recipient email
+    await db('emails').insert({
+      email_id: uuidv4(),
+      sender_id: user2Id,
+      recipient: 'different@example.com', // Different email
+      recipient_id: user1Id, // But correct user ID
+      subject: 'Test Email',
+      created_at: new Date(),
+      self_destructed: false
+    });
+
+    const response = await request(app)
+      .get('/api/email/inbox')
+      .set('Authorization', `Bearer ${user1Token}`)
+      .expect(200);
+
+    expect(response.body.emails).toHaveLength(1);
+    expect(response.body.emails[0].subject).toBe('Test Email');
+  });
+
+  it('should not expose sensitive data in response', async () => {
+    await db('emails').insert({
+      email_id: uuidv4(),
+      sender_id: user2Id,
+      recipient: 'user1@example.com',
+      subject: 'Test Email',
+      encrypted_blob_url: 'sensitive-url',
+      encrypted_key: 'sensitive-key',
+      password_hash: 'sensitive-hash',
+      created_at: new Date(),
+      self_destructed: false
+    });
+
+    const response = await request(app)
+      .get('/api/email/inbox')
+      .set('Authorization', `Bearer ${user1Token}`)
+      .expect(200);
+
+    expect(response.body.emails).toHaveLength(1);
+    const email = response.body.emails[0];
+    
+    // Verify sensitive fields are not exposed
+    expect(email).not.toHaveProperty('encrypted_blob_url');
+    expect(email).not.toHaveProperty('encrypted_key');
+    expect(email).not.toHaveProperty('password_hash');
+    expect(email).not.toHaveProperty('sender_id');
+    
+    // Verify only safe fields are exposed
+    expect(email).toHaveProperty('id');
+    expect(email).toHaveProperty('sender');
+    expect(email).toHaveProperty('subject');
+    expect(email).toHaveProperty('timestamp');
+    expect(email).toHaveProperty('securityFlags');
+  });
+});
+
 describe('🔐 User Signup Flow', () => {
   const validSignupData = {
     email: 'newuser@example.com',
     password: 'SecurePassword123!',
     name: 'New Test User'
   };
+
+  beforeAll(async () => {
+    // Ensure database tables exist before running signup tests
+    await initializeTestDatabase();
+  });
 
   beforeEach(async () => {
     // Clean up any test users before each test
@@ -870,13 +1239,13 @@ describe('🔐 User Signup Flow', () => {
 
   it('should generate unique user IDs for different signups', async () => {
     const user1Data = {
-      email: 'user1@example.com',
+      email: 'unique1@example.com',
       password: 'SecurePassword123!',
       name: 'User One'
     };
 
     const user2Data = {
-      email: 'user2@example.com',
+      email: 'unique2@example.com',
       password: 'SecurePassword123!',
       name: 'User Two'
     };

@@ -223,4 +223,93 @@ router.get('/test-auth', authenticateToken, async (req: AuthenticatedRequest, re
   }
 });
 
+/**
+ * GET /api/email/inbox
+ * Returns all emails belonging to the authenticated user
+ */
+router.get('/email/inbox', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { user } = req;
+
+    if (!user) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    // Query emails where the user is the recipient
+    // We check both recipient email and recipient_id for flexibility
+    const emails = await db('emails')
+      .select(
+        'email_id as id',
+        'sender_id',
+        'subject',
+        'created_at as timestamp',
+        'requires_password',
+        'burn_after_read',
+        'self_destruct_after_attempts',
+        'require_mfa',
+        'is_password_protected',
+        'expires_at',
+        'self_destructed'
+      )
+      .where(function() {
+        this.where('recipient', user.email)
+          .orWhere('recipient_id', user.id);
+      })
+      .where('self_destructed', false)
+      .orderBy('created_at', 'desc');
+
+    // Get sender information for each email
+    const emailsWithSenders = await Promise.all(
+      emails.map(async (email) => {
+        let sender = 'Unknown';
+        
+        if (email.sender_id) {
+          const senderUser = await db('users')
+            .select('email', 'name')
+            .where('id', email.sender_id)
+            .first();
+          
+          if (senderUser) {
+            sender = senderUser.name || senderUser.email;
+          }
+        }
+
+        // Build security flags
+        const securityFlags = [];
+        if (email.requires_password || email.is_password_protected) {
+          securityFlags.push('password_protected');
+        }
+        if (email.burn_after_read) {
+          securityFlags.push('burn_after_read');
+        }
+        if (email.self_destruct_after_attempts) {
+          securityFlags.push('self_destruct');
+        }
+        if (email.require_mfa) {
+          securityFlags.push('mfa_required');
+        }
+        if (email.expires_at && new Date(email.expires_at) < new Date()) {
+          securityFlags.push('expired');
+        }
+
+        return {
+          id: email.id,
+          sender,
+          subject: email.subject || 'No Subject',
+          timestamp: email.timestamp,
+          securityFlags
+        };
+      })
+    );
+
+    res.status(200).json({
+      emails: emailsWithSenders,
+      count: emailsWithSenders.length
+    });
+  } catch (error) {
+    console.error('Inbox retrieval error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export { router as protectedRoutes };

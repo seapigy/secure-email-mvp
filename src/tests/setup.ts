@@ -15,6 +15,12 @@ beforeAll(async () => {
   console.log('✅ Test environment ready');
 });
 
+// Ensure database is initialized before each test suite
+beforeEach(async () => {
+  // Re-initialize database for each test suite to ensure tables exist
+  await initializeTestDatabase();
+});
+
 // Global test cleanup
 afterAll(async () => {
   console.log('🧹 Cleaning up test environment...');
@@ -22,8 +28,8 @@ afterAll(async () => {
   // Clean up test database
   await cleanupTestDatabase();
   
-  // Close database connection
-  await closeConnection();
+  // Don't close the connection globally - let each test suite manage its own
+  // await closeConnection();
   
   console.log('✅ Test environment cleaned up');
 });
