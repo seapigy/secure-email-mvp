@@ -3,10 +3,10 @@
  * This file sets up the Express server with all necessary middleware and routes
  */
 
-import * as express from 'express';
-import * as cors from 'cors';
-import * as helmet from 'helmet';
-import * as rateLimit from 'express-rate-limit';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { json } from 'body-parser';
 
 // Import route handlers
@@ -72,7 +72,7 @@ app.use('/api/auth', authLimiter);
 app.use(generalLimiter);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.status(200).json({ 
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -85,12 +85,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api', protectedRoutes);
 
 // 404 handler
-app.use('*', (req, res) => {
+app.use('*', (_req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
 // Global error handler
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Global error handler:', err);
   
   // Don't expose internal errors in production

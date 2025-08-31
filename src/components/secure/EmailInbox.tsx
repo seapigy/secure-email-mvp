@@ -39,7 +39,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { SecureEmail, StatusType, EmailStats, EmailFilters, SortConfig } from '@/types/secureEmail';
-import { getInboxEmails, deleteInboxEmail } from '@/lib/api';
+import { getInboxEmails } from '@/lib/api';
 import { transformInboxResponse, handleInboxError } from '@/lib/inboxUtils';
 
 /**
@@ -158,21 +158,8 @@ const EmailInbox: React.FC<EmailInboxProps> = ({ onEmailSelect, selectedEmail: e
     loadInboxData();
   }, []);
 
-  /**
-   * Handle email deletion
-   * @param emailId - ID of the email to delete
-   */
-  const handleEmailDelete = async (emailId: string) => {
-    try {
-      await deleteInboxEmail(emailId);
-      // Refresh the inbox after deletion
-      await loadInboxData();
-    } catch (err) {
-      const errorMessage = handleInboxError(err);
-      setError(errorMessage);
-      console.error('Failed to delete email:', err);
-    }
-  };
+  // Note: handleEmailDelete function removed as it was unused
+  // If email deletion is needed, implement it in the UI components
 
   /**
    * Get status configuration for visual display

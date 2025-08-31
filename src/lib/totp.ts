@@ -90,7 +90,6 @@ export function verifyTOTP(secret: string, token: string, config: Partial<TOTPCo
  */
 function base32Decode(str: string): Buffer {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  const padding = '=';
   
   // Remove padding and convert to uppercase
   str = str.replace(/=+$/, '').toUpperCase();

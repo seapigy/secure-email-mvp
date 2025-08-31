@@ -15,7 +15,7 @@ export class EnterpriseDashboardService {
   private api: AxiosInstance;
   private adminToken: string | null = null;
   private currentUser: AdminUser | null = null;
-  private refreshInterval: number | null = null;
+  private refreshInterval: NodeJS.Timeout | null = null;
 
   constructor(adminToken?: string) {
     this.adminToken = adminToken || null;

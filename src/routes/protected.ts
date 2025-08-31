@@ -3,7 +3,7 @@
  * Routes that require authentication
  */
 
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { db } from '../lib/db';
 
@@ -19,11 +19,19 @@ interface JWTPayload {
   jti: string;
 }
 
+// Extend Express Request type to include user property
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    email: string;
+  };
+}
+
 /**
  * Authentication middleware
  * Verifies JWT token and adds user info to request
  */
-const authenticateToken = async (req: any, res: any, next: any) => {
+const authenticateToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
@@ -67,9 +75,13 @@ const authenticateToken = async (req: any, res: any, next: any) => {
  * GET /api/protected
  * Protected route that returns user information
  */
-router.get('/protected', authenticateToken, async (req, res) => {
+router.get('/protected', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { user } = req;
+
+    if (!user) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
 
     // Get user from database to ensure they still exist and are active
     const userRecord = await db('users')
@@ -100,9 +112,13 @@ router.get('/protected', authenticateToken, async (req, res) => {
  * GET /api/user/profile
  * Returns user profile information
  */
-router.get('/user/profile', authenticateToken, async (req, res) => {
+router.get('/user/profile', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { user } = req;
+
+    if (!user) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
 
     const userRecord = await db('users')
       .where('id', user.id)
@@ -132,10 +148,14 @@ router.get('/user/profile', authenticateToken, async (req, res) => {
  * PUT /api/user/profile
  * Updates user profile information
  */
-router.put('/user/profile', authenticateToken, async (req, res) => {
+router.put('/user/profile', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { user } = req;
     const { email } = req.body;
+
+    if (!user) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
 
     // Validate email format if provided
     if (email) {
@@ -180,10 +200,14 @@ router.put('/user/profile', authenticateToken, async (req, res) => {
  * POST /api/user/change-password
  * Changes user password
  */
-router.post('/user/change-password', authenticateToken, async (req, res) => {
+router.post('/user/change-password', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { user } = req;
     const { current_password, new_password } = req.body;
+
+    if (!user) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
 
     if (!current_password || !new_password) {
       return res.status(400).json({ error: 'Current password and new password are required' });
