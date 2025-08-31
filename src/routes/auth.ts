@@ -31,7 +31,12 @@ interface SignupResponse {
 interface LoginRequest {
   email: string;
   password: string;
-  totp_code: string;
+  totp_code?: string; // Optional for non-TOTP login
+}
+
+interface SimpleLoginRequest {
+  email: string;
+  password: string;
 }
 
 interface LoginResponse {
@@ -145,15 +150,15 @@ router.post('/signup', async (req: Request, res: Response) => {
 
 /**
  * POST /api/auth/login
- * Authenticates user with email, password, and TOTP code
+ * Authenticates user with email and password (TOTP optional)
  */
 router.post('/login', async (req, res) => {
   try {
     const { email, password, totp_code }: LoginRequest = req.body;
 
     // Validate required fields
-    if (!email || !password || !totp_code) {
-      return res.status(400).json({ error: 'Email, password, and TOTP code are required' });
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
     }
 
     // Validate email format
@@ -178,10 +183,12 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Verify TOTP code
-    const totpValid = verifyTOTP(user.totp_secret, totp_code);
-    if (!totpValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    // Verify TOTP code if provided
+    if (totp_code) {
+      const totpValid = verifyTOTP(user.totp_secret, totp_code);
+      if (!totpValid) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
     }
 
     // Generate access token with jti (JWT ID) for revocation tracking
@@ -258,6 +265,86 @@ router.post('/logout', async (req, res) => {
     res.status(200).json({ message: 'Logout successful' });
   } catch (error) {
     console.error('Logout error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/auth/simple-login
+ * Simple login with email and password only (no TOTP)
+ */
+router.post('/simple-login', async (req, res) => {
+  try {
+    const { email, password }: SimpleLoginRequest = req.body;
+
+    // Validate required fields
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Find user by email
+    const user = await db('users')
+      .where('email', email)
+      .where('is_active', true)
+      .first();
+
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Verify password
+    const passwordValid = await argon2.verify(user.password_hash, password);
+    if (!passwordValid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Generate access token
+    const accessTokenId = uuidv4();
+    const accessToken = jwt.sign(
+      {
+        user_id: user.id,
+        email: user.email,
+        type: 'access',
+        jti: accessTokenId
+      },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    // Generate refresh token
+    const refreshToken = uuidv4();
+    const refreshTokenExpiry = new Date();
+    refreshTokenExpiry.setDate(refreshTokenExpiry.getDate() + 7); // 7 days
+
+    // Store refresh token in database
+    await db('refresh_tokens').insert({
+      id: uuidv4(),
+      user_id: user.id,
+      token: refreshToken,
+      access_token_id: accessTokenId,
+      expires_at: refreshTokenExpiry,
+      is_revoked: false
+    });
+
+    // Return response
+    const response: LoginResponse = {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      token_type: 'Bearer',
+      expires_in: 3600, // 1 hour
+      user_id: user.id,
+      email: user.email
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Simple login error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

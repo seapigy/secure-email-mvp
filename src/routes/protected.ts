@@ -3,73 +3,11 @@
  * Routes that require authentication
  */
 
-import { Router, Request, Response, NextFunction } from 'express';
-import * as jwt from 'jsonwebtoken';
+import { Router, Response } from 'express';
 import { db } from '../lib/db';
+import { authenticateToken, AuthenticatedRequest } from '../middleware/jwt';
 
 const router = Router();
-
-// JWT secret (in production, this should be in environment variables)
-const JWT_SECRET = process.env.JWT_SECRET || 'test-secret-key';
-
-interface JWTPayload {
-  user_id: string;
-  email: string;
-  type: string;
-  jti: string;
-}
-
-// Extend Express Request type to include user property
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-  };
-}
-
-/**
- * Authentication middleware
- * Verifies JWT token and adds user info to request
- */
-const authenticateToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-  if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
-    
-    // Verify token type
-    if (decoded.type !== 'access') {
-      return res.status(401).json({ error: 'Invalid token type' });
-    }
-
-    // Check if access token has been revoked (only if jti exists)
-    if (decoded.jti) {
-      const revokedToken = await db('refresh_tokens')
-        .where('access_token_id', decoded.jti)
-        .where('is_revoked', true)
-        .first();
-
-      if (revokedToken) {
-        return res.status(401).json({ error: 'Token has been revoked' });
-      }
-    }
-
-    // Add user info to request
-    req.user = {
-      id: decoded.user_id,
-      email: decoded.email
-    };
-
-    next();
-  } catch (error) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
-  }
-};
 
 /**
  * GET /api/protected
@@ -258,6 +196,29 @@ router.post('/user/change-password', authenticateToken, async (req: Authenticate
     res.status(200).json({ message: 'Password changed successfully' });
   } catch (error) {
     console.error('Password change error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/test-auth
+ * Test endpoint to verify JWT authentication is working
+ */
+router.get('/test-auth', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { user } = req;
+
+    if (!user) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    res.status(200).json({
+      message: 'Authentication successful',
+      user_id: user.id,
+      email: user.email
+    });
+  } catch (error) {
+    console.error('Test auth error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

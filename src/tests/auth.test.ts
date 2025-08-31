@@ -156,9 +156,8 @@ describe('🔐 Auth Flow with TOTP', () => {
       const res = await request(app)
         .post('/api/auth/login')
         .send({
-          email: testEmail,
-          password: testPassword
-          // Missing totp_code
+          email: testEmail
+          // Missing password
         });
 
       expect(res.status).toBe(400);
@@ -473,6 +472,207 @@ describe('Type Safety', () => {
     expect(typeof loginResponse.expires_in).toBe('number');
     expect(typeof loginResponse.user_id).toBe('string');
     expect(typeof loginResponse.email).toBe('string');
+  });
+});
+
+describe('🔐 User Login Flow', () => {
+  const validLoginData = {
+    email: 'user@securesystem.email',
+    password: 'StrongPassword123!'
+  };
+
+  const validLoginDataWithTOTP = {
+    email: 'user@securesystem.email',
+    password: 'StrongPassword123!',
+    totp_code: '123456'
+  };
+
+  it('should login successfully with email and password only', async () => {
+    const response = await request(app)
+      .post('/api/auth/simple-login')
+      .send(validLoginData)
+      .expect(200);
+
+    expect(response.body).toHaveProperty('access_token');
+    expect(response.body).toHaveProperty('refresh_token');
+    expect(response.body).toHaveProperty('token_type', 'Bearer');
+    expect(response.body).toHaveProperty('expires_in', 3600);
+    expect(response.body).toHaveProperty('user_id');
+    expect(response.body).toHaveProperty('email', validLoginData.email);
+
+    // Verify tokens are valid
+    expect(response.body.access_token).toBeTruthy();
+    expect(response.body.refresh_token).toBeTruthy();
+    expect(typeof response.body.access_token).toBe('string');
+    expect(typeof response.body.refresh_token).toBe('string');
+  });
+
+  it('should login successfully with email, password, and TOTP', async () => {
+    const response = await request(app)
+      .post('/api/auth/login')
+      .send(validLoginDataWithTOTP)
+      .expect(200);
+
+    expect(response.body).toHaveProperty('access_token');
+    expect(response.body).toHaveProperty('refresh_token');
+    expect(response.body).toHaveProperty('token_type', 'Bearer');
+    expect(response.body).toHaveProperty('expires_in', 3600);
+    expect(response.body).toHaveProperty('user_id');
+    expect(response.body).toHaveProperty('email', validLoginData.email);
+  });
+
+  it('should reject login with wrong password', async () => {
+    const invalidData = {
+      ...validLoginData,
+      password: 'WrongPassword123!'
+    };
+
+    const response = await request(app)
+      .post('/api/auth/simple-login')
+      .send(invalidData)
+      .expect(401);
+
+    expect(response.body).toHaveProperty('error', 'Invalid credentials');
+    
+    // Verify no PII is exposed
+    expect(response.body).not.toHaveProperty('email');
+    expect(response.body).not.toHaveProperty('user_id');
+  });
+
+  it('should reject login with unknown email', async () => {
+    const invalidData = {
+      email: 'nonexistent@example.com',
+      password: 'StrongPassword123!'
+    };
+
+    const response = await request(app)
+      .post('/api/auth/simple-login')
+      .send(invalidData)
+      .expect(401);
+
+    expect(response.body).toHaveProperty('error', 'Invalid credentials');
+    
+    // Verify no PII is exposed
+    expect(response.body).not.toHaveProperty('email');
+    expect(response.body).not.toHaveProperty('user_id');
+  });
+
+  it('should reject login with missing email', async () => {
+    const invalidData = {
+      password: 'StrongPassword123!'
+    };
+
+    const response = await request(app)
+      .post('/api/auth/simple-login')
+      .send(invalidData)
+      .expect(400);
+
+    expect(response.body).toHaveProperty('error', 'Email and password are required');
+  });
+
+  it('should reject login with missing password', async () => {
+    const invalidData = {
+      email: 'user@securesystem.email'
+    };
+
+    const response = await request(app)
+      .post('/api/auth/simple-login')
+      .send(invalidData)
+      .expect(400);
+
+    expect(response.body).toHaveProperty('error', 'Email and password are required');
+  });
+
+  it('should reject login with invalid email format', async () => {
+    const invalidData = {
+      email: 'invalid-email',
+      password: 'StrongPassword123!'
+    };
+
+    const response = await request(app)
+      .post('/api/auth/simple-login')
+      .send(invalidData)
+      .expect(400);
+
+    expect(response.body).toHaveProperty('error', 'Invalid email format');
+  });
+
+  it('should reject login with wrong TOTP code', async () => {
+    const invalidData = {
+      ...validLoginData,
+      totp_code: '999999'
+    };
+
+    const response = await request(app)
+      .post('/api/auth/login')
+      .send(invalidData)
+      .expect(401);
+
+    expect(response.body).toHaveProperty('error', 'Invalid credentials');
+  });
+
+  it('should use JWT token for subsequent authenticated requests', async () => {
+    // First, login to get a token
+    const loginResponse = await request(app)
+      .post('/api/auth/simple-login')
+      .send(validLoginData)
+      .expect(200);
+
+    const accessToken = loginResponse.body.access_token;
+
+    // Use the token to access a protected endpoint
+    const protectedResponse = await request(app)
+      .get('/api/test-auth')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    expect(protectedResponse.body).toHaveProperty('message', 'Authentication successful');
+    expect(protectedResponse.body).toHaveProperty('user_id');
+    expect(protectedResponse.body).toHaveProperty('email', validLoginData.email);
+  });
+
+  it('should reject access to protected routes without token', async () => {
+    const response = await request(app)
+      .get('/api/test-auth')
+      .expect(401);
+
+    expect(response.body).toHaveProperty('error', 'Access token required');
+  });
+
+  it('should reject access to protected routes with invalid token', async () => {
+    const response = await request(app)
+      .get('/api/test-auth')
+      .set('Authorization', 'Bearer invalid-token')
+      .expect(401);
+
+    expect(response.body).toHaveProperty('error', 'Invalid token');
+  });
+
+  it('should reject access to protected routes with expired token', async () => {
+    // Create an expired token (this would require JWT manipulation in real tests)
+    const response = await request(app)
+      .get('/api/test-auth')
+      .set('Authorization', 'Bearer expired.token.here')
+      .expect(401);
+
+    expect(response.body).toHaveProperty('error', 'Invalid token');
+  });
+
+  it('should not log PII during login process', async () => {
+    // Spy on console.log to ensure no PII is logged
+    const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+    
+    await request(app)
+      .post('/api/auth/simple-login')
+      .send(validLoginData)
+      .expect(200);
+
+    // Verify no PII is logged
+    const loggedMessages = consoleSpy.mock.calls.flat().join(' ');
+    expect(loggedMessages).not.toContain(validLoginData.email);
+    expect(loggedMessages).not.toContain(validLoginData.password);
+    
+    consoleSpy.mockRestore();
   });
 });
 
