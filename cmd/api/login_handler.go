@@ -11,6 +11,7 @@ import (
 	"secure-email-mvp/pkg/auth"
 	"secure-email-mvp/pkg/lockout"
 	"secure-email-mvp/pkg/reputation"
+	"secure-email-mvp/pkg/testbypass"
 )
 
 // LoginRequest represents the login request structure
@@ -33,6 +34,8 @@ type LoginResponse struct {
 // loginHandler handles POST /api/auth/login with enhanced session management
 func loginHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Load test bypass configuration
+		testBypassConfig := testbypass.LoadConfig()
 		// ENHANCED DEBUGGING: Log request details
 		log.Printf("[LOGIN_DEBUG] ===== LOGIN REQUEST START =====")
 		log.Printf("[LOGIN_DEBUG] Method: %s", r.Method)
@@ -78,6 +81,52 @@ func loginHandler(db *sql.DB) http.HandlerFunc {
 		log.Printf("[LOGIN_DEBUG]   - Email: %s", req.Email)
 		log.Printf("[LOGIN_DEBUG]   - Password length: %d", len(req.Password))
 		log.Printf("[LOGIN_DEBUG]   - TOTP code: %s", req.TOTPCode)
+
+		// Check for test bypass mode
+		if testBypassConfig.IsTestUser(req.Email) {
+			log.Printf("[LOGIN_DEBUG] 🔧 TEST BYPASS: Test user detected, bypassing security checks")
+
+			// For test user, bypass all security checks and authenticate directly
+			if req.Password == testBypassConfig.TestPassword {
+				log.Printf("[LOGIN_DEBUG] ✅ TEST BYPASS: Test user authentication successful")
+
+				// Create session manager
+				sessionManager, err := auth.NewSessionManager()
+				if err != nil {
+					log.Printf("[LOGIN_DEBUG] ❌ Session manager creation failed: %v", err)
+					http.Error(w, `{"error":"Session configuration error"}`, http.StatusInternalServerError)
+					return
+				}
+
+				// Generate token pair for test user
+				tokenPair, err := sessionManager.GenerateTokenPair(testBypassConfig.TestUserID, req.Email, db)
+				if err != nil {
+					log.Printf("[LOGIN_DEBUG] ❌ Token generation failed: %v", err)
+					http.Error(w, `{"error":"Failed to generate tokens"}`, http.StatusInternalServerError)
+					return
+				}
+
+				// Return response
+				log.Printf("[LOGIN_DEBUG] 📤 Returning successful test bypass response")
+				response := LoginResponse{
+					AccessToken:  tokenPair.AccessToken,
+					RefreshToken: tokenPair.RefreshToken,
+					TokenType:    tokenPair.TokenType,
+					ExpiresIn:    tokenPair.ExpiresIn,
+					UserID:       testBypassConfig.TestUserID,
+					Email:        req.Email,
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(response)
+				log.Printf("[LOGIN_DEBUG] ===== TEST BYPASS LOGIN SUCCESS =====")
+				return
+			} else {
+				log.Printf("[LOGIN_DEBUG] ❌ TEST BYPASS: Invalid test password")
+				http.Error(w, `{"error":"Invalid credentials"}`, http.StatusUnauthorized)
+				return
+			}
+		}
 		log.Printf("[LOGIN_DEBUG]   - TOTP code length: %d", len(req.TOTPCode))
 
 		// Validate required fields with detailed logging

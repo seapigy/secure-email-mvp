@@ -41,6 +41,7 @@ import (
 	"sync"
 	"time"
 
+	"secure-email-mvp/internal/migrations"
 	"secure-email-mvp/pkg/models"
 
 	"secure-email-mvp/pkg/admin"
@@ -69,6 +70,7 @@ import (
 	"secure-email-mvp/pkg/sessiontokens"
 	"secure-email-mvp/pkg/storage"
 	"secure-email-mvp/pkg/suspicious"
+	"secure-email-mvp/pkg/testbypass"
 	"secure-email-mvp/pkg/zkid"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -188,6 +190,22 @@ func main() {
 		log.Fatal("Error connecting to database:", err)
 	}
 	log.Printf("Database connection successful (MaxOpen: 100, MaxIdle: 25)")
+
+	// Run database migrations
+	log.Printf("Running database migrations...")
+	migrator := migrations.NewMigrator(db)
+	migrationsDir := "db/migrations"
+	if err := migrator.RunMigrations(migrationsDir); err != nil {
+		log.Fatal("Error running migrations:", err)
+	}
+	log.Printf("Database migrations completed successfully")
+
+	// Initialize test bypass and seed test user if enabled
+	log.Printf("Initializing test bypass configuration...")
+	testBypassConfig := testbypass.LoadConfig()
+	if err := testbypass.SeedTestUser(db, testBypassConfig); err != nil {
+		log.Printf("Warning: Failed to seed test user: %v", err)
+	}
 
 	// Test Cloudflare R2 storage connectivity for encrypted email content
 	if err := testR2Connection(); err != nil {
