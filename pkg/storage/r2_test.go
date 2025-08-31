@@ -16,10 +16,10 @@ func TestNewR2ClientFromEnv(t *testing.T) {
 	_ = client // Suppress unused variable warning
 
 	// Test with valid environment variables (mock)
-	os.Setenv("R2_ACCESS_KEY_ID", "test-access-key")
-	os.Setenv("R2_SECRET_ACCESS_KEY", "test-secret-key")
-	os.Setenv("R2_BUCKET", "test-bucket")
-	os.Setenv("R2_ENDPOINT", "https://test.r2.cloudflarestorage.com")
+	os.Setenv("CLOUDFLARE_R2_ACCESS_KEY", "test-access-key")
+	os.Setenv("CLOUDFLARE_R2_SECRET_KEY", "test-secret-key")
+	os.Setenv("CLOUDFLARE_R2_BUCKET", "test-bucket")
+	os.Setenv("CLOUDFLARE_R2_ENDPOINT", "https://test.r2.cloudflarestorage.com")
 
 	client, err = NewR2ClientFromEnv()
 	if err != nil {
@@ -34,10 +34,10 @@ func TestNewR2ClientFromEnv(t *testing.T) {
 	}
 
 	// Clean up
-	os.Unsetenv("R2_ACCESS_KEY_ID")
-	os.Unsetenv("R2_SECRET_ACCESS_KEY")
-	os.Unsetenv("R2_BUCKET")
-	os.Unsetenv("R2_ENDPOINT")
+	os.Unsetenv("CLOUDFLARE_R2_ACCESS_KEY")
+	os.Unsetenv("CLOUDFLARE_R2_SECRET_KEY")
+	os.Unsetenv("CLOUDFLARE_R2_BUCKET")
+	os.Unsetenv("CLOUDFLARE_R2_ENDPOINT")
 }
 
 func TestNewR2Client(t *testing.T) {

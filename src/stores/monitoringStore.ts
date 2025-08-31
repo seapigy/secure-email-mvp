@@ -1,8 +1,33 @@
 import { create } from 'zustand';
+import { log } from '@/lib/logger';
+
+interface MetricsData {
+  total_links: number;
+  active_links: number;
+  total_views: number;
+  failed_attempts: number;
+  dlp_scans: number;
+  security_violations: number;
+  storage_used: number;
+  storage_limit: number;
+  [key: string]: number; // Allow additional metrics
+}
+
+interface HealthData {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  services: {
+    database: { status: 'up' | 'down'; response_time?: number };
+    storage: { status: 'up' | 'down'; response_time?: number };
+    dlp: { status: 'up' | 'down'; response_time?: number };
+    auth: { status: 'up' | 'down'; response_time?: number };
+  };
+  last_check: string;
+  [key: string]: unknown; // Allow additional health data
+}
 
 interface StreamEvent {
   type: string;
-  data: any;
+  data: MetricsData | HealthData | unknown;
   timestamp: string;
 }
 
@@ -12,8 +37,8 @@ interface MonitoringState {
   connectionError: string | null;
   
   // Real-time metrics
-  currentMetrics: any | null;
-  systemHealth: any | null;
+  currentMetrics: MetricsData | null;
+  systemHealth: HealthData | null;
   
   // Event stream
   events: StreamEvent[];
@@ -29,8 +54,8 @@ interface MonitoringState {
   unsubscribeFromStream: (clientId: string) => void;
   addEvent: (event: StreamEvent) => void;
   clearEvents: () => void;
-  updateMetrics: (metrics: any) => void;
-  updateSystemHealth: (health: any) => void;
+  updateMetrics: (metrics: MetricsData) => void;
+  updateSystemHealth: (health: HealthData) => void;
 }
 
 export const useMonitoringStore = create<MonitoringState>((set, get) => ({
@@ -59,7 +84,7 @@ export const useMonitoringStore = create<MonitoringState>((set, get) => ({
           connectionError: null,
           eventSource 
         });
-        console.log('Monitoring SSE connection established');
+        log.info('Monitoring SSE connection established', null, 'monitoringStore');
       };
       
       eventSource.onmessage = (event) => {
@@ -75,24 +100,24 @@ export const useMonitoringStore = create<MonitoringState>((set, get) => ({
             try {
               callback(streamEvent);
             } catch (error) {
-              console.error('Error in monitoring subscriber callback:', error);
+              log.error('Error in monitoring subscriber callback:', error, 'monitoringStore');
             }
           });
           
           // Update specific state based on event type
           if (streamEvent.type === 'metrics_update' || streamEvent.type === 'initial_metrics') {
-            get().updateMetrics(streamEvent.data);
+            get().updateMetrics(streamEvent.data as MetricsData);
           } else if (streamEvent.type === 'health_update') {
-            get().updateSystemHealth(streamEvent.data);
+            get().updateSystemHealth(streamEvent.data as HealthData);
           }
           
         } catch (error) {
-          console.error('Error parsing SSE event:', error);
+          log.error('Error parsing SSE event:', error, 'monitoringStore');
         }
       };
       
       eventSource.onerror = (error) => {
-        console.error('SSE connection error:', error);
+        log.error('SSE connection error:', error, 'monitoringStore');
         set({ 
           isConnected: false, 
           connectionError: 'Connection failed',
@@ -109,7 +134,7 @@ export const useMonitoringStore = create<MonitoringState>((set, get) => ({
       };
       
     } catch (error) {
-      console.error('Failed to create SSE connection:', error);
+              log.error('Failed to create SSE connection:', error, 'monitoringStore');
       set({ 
         isConnected: false, 
         connectionError: 'Failed to establish connection',
@@ -177,12 +202,12 @@ export const useMonitoringStore = create<MonitoringState>((set, get) => ({
   },
 
   // Update current metrics
-  updateMetrics: (metrics: any) => {
+  updateMetrics: (metrics: MetricsData) => {
     set({ currentMetrics: metrics });
   },
 
   // Update system health
-  updateSystemHealth: (health: any) => {
+  updateSystemHealth: (health: HealthData) => {
     set({ systemHealth: health });
   },
 }));

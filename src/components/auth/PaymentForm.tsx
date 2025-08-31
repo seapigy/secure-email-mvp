@@ -415,3 +415,4 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ plan, onSubmit, onBack }) => 
 };
 
 export default PaymentForm;
+

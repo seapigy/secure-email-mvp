@@ -446,3 +446,12 @@ Write-Log "Setup completed. You can now test email sending with:"
 Write-Host "ssh $SshUser@$SshHost 'sudo /usr/local/bin/test-ses-email.sh your-verified@email.com'"
 
 
+
+
+
+
+
+
+
+
+

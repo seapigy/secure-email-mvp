@@ -1,0 +1,21 @@
+
+C:\Users\cpigu\OneDrive\Desktop\SecureChat - Email\src\components\secure\PerformanceDashboard.test.tsx
+   67:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   68:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   69:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  153:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\cpigu\OneDrive\Desktop\SecureChat - Email\src\test\setup.ts
+   39:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   46:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   81:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   85:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  104:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  113:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\cpigu\OneDrive\Desktop\SecureChat - Email\src\tests\integration\EmailPipeline.test.tsx
+   99:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  138:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Γ£û 12 problems (0 errors, 12 warnings)
+

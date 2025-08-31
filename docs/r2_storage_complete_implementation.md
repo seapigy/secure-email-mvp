@@ -70,10 +70,10 @@ func NewR2Client(config *R2Config) (*R2Client, error) {
 // NewR2ClientFromEnv creates a new R2 client using environment variables
 func NewR2ClientFromEnv() (*R2Client, error) {
 	config := &R2Config{
-		AccessKeyID:     os.Getenv("R2_ACCESS_KEY_ID"),
-		SecretAccessKey: os.Getenv("R2_SECRET_ACCESS_KEY"),
-		Bucket:          os.Getenv("R2_BUCKET"),
-		Endpoint:        os.Getenv("R2_ENDPOINT"),
+		AccessKeyID:     os.Getenv("CLOUDFLARE_R2_ACCESS_KEY"),
+		SecretAccessKey: os.Getenv("CLOUDFLARE_R2_SECRET_KEY"),
+		Bucket:          os.Getenv("CLOUDFLARE_R2_BUCKET"),
+		Endpoint:        os.Getenv("CLOUDFLARE_R2_ENDPOINT"),
 		Region:          "auto", // R2 uses "auto" region
 	}
 
@@ -276,10 +276,10 @@ func TestNewR2ClientFromEnv(t *testing.T) {
 	}
 
 	// Test with valid environment variables (mock)
-	os.Setenv("R2_ACCESS_KEY_ID", "test-access-key")
-	os.Setenv("R2_SECRET_ACCESS_KEY", "test-secret-key")
-	os.Setenv("R2_BUCKET", "test-bucket")
-	os.Setenv("R2_ENDPOINT", "https://test.r2.cloudflarestorage.com")
+	os.Setenv("CLOUDFLARE_R2_ACCESS_KEY", "test-access-key")
+	os.Setenv("CLOUDFLARE_R2_SECRET_KEY", "test-secret-key")
+	os.Setenv("CLOUDFLARE_R2_BUCKET", "test-bucket")
+	os.Setenv("CLOUDFLARE_R2_ENDPOINT", "https://test.r2.cloudflarestorage.com")
 
 	client, err = NewR2ClientFromEnv()
 	if err != nil {
@@ -293,10 +293,10 @@ func TestNewR2ClientFromEnv(t *testing.T) {
 	}
 
 	// Clean up
-	os.Unsetenv("R2_ACCESS_KEY_ID")
-	os.Unsetenv("R2_SECRET_ACCESS_KEY")
-	os.Unsetenv("R2_BUCKET")
-	os.Unsetenv("R2_ENDPOINT")
+	os.Unsetenv("CLOUDFLARE_R2_ACCESS_KEY")
+	os.Unsetenv("CLOUDFLARE_R2_SECRET_KEY")
+	os.Unsetenv("CLOUDFLARE_R2_BUCKET")
+	os.Unsetenv("CLOUDFLARE_R2_ENDPOINT")
 }
 
 func TestNewR2Client(t *testing.T) {
@@ -603,10 +603,10 @@ Create a `.env` file or set environment variables:
 
 ```bash
 # Required R2 Configuration
-R2_ACCESS_KEY_ID=your_access_key_id
-R2_SECRET_ACCESS_KEY=your_secret_access_key
-R2_BUCKET=secure-email-blobs
-R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
+CLOUDFLARE_R2_ACCESS_KEY=your_access_key_id
+CLOUDFLARE_R2_SECRET_KEY=your_secret_access_key
+CLOUDFLARE_R2_BUCKET=secure-email-blobs
+CLOUDFLARE_R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
 
 # Optional
 R2_REGION=auto
@@ -724,7 +724,7 @@ go test ./pkg/storage -run TestUploadToR2 -v
 go build ./cmd/api
 
 # Run with environment variables
-R2_ACCESS_KEY_ID=your_key R2_SECRET_ACCESS_KEY=your_secret R2_BUCKET=your_bucket R2_ENDPOINT=your_endpoint go run ./cmd/api
+CLOUDFLARE_R2_ACCESS_KEY=your_key CLOUDFLARE_R2_SECRET_KEY=your_secret CLOUDFLARE_R2_BUCKET=your_bucket CLOUDFLARE_R2_ENDPOINT=your_endpoint go run ./cmd/api
 ```
 
 ---

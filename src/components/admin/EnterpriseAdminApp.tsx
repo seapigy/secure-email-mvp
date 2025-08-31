@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { log } from '@/lib/logger';
 import EnterpriseAdminLogin from './EnterpriseAdminLogin';
 import EnterpriseDashboard from './EnterpriseDashboard';
 
@@ -20,7 +21,7 @@ const EnterpriseAdminApp: React.FC = () => {
   // Listen for auth errors from the service
   useEffect(() => {
     const handleAuthError = () => {
-      console.log('Admin authentication error detected');
+      log.error('Admin authentication error detected', null, 'EnterpriseAdminApp');
       handleLogout();
     };
 
@@ -34,7 +35,7 @@ const EnterpriseAdminApp: React.FC = () => {
     setAdminToken(token);
     localStorage.setItem('enterprise_admin_token', token);
     // User data can be used if needed
-    console.log('User logged in:', user);
+    log.info('User logged in', user, 'EnterpriseAdminApp');
   };
 
   const handleLogout = () => {

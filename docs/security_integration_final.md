@@ -223,10 +223,10 @@ JWT_SECRET=your_32_byte_jwt_secret_here
 SQLITE_DB=/var/db/secure-email.db
 
 # Cloudflare R2 Storage
-R2_ACCESS_KEY_ID=your_access_key_id_here
-R2_SECRET_ACCESS_KEY=your_secret_access_key_here
-R2_BUCKET=secure-email-blobs
-R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
+CLOUDFLARE_R2_ACCESS_KEY=your_access_key_id_here
+CLOUDFLARE_R2_SECRET_KEY=your_secret_access_key_here
+CLOUDFLARE_R2_BUCKET=secure-email-blobs
+CLOUDFLARE_R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
 R2_REGION=auto
 
 # Server Configuration
@@ -318,11 +318,11 @@ sqlite3 /var/db/secure-email.db ".schema"
 #### R2 Storage Issues
 ```bash
 # Test R2 connectivity
-curl -H "Authorization: Bearer $R2_ACCESS_KEY_ID" \
-  "$R2_ENDPOINT/$R2_BUCKET/test"
+curl -H "Authorization: Bearer $CLOUDFLARE_R2_ACCESS_KEY" \
+  "$CLOUDFLARE_R2_ENDPOINT/$CLOUDFLARE_R2_BUCKET/test"
 
 # Check R2 credentials
-aws s3 ls s3://$R2_BUCKET --endpoint-url $R2_ENDPOINT
+aws s3 ls s3://$CLOUDFLARE_R2_BUCKET --endpoint-url $CLOUDFLARE_R2_ENDPOINT
 ```
 
 #### Cleanup Worker Issues

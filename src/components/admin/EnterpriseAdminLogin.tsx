@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { log } from '@/lib/logger';
 import {
   EyeIcon, EyeSlashIcon, ShieldCheckIcon, ExclamationTriangleIcon, CheckCircleIcon, QrCodeIcon,
   KeyIcon, UserIcon, LockClosedIcon, Cog6ToothIcon, UserGroupIcon,
@@ -113,7 +114,7 @@ const EnterpriseAdminLogin: React.FC<EnterpriseAdminLoginProps> = ({
 
       if (response.success) {
         // Handle MFA setup success
-        console.log('MFA setup successful');
+        log.info('MFA setup successful', null, 'EnterpriseAdminLogin');
       } else {
         setError(response.message || 'MFA setup failed');
       }

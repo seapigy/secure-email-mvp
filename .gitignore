@@ -75,6 +75,13 @@ public_key.txt
 vm_connection/private_key.txt
 vm_connection/public_key.txt
 
+# AWS credentials and configuration
+.aws/
+.aws/credentials
+.aws/config
+aws-credentials.json
+aws-config.json
+
 # Compiled binaries (should be built on target system)
 api-server
 api-server-linux

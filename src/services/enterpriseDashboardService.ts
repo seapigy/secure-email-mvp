@@ -9,6 +9,7 @@ import {
   ThreatIntelligence, ThreatAlert, ThreatFeed, ThreatRule, ThreatAwarenessConfig,
 } from '../types/admin';
 import { ErrorResponse } from '../types';
+import { log } from '@/lib/logger';
 
 export class EnterpriseDashboardService {
   private api: AxiosInstance;
@@ -64,8 +65,8 @@ export class EnterpriseDashboardService {
       }
       
       return response.data.data!;
-    } catch (error: unknown) {
-      throw new Error(this.extractErrorMessage(error, 'Login failed'));
+    } catch {
+      throw new Error('Login failed');
     }
   }
 
@@ -73,7 +74,7 @@ export class EnterpriseDashboardService {
     try {
       await this.api.post('/api/admin/auth/logout');
     } catch (error) {
-      console.error('Logout error:', error);
+      log.error('Logout error:', error, 'enterpriseDashboardService');
     } finally {
       this.adminToken = null;
       this.currentUser = null;
@@ -87,8 +88,8 @@ export class EnterpriseDashboardService {
         request
       );
       return response.data.data!;
-    } catch (error: unknown) {
-      throw new Error(this.extractErrorMessage(error, 'MFA setup failed'));
+    } catch {
+      throw new Error('MFA setup failed');
     }
   }
 
@@ -99,8 +100,8 @@ export class EnterpriseDashboardService {
         { code }
       );
       return response.data.data!.success;
-    } catch (error: unknown) {
-      throw new Error(this.extractErrorMessage(error, 'MFA verification failed'));
+    } catch {
+      throw new Error('MFA verification failed');
     }
   }
 
@@ -110,7 +111,7 @@ export class EnterpriseDashboardService {
         '/api/admin/auth/config'
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       // Return default config if API not available
       return {
         enabled: true,
@@ -137,8 +138,8 @@ export class EnterpriseDashboardService {
         request
       );
       return response.data.data!;
-    } catch (error: unknown) {
-      throw new Error(this.extractErrorMessage(error, 'Failed to create invitation'));
+    } catch {
+      throw new Error('Failed to create invitation');
     }
   }
 
@@ -148,7 +149,7 @@ export class EnterpriseDashboardService {
         '/api/admin/invitations'
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       // Return mock data if API not available
       return [
         {
@@ -170,8 +171,8 @@ export class EnterpriseDashboardService {
         `/api/admin/invitations/${key}`
       );
       return response.data.data!.success;
-    } catch (error: unknown) {
-      throw new Error(this.extractErrorMessage(error, 'Failed to revoke invitation'));
+    } catch {
+      throw new Error('Failed to revoke invitation');
     }
   }
 
@@ -181,7 +182,7 @@ export class EnterpriseDashboardService {
         '/api/admin/users'
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       // Return mock data if API not available
       return [
         {
@@ -244,8 +245,8 @@ export class EnterpriseDashboardService {
         { role, permissions }
       );
       return response.data.data!.success;
-    } catch (error: unknown) {
-      throw new Error(this.extractErrorMessage(error, 'Failed to update admin role'));
+    } catch {
+      throw new Error('Failed to update admin role');
     }
   }
 
@@ -266,7 +267,7 @@ export class EnterpriseDashboardService {
         '/api/admin/approvals'
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       // Return mock data if API not available
       return [
         {
@@ -288,8 +289,8 @@ export class EnterpriseDashboardService {
         { approved, reason }
       );
       return response.data.data!.success;
-    } catch (error: unknown) {
-      throw new Error(this.extractErrorMessage(error, 'Failed to process approval'));
+    } catch {
+      throw new Error('Failed to process approval');
     }
   }
 
@@ -303,7 +304,7 @@ export class EnterpriseDashboardService {
         '/api/admin/metrics/zkid'
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       // Return mock data if API not available
       return {
         enabled: true,
@@ -410,7 +411,7 @@ export class EnterpriseDashboardService {
         '/api/admin/metrics/pqc'
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       // Return mock data if API not available
       return {
         key_management: {
@@ -484,7 +485,7 @@ export class EnterpriseDashboardService {
         '/api/admin/metrics/email-delivery'
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       // Return mock data if API not available
       return {
         queue_status: {
@@ -568,7 +569,7 @@ export class EnterpriseDashboardService {
         '/api/admin/metrics/security-compliance'
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       // Return mock data if API not available
       return {
         authentication_security: {
@@ -620,7 +621,7 @@ export class EnterpriseDashboardService {
         '/api/admin/metrics/performance-operational'
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       // Return mock data if API not available
       return {
         api_performance: {
@@ -762,7 +763,7 @@ export class EnterpriseDashboardService {
         '/api/admin/alerts'
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       // Return mock data if API not available
       return [
         {
@@ -809,8 +810,8 @@ export class EnterpriseDashboardService {
         `/api/admin/alerts/${alertId}/acknowledge`
       );
       return response.data.data!.success;
-    } catch (error: unknown) {
-      throw new Error(this.extractErrorMessage(error, 'Failed to acknowledge alert'));
+    } catch {
+      throw new Error('Failed to acknowledge alert');
     }
   }
 
@@ -820,8 +821,8 @@ export class EnterpriseDashboardService {
         `/api/admin/alerts/${alertId}/resolve`
       );
       return response.data.data!.success;
-    } catch (error: unknown) {
-      throw new Error(this.extractErrorMessage(error, 'Failed to resolve alert'));
+    } catch {
+      throw new Error('Failed to resolve alert');
     }
   }
 
@@ -836,7 +837,7 @@ export class EnterpriseDashboardService {
         { params: filter }
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       // Return mock data if API not available
       return [
         {
@@ -875,7 +876,7 @@ export class EnterpriseDashboardService {
         '/api/admin/dashboard/config'
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       // Return default config if API not available
       return {
         refresh_interval_seconds: 30,
@@ -908,8 +909,8 @@ export class EnterpriseDashboardService {
         config
       );
       return response.data.data!.success;
-    } catch (error: unknown) {
-      throw new Error(this.extractErrorMessage(error, 'Failed to update dashboard config'));
+    } catch {
+      throw new Error('Failed to update dashboard config');
     }
   }
 
@@ -933,7 +934,7 @@ export class EnterpriseDashboardService {
         };
         callback(update);
       } catch (error) {
-        console.error('Real-time update error:', error);
+        log.error('Real-time update error:', error, 'enterpriseDashboardService');
       }
     }, 30000); // 30 seconds
   }
@@ -985,7 +986,7 @@ export class EnterpriseDashboardService {
         { params: filter }
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       // Return mock data for development
       return this.getMockAnalyticsDashboard();
     }
@@ -998,7 +999,7 @@ export class EnterpriseDashboardService {
         { params: timeRange }
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       return this.getMockEmailUsageAnalytics();
     }
   }
@@ -1010,7 +1011,7 @@ export class EnterpriseDashboardService {
         { params: timeRange }
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       return this.getMockSecurityEventAnalytics();
     }
   }
@@ -1022,7 +1023,7 @@ export class EnterpriseDashboardService {
         { params: timeRange }
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       return this.getMockZKIDPQCAnalytics();
     }
   }
@@ -1034,8 +1035,8 @@ export class EnterpriseDashboardService {
         request
       );
       return response.data.data!;
-    } catch (error: unknown) {
-      throw new Error(this.extractErrorMessage(error, 'Export failed'));
+    } catch {
+      throw new Error('Export failed');
     }
   }
 
@@ -1049,7 +1050,7 @@ export class EnterpriseDashboardService {
         '/api/admin/threat/intelligence'
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       return this.getMockThreatIntelligence();
     }
   }
@@ -1060,7 +1061,7 @@ export class EnterpriseDashboardService {
         '/api/admin/threat/alerts'
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       return this.getMockThreatAlerts();
     }
   }
@@ -1071,7 +1072,7 @@ export class EnterpriseDashboardService {
         '/api/admin/threat/feeds'
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       return this.getMockThreatFeeds();
     }
   }
@@ -1082,7 +1083,7 @@ export class EnterpriseDashboardService {
         '/api/admin/threat/rules'
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       return this.getMockThreatRules();
     }
   }
@@ -1093,7 +1094,7 @@ export class EnterpriseDashboardService {
         '/api/admin/threat/config'
       );
       return response.data.data!;
-    } catch (error: unknown) {
+    } catch {
       return this.getMockThreatAwarenessConfig();
     }
   }

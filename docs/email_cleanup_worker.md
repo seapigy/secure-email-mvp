@@ -31,8 +31,8 @@ The Email Cleanup Worker is an automated background process that periodically de
 | `SQLITE_DB` | `/var/db/secure-email.db` | Database path |
 | `CLOUDFLARE_R2_ACCESS_KEY` | Required | R2 access key |
 | `CLOUDFLARE_R2_SECRET_KEY` | Required | R2 secret key |
-| `CLOUDFLARE_R2_BUCKET` | Required | R2 bucket name |
-| `CLOUDFLARE_R2_ENDPOINT` | Required | R2 endpoint URL |
+| `CLOUDFLARE_CLOUDFLARE_R2_BUCKET` | Required | R2 bucket name |
+| `CLOUDFLARE_CLOUDFLARE_R2_ENDPOINT` | Required | R2 endpoint URL |
 
 ### Example Configuration
 
@@ -42,8 +42,8 @@ EMAIL_CLEANUP_INTERVAL_MINUTES=5
 SQLITE_DB=/var/db/secure-email.db
 CLOUDFLARE_R2_ACCESS_KEY=your_access_key
 CLOUDFLARE_R2_SECRET_KEY=your_secret_key
-CLOUDFLARE_R2_BUCKET=your_bucket
-CLOUDFLARE_R2_ENDPOINT=https://your_account_id.r2.cloudflarestorage.com
+CLOUDFLARE_CLOUDFLARE_R2_BUCKET=your_bucket
+CLOUDFLARE_CLOUDFLARE_R2_ENDPOINT=https://your_account_id.r2.cloudflarestorage.com
 ```
 
 ## Worker Logic
@@ -324,6 +324,15 @@ curl -H "Authorization: AWS4-HMAC-SHA256 ..." \
 - `/admin/cleanup-history` - View cleanup history
 - `/admin/email-bulk-delete` - Bulk email deletion
 - `/admin/retention-policies` - Manage retention rules
+
+
+
+
+
+
+
+
+
 
 
 

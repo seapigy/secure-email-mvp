@@ -1866,6 +1866,13 @@ func main() {
 	r.Handle("/api/email/security/{id}", jwtMiddleware(http.HandlerFunc(srv.updateEmailSecurityHandler))).Methods("POST")
 	r.Handle("/api/email/security/{id}", jwtMiddleware(http.HandlerFunc(srv.getEmailSecurityHandler))).Methods("GET")
 
+	// Register inbox endpoints (require JWT authentication)
+	log.Printf("Registering /api/inbox/list endpoint")
+	r.Handle("/api/inbox/list", jwtMiddleware(http.HandlerFunc(srv.listInboxHandler))).Methods("GET")
+	log.Printf("Registering /api/inbox/{id} endpoint")
+	r.Handle("/api/inbox/{id}", jwtMiddleware(http.HandlerFunc(srv.getInboxEmailHandler))).Methods("GET")
+	r.Handle("/api/inbox/{id}", jwtMiddleware(http.HandlerFunc(srv.deleteInboxEmailHandler))).Methods("DELETE")
+
 	// Register Secure Links External Email Flow endpoints (Phase 1)
 	log.Printf("Registering /api/secure-links endpoints")
 	r.Handle("/api/secure-links", jwtMiddleware(http.HandlerFunc(srv.createSecureLinkHandler))).Methods("POST")

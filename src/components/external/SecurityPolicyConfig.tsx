@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Shield,
   Eye,
@@ -11,6 +11,7 @@ import {
   Save,
   X
 } from 'lucide-react';
+import { log } from '@/lib/logger';
 
 interface SecurityPolicy {
   policy_id?: string;
@@ -83,15 +84,7 @@ const SecurityPolicyConfig: React.FC<SecurityPolicyConfigProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Load security policy templates
-  useEffect(() => {
-    if (isOpen) {
-      loadTemplates();
-      loadExistingPolicy();
-    }
-  }, [isOpen, linkID]);
-
-  const loadTemplates = async () => {
+  const loadTemplates = useCallback(async () => {
     try {
       const response = await fetch('/api/security/templates');
       if (response.ok) {
@@ -101,11 +94,12 @@ const SecurityPolicyConfig: React.FC<SecurityPolicyConfigProps> = ({
         }
       }
     } catch (error) {
-      console.error('Error loading templates:', error);
+      log.error('Error loading templates:', error, 'SecurityPolicyConfig');
+      setError('Failed to load policy templates');
     }
-  };
+  }, []);
 
-  const loadExistingPolicy = async () => {
+  const loadExistingPolicy = useCallback(async () => {
     try {
       const response = await fetch(`/api/v/${linkID}/security/policy`);
       if (response.ok) {
@@ -115,9 +109,18 @@ const SecurityPolicyConfig: React.FC<SecurityPolicyConfigProps> = ({
         }
       }
     } catch (error) {
-      console.error('Error loading existing policy:', error);
+      log.error('Error loading existing policy:', error, 'SecurityPolicyConfig');
+      setError('Failed to load existing policy');
     }
-  };
+  }, [linkID]);
+
+  // Load security policy templates
+  useEffect(() => {
+    if (isOpen) {
+      loadTemplates();
+      loadExistingPolicy();
+    }
+  }, [isOpen, linkID, loadTemplates, loadExistingPolicy]);
 
   const applyTemplate = (template: SecurityPolicyTemplate) => {
     setPolicy({
@@ -163,8 +166,8 @@ const SecurityPolicyConfig: React.FC<SecurityPolicyConfigProps> = ({
         setError(data.error || 'Failed to save security policy');
       }
     } catch (error) {
-      console.error('Error saving policy:', error);
-      setError('Failed to save security policy');
+      log.error('Error saving policy:', error, 'SecurityPolicyConfig');
+      setError('Failed to save policy');
     } finally {
       setLoading(false);
     }

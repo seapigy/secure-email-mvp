@@ -234,8 +234,8 @@ JWT_SECRET=your-secret-key-here
 SQLITE_DB=/var/db/secure-email.db
 CLOUDFLARE_R2_ACCESS_KEY=your_r2_key
 CLOUDFLARE_R2_SECRET_KEY=your_r2_secret
-CLOUDFLARE_R2_BUCKET=your_bucket
-CLOUDFLARE_R2_ENDPOINT=your_endpoint
+CLOUDFLARE_CLOUDFLARE_R2_BUCKET=your_bucket
+CLOUDFLARE_CLOUDFLARE_R2_ENDPOINT=your_endpoint
 ```
 
 ### **JWT Token Structure**

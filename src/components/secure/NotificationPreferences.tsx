@@ -5,15 +5,41 @@
 // =============================================================================
 
 import React, { useState, useEffect } from 'react';
+import { log } from '@/lib/logger';
 import { Bell, Mail, Smartphone, MapPin, Monitor, Save, History, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import {
   getNotificationPreferences,
   updateNotificationPreferences,
-  getAccessEventHistory,
-  type NotificationPreferences,
-  type AccessEvent
+  getAccessEventHistory
 } from '@/lib/api';
+
+// TODO: Define these types properly
+interface NotificationPreferences {
+  email_notifications: boolean;
+  sms_notifications: boolean;
+  push_notifications: boolean;
+  digest_enabled: boolean;
+  digest_frequency: 'daily' | 'weekly' | 'monthly';
+  notify_on_success: boolean;
+  notify_on_failure: boolean;
+  notify_on_blocked: boolean;
+  include_geolocation: boolean;
+  include_device_info: boolean;
+}
+
+interface AccessEvent {
+  event_id: string;
+  email_id: string;
+  timestamp: string;
+  event_type: string;
+  ip_address: string;
+  user_agent: string;
+  country: string;
+  city: string;
+  device_type?: string;
+  failure_reason?: string;
+}
 
 interface NotificationPreferencesProps {
   isOpen: boolean;
@@ -43,7 +69,7 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
       const prefs = await getNotificationPreferences();
       setPreferences(prefs);
     } catch (error) {
-      console.error('Failed to load notification preferences:', error);
+      log.error('Failed to load notification preferences:', error, 'NotificationPreferences');
       toast.error('Failed to load notification preferences');
     } finally {
       setLoading(false);
@@ -52,10 +78,10 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
 
   const loadAccessHistory = async () => {
     try {
-      const history = await getAccessEventHistory(50);
+      const history = await getAccessEventHistory();
       setAccessHistory(history);
     } catch (error) {
-      console.error('Failed to load access history:', error);
+      log.error('Failed to load access history:', error, 'NotificationPreferences');
       toast.error('Failed to load access history');
     }
   };
@@ -76,7 +102,7 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
       await updateNotificationPreferences(preferences);
       toast.success('Notification preferences updated successfully');
     } catch (error) {
-      console.error('Failed to update notification preferences:', error);
+      log.error('Failed to update notification preferences:', error, 'NotificationPreferences');
       toast.error('Failed to update notification preferences');
     } finally {
       setSaving(false);

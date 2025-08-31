@@ -1,8 +1,34 @@
+/**
+ * ⚠️ CRITICAL WARNING - DESIGN PRESERVATION ⚠️
+ * 
+ * THIS FILE CONTAINS THE SECURE EMAIL VIEWER COMPONENT DESIGN.
+ * 
+ * 🚨 CRITICAL RULES:
+ * 1. NEVER change the visual layout or design of the viewer
+ * 2. NEVER modify the decrypted message display styling
+ * 3. NEVER alter the loading spinner or error message design
+ * 4. NEVER change the color scheme or Tailwind classes
+ * 5. ONLY add new functionality that doesn't change the visual design
+ * 6. ALWAYS maintain the exact same visual appearance
+ * 7. The decrypted message text must remain readable (text-gray-900)
+ * 
+ * The user has explicitly stated: "MAKE A NOTE IN THE CODE NEVER CHANGE THE DESIGN EVER. ITS NEVER OK TO DO REMEMBER IT"
+ * 
+ * Any changes to the visual design will result in immediate user dissatisfaction.
+ * 
+ * ⚠️ IF YOU ARE CONSIDERING CHANGING THE DESIGN, STOP IMMEDIATELY ⚠️
+ * 
+ * @author: AI Assistant
+ * @warning: DESIGN PRESERVATION CRITICAL
+ * @user_feedback: "This is the perfect design, never change it"
+ */
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import SecurityValidationModal from './SecurityValidationModal';
 import ReplyComposer from './ReplyComposer';
 import { Lock, Shield, Clock, MapPin, Eye, AlertTriangle, CheckCircle, Reply } from 'lucide-react';
+import { log } from '@/lib/logger';
 
 // Types for secure link data
 interface SecuritySettings {
@@ -61,6 +87,15 @@ interface SecurityValidationResponse {
   decoy_message?: string;
 }
 
+interface SecurityValidationResult {
+  success?: boolean;
+  error?: string;
+  decoyMessage?: string;
+  requiresMFA?: boolean;
+  mfaType?: string;
+  requiresGeo?: boolean;
+}
+
 const SecureEmailViewer: React.FC = () => {
   const { linkID } = useParams<{ linkID: string }>();
   const navigate = useNavigate();
@@ -113,8 +148,8 @@ const SecureEmailViewer: React.FC = () => {
         await loadSecureEmailContent();
       }
     } catch (err) {
-      setError('Failed to load secure link metadata');
-      console.error('Error loading metadata:', err);
+      log.error('Error loading metadata:', err, 'SecureEmailViewer');
+      setError('Failed to load email metadata');
     } finally {
       setLoading(false);
     }
@@ -140,12 +175,12 @@ const SecureEmailViewer: React.FC = () => {
       setContent(data);
       setShowSecurityModal(false);
     } catch (err) {
+      log.error('Error loading content:', err, 'SecureEmailViewer');
       setError('Failed to load email content');
-      console.error('Error loading content:', err);
     }
   };
 
-  const handleSecurityValidation = async (validationRequest: SecurityValidationRequest) => {
+  const handleSecurityValidation = async (validationRequest: SecurityValidationRequest): Promise<SecurityValidationResult> => {
     try {
       const response = await fetch(`/api/v/${linkID}/validate`, {
         method: 'POST',
@@ -162,7 +197,7 @@ const SecureEmailViewer: React.FC = () => {
         if (data.error_code === 'LINK_DESTROYED') {
           setError('This secure link has been destroyed due to too many failed attempts');
           setShowSecurityModal(false);
-          return;
+          return { error: 'Link destroyed due to too many failed attempts' };
         }
         
         // Show error in modal
@@ -184,10 +219,12 @@ const SecureEmailViewer: React.FC = () => {
           return { requiresGeo: true };
         }
       }
-    } catch (err) {
-      console.error('Error during security validation:', err);
-      return { error: 'Security validation failed' };
-    }
+          } catch (err) {
+        log.error('Error during security validation:', err, 'SecureEmailViewer');
+        return { error: 'Security validation failed' };
+      }
+      
+      return { error: 'Unknown validation state' };
   };
 
   const handleModalClose = () => {
@@ -198,7 +235,7 @@ const SecureEmailViewer: React.FC = () => {
   const handleReplySent = (replyID: string) => {
     setShowReplyComposer(false);
     // Optionally show a success message or update the UI
-    console.log('Reply sent successfully:', replyID);
+    log.info('Reply sent successfully:', { replyID }, 'SecureEmailViewer');
   };
 
   if (loading) {
@@ -327,7 +364,7 @@ const SecureEmailViewer: React.FC = () => {
           <div className="mt-6 border-t border-gray-200 pt-6">
             <div className="flex justify-between items-center">
               <div className="text-sm text-gray-600">
-                <p>This secure message was delivered using SecureMail's encrypted email system.</p>
+                <p>This secure message was delivered using SecureMail&apos;s encrypted email system.</p>
                 {content.read_once && (
                   <p className="mt-2 text-red-600">
                     ⚠️ This message has been destroyed after viewing for security.

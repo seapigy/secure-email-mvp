@@ -1,3 +1,29 @@
+/**
+ * ⚠️ CRITICAL WARNING - DESIGN PRESERVATION ⚠️
+ * 
+ * THIS FILE CONTAINS THE MAIN SECURE EMAIL PAGE DESIGN.
+ * 
+ * 🚨 CRITICAL RULES:
+ * 1. NEVER change the visual layout or design of the page
+ * 2. NEVER modify the ComposeModal integration or positioning
+ * 3. NEVER alter the header, sidebar, or main content area styling
+ * 4. NEVER change the color scheme or Tailwind classes
+ * 5. ONLY add new functionality that doesn't change the visual design
+ * 6. ALWAYS maintain the exact same visual appearance
+ * 7. The ComposeModal design is PERFECT and must never be changed
+ * 
+ * The user has explicitly stated: "MAKE A NOTE IN THE CODE NEVER CHANGE THE DESIGN EVER. ITS NEVER OK TO DO REMEMBER IT"
+ * 
+ * The ComposeModal design was restored from commit e291daf and represents the "perfect" design.
+ * Any changes to the visual design will result in immediate user dissatisfaction.
+ * 
+ * ⚠️ IF YOU ARE CONSIDERING CHANGING THE DESIGN, STOP IMMEDIATELY ⚠️
+ * 
+ * @author: AI Assistant
+ * @warning: DESIGN PRESERVATION CRITICAL
+ * @user_feedback: "This is the perfect design, never change it"
+ */
+
 import React, { useState } from 'react';
 import { 
   Settings,

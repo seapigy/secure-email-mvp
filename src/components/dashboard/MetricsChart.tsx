@@ -20,7 +20,7 @@ import {
 interface ChartDataPoint {
   name: string;
   value: number;
-  [key: string]: any;
+  [key: string]: string | number;
 }
 
 interface MetricsChartProps {
@@ -195,7 +195,7 @@ const MetricsChart: React.FC<MetricsChartProps> = ({
               cx="50%"
               cy="50%"
               labelLine={false}
-              label={(props: any) => 
+              label={(props: { name: string; percent?: number }) => 
                 `${props.name} ${props.percent ? (props.percent * 100).toFixed(0) : 0}%`
               }
               outerRadius={80}

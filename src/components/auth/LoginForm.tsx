@@ -69,7 +69,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ className, onSwitchToSignup }) =>
 
     try {
       await login(formData);
-    } catch (err) {
+    } catch {
       // Error is handled by the auth store
     }
   };

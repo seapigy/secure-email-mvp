@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { log } from '@/lib/logger';
 import Button from '@/components/ui/Button';
 import { 
   Activity, 
@@ -48,11 +49,11 @@ const MonitoringDashboard: React.FC = () => {
     
     // Connect to SSE stream
     const clientId = `dashboard_${Date.now()}`;
-    subscribeToStream(clientId, (data: any) => {
+    subscribeToStream(clientId, (data: { type: string; data: unknown }) => {
       if (data.type === 'metrics_update') {
-        setCurrentMetrics(data.data);
+        setCurrentMetrics(data.data as MetricsData);
       } else if (data.type === 'health_update') {
-        setSystemHealth(data.data);
+        setSystemHealth(data.data as HealthData);
       }
     });
 
@@ -72,7 +73,7 @@ const MonitoringDashboard: React.FC = () => {
         throw new Error(`HTTP ${response.status}`);
       }
           } catch (error) {
-        console.error('Failed to fetch metrics:', error);
+        log.error('Failed to fetch metrics:', error, 'MonitoringDashboard');
         setIsConnected(false);
       }
   };
@@ -85,7 +86,7 @@ const MonitoringDashboard: React.FC = () => {
         setSystemHealth(data.health);
       }
     } catch (error) {
-      console.error('Failed to fetch health:', error);
+      log.error('Failed to fetch health:', error, 'MonitoringDashboard');
     }
   };
 

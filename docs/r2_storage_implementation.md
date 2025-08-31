@@ -79,10 +79,10 @@ type R2Client struct {
 
 ### Required Environment Variables
 ```bash
-R2_ACCESS_KEY_ID=your_access_key_id
-R2_SECRET_ACCESS_KEY=your_secret_access_key
-R2_BUCKET=secure-email-blobs
-R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
+CLOUDFLARE_R2_ACCESS_KEY=your_access_key_id
+CLOUDFLARE_R2_SECRET_KEY=your_secret_access_key
+CLOUDFLARE_R2_BUCKET=secure-email-blobs
+CLOUDFLARE_R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
 ```
 
 ### Optional Configuration

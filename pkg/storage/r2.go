@@ -56,10 +56,10 @@ func NewR2Client(config *R2Config) (*R2Client, error) {
 // NewR2ClientFromEnv creates a new R2 client using environment variables
 func NewR2ClientFromEnv() (*R2Client, error) {
 	config := &R2Config{
-		AccessKeyID:     os.Getenv("R2_ACCESS_KEY_ID"),
-		SecretAccessKey: os.Getenv("R2_SECRET_ACCESS_KEY"),
-		Bucket:          os.Getenv("R2_BUCKET"),
-		Endpoint:        os.Getenv("R2_ENDPOINT"),
+		AccessKeyID:     os.Getenv("CLOUDFLARE_R2_ACCESS_KEY"),
+		SecretAccessKey: os.Getenv("CLOUDFLARE_R2_SECRET_KEY"),
+		Bucket:          os.Getenv("CLOUDFLARE_R2_BUCKET"),
+		Endpoint:        os.Getenv("CLOUDFLARE_R2_ENDPOINT"),
 		Region:          "auto", // R2 uses "auto" region
 	}
 
@@ -125,7 +125,7 @@ func UploadToR2WithContext(ctx context.Context, blobID string, data []byte) erro
 		log.Printf("TEST_MODE: Mocking R2 upload for blob %s", blobID)
 		return nil
 	}
-	
+
 	client, err := NewR2ClientFromEnv()
 	if err != nil {
 		return fmt.Errorf("failed to create R2 client: %w", err)

@@ -77,6 +77,8 @@ export interface ApiResponse<T = unknown> {
   message?: string;
 }
 
+import React from 'react';
+
 // Navigation types
 export interface NavigationItem {
   name: string;

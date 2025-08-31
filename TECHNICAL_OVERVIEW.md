@@ -474,8 +474,8 @@ CREATE INDEX IF NOT EXISTS idx_folders_user ON folders(user_id);
 # Required .env file
 CLOUDFLARE_R2_ACCESS_KEY=your_r2_access_key_here
 CLOUDFLARE_R2_SECRET_KEY=your_r2_secret_key_here
-CLOUDFLARE_R2_BUCKET=secure-email-blobs
-CLOUDFLARE_R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
+CLOUDFLARE_CLOUDFLARE_R2_BUCKET=secure-email-blobs
+CLOUDFLARE_CLOUDFLARE_R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
 API_HOST=api.securesystem.email
 API_PORT=8080
 SQLITE_DB=/var/db/secure-email.db

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Send, AlertTriangle, CheckCircle, X, Shield, Paperclip, Type } from 'lucide-react';
 import RichTextEditor from './RichTextEditor';
 import AttachmentUploader from './AttachmentUploader';
+import { log } from '@/lib/logger';
 
 interface ReplyComposerProps {
   linkID: string;
@@ -71,7 +72,7 @@ const ReplyComposer: React.FC<ReplyComposerProps> = ({
     }
 
     // Log current state for debugging (explicitly use variables)
-    console.log('Submitting reply with attachments:', attachments.length, 'features used:', featuresUsed.length);
+    log.info('Submitting reply with attachments:', { attachmentsCount: attachments.length, featuresUsed }, 'ReplyComposer');
 
     setLoading(true);
     setError(null);
@@ -133,7 +134,7 @@ const ReplyComposer: React.FC<ReplyComposerProps> = ({
         setError(data.error || 'Reply failed');
       }
     } catch (err) {
-      console.error('Error sending reply:', err);
+      log.error('Error sending reply:', err, 'ReplyComposer');
       setError('Failed to send reply. Please try again.');
     } finally {
       setLoading(false);

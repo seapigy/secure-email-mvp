@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { log } from '@/lib/logger';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import {
@@ -118,17 +119,14 @@ const EmailSendForm: React.FC<EmailSendFormProps> = ({
 
     try {
       const payload = {
-        to: formData.to,
+        recipient: formData.to,
         subject: formData.subject,
-        content: formData.message,
-        security_settings: {
-          password_protection: formData.passwordProtected,
-          password: formData.passwordProtected ? formData.password : undefined,
-          geolocation_restricted: formData.geolocationRestricted,
-          time_lock: formData.timeLock,
-          read_once: formData.readOnce,
-          auto_destruct: formData.autoDestruct
-        }
+        body: formData.message,
+        password: formData.passwordProtected ? formData.password : undefined,
+        burnAfterRead: formData.readOnce,
+        autoDestruct: formData.autoDestruct,
+        timeLock: formData.timeLock,
+        geolocationLock: formData.geolocationRestricted
       };
 
       await sendEmail(payload);
@@ -141,7 +139,7 @@ const EmailSendForm: React.FC<EmailSendFormProps> = ({
         navigate('/dashboard');
       }
     } catch (error: unknown) {
-      console.error('Failed to send email:', error);
+      log.error('Failed to send email:', error, 'EmailSendForm');
       
       const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || 
                           (error as Error)?.message || 

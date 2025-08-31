@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
+import { log } from '@/lib/logger';
 
 export function useAuth() {
   const {
@@ -35,7 +36,7 @@ export function useAuth() {
               refreshToken();
             }
           } catch (error) {
-            console.error('Error parsing token:', error);
+            log.error('Error parsing token:', error, 'useAuth');
           }
         }
       };
@@ -54,11 +55,11 @@ export function useAuth() {
       const accessToken = sessionStorage.getItem('accessToken');
       if (accessToken && !isAuthenticated) {
         try {
-          const { getUserProfile } = await import('@/lib/api');
-          const user = await getUserProfile();
+          const { getCurrentUser } = await import('@/lib/api');
+          const user = await getCurrentUser();
           setUser(user);
         } catch (error) {
-          console.error('Error checking session:', error);
+          log.error('Error checking session:', error, 'useAuth');
           sessionStorage.removeItem('accessToken');
           sessionStorage.removeItem('refreshToken');
         }

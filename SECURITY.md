@@ -36,8 +36,8 @@ This document outlines security best practices for the Secure Email MVP project.
    ```
    CLOUDFLARE_R2_ACCESS_KEY=your_access_key_here
    CLOUDFLARE_R2_SECRET_KEY=your_secret_key_here
-   CLOUDFLARE_R2_BUCKET=your_bucket_name
-   CLOUDFLARE_R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
+   CLOUDFLARE_CLOUDFLARE_R2_BUCKET=your_bucket_name
+   CLOUDFLARE_CLOUDFLARE_R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
    ```
 
 3. Verify security:

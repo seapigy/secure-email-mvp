@@ -216,9 +216,9 @@ JWT_EXPIRY_HOURS=24
 
 # Cloudflare R2 Configuration (Optional)
 R2_ACCOUNT_ID=your-r2-account-id
-R2_ACCESS_KEY_ID=your-r2-access-key
-R2_SECRET_ACCESS_KEY=your-r2-secret-key
-R2_BUCKET_NAME=your-r2-bucket-name
+CLOUDFLARE_R2_ACCESS_KEY=your-r2-access-key
+CLOUDFLARE_R2_SECRET_KEY=your-r2-secret-key
+CLOUDFLARE_R2_BUCKET=your-r2-bucket-name
 R2_REGION=auto
 
 # Base URL for secure links

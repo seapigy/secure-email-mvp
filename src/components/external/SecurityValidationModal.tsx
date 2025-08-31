@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Lock, Shield, MapPin, AlertTriangle, CheckCircle } from 'lucide-react';
+import { log } from '@/lib/logger';
 
 interface SecuritySettings {
   require_password: boolean;
@@ -26,10 +27,19 @@ interface SecurityValidationRequest {
   user_agent?: string;
 }
 
+interface SecurityValidationResult {
+  success?: boolean;
+  error?: string;
+  decoyMessage?: string;
+  requiresMFA?: boolean;
+  requiresGeo?: boolean;
+  nextStep?: 'password' | 'mfa' | 'geo' | 'complete';
+}
+
 interface SecurityValidationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onValidate: (request: SecurityValidationRequest) => Promise<any>;
+  onValidate: (request: SecurityValidationRequest) => Promise<SecurityValidationResult>;
   securitySettings: SecuritySettings;
   currentStep: 'password' | 'mfa' | 'geo' | 'complete';
   linkID: string;
@@ -75,7 +85,7 @@ const SecurityValidationModal: React.FC<SecurityValidationModalProps> = ({
         city: 'New York',
       });
     } catch (err) {
-      console.error('Error getting location:', err);
+      log.error('Error getting location:', err, 'SecurityValidationModal');
       setError('Unable to determine your location');
     }
   };
@@ -124,8 +134,8 @@ const SecurityValidationModal: React.FC<SecurityValidationModalProps> = ({
         return;
       }
     } catch (err) {
+      log.error('Password validation error:', err, 'SecurityValidationModal');
       setError('Password validation failed');
-      console.error('Password validation error:', err);
     } finally {
       setLoading(false);
     }
@@ -169,8 +179,8 @@ const SecurityValidationModal: React.FC<SecurityValidationModalProps> = ({
         return;
       }
     } catch (err) {
+      log.error('MFA validation error:', err, 'SecurityValidationModal');
       setError('MFA validation failed');
-      console.error('MFA validation error:', err);
     } finally {
       setLoading(false);
     }
@@ -208,8 +218,8 @@ const SecurityValidationModal: React.FC<SecurityValidationModalProps> = ({
         return;
       }
     } catch (err) {
+      log.error('Location validation error:', err, 'SecurityValidationModal');
       setError('Location validation failed');
-      console.error('Location validation error:', err);
     } finally {
       setLoading(false);
     }

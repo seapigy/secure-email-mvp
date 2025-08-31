@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, AuthState, LoginCredentials, SignupData, AuthTokens } from '@/types';
+import { log } from '@/lib/logger';
 
 interface AuthStore extends AuthState {
   // Actions
@@ -57,15 +58,19 @@ export const useAuthStore = create<AuthStore>()(
           
           // Use the API utility for non-demo login
           try {
-            const { login: apiLogin, getUserProfile } = await import('@/lib/api');
-            const data = await apiLogin(credentials);
+            const { loginUser, getCurrentUser } = await import('@/lib/api');
+            const data = await loginUser({
+              email: credentials.email,
+              password: credentials.password,
+              totp_code: credentials.totpCode
+            });
             
             // Store tokens securely
-            sessionStorage.setItem('accessToken', data.accessToken);
-            sessionStorage.setItem('refreshToken', data.refreshToken);
+            sessionStorage.setItem('accessToken', data.token);
+            sessionStorage.setItem('refreshToken', data.token); // TODO: Implement proper refresh token
 
             // Get user info
-            const user = await getUserProfile();
+            const user = await getCurrentUser();
             set({
               user,
               isAuthenticated: true,
@@ -73,7 +78,7 @@ export const useAuthStore = create<AuthStore>()(
               error: null,
             });
           } catch (apiError) {
-            console.error('API login failed:', apiError);
+            log.error('API login failed:', apiError, 'authStore');
             set({
               isLoading: false,
               error: 'API connection failed. Please try again later.',
@@ -133,10 +138,11 @@ export const useAuthStore = create<AuthStore>()(
         }
 
         try {
-          const { refreshToken: apiRefreshToken } = await import('@/lib/api');
-          const data = await apiRefreshToken(refreshToken);
-          sessionStorage.setItem('accessToken', data.accessToken);
-        } catch (error) {
+          // TODO: Implement proper refresh token functionality
+          // const { refreshToken: apiRefreshToken } = await import('@/lib/api');
+          // const data = await apiRefreshToken(refreshToken);
+          // sessionStorage.setItem('accessToken', data.accessToken);
+        } catch {
           get().logout();
         }
       },

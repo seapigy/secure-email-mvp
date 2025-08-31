@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { log } from '@/lib/logger';
 import { useUIStore } from '@/stores/uiStore';
 import { cn, formatRelativeTime, truncateText, getInitials, getRandomColor } from '@/lib/utils';
 import {
@@ -119,20 +120,20 @@ const EmailList: React.FC<EmailListProps> = ({ className }) => {
 
   const handleEmailClick = (emailId: string) => {
     // In real app, this would navigate to email detail view
-    console.log('Opening email:', emailId);
+    log.info('Opening email:', emailId, 'EmailList');
   };
 
   const handleStarToggle = (emailId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     // In real app, this would update the email star status via API
-    console.log('Toggling star for email:', emailId);
+    log.info('Toggling star for email:', emailId, 'EmailList');
   };
 
   const handleBulkAction = (action: 'delete' | 'archive' | 'mark-read' | 'mark-unread') => {
     if (selectedEmails.length === 0) return;
     
     // In real app, this would perform bulk actions via API
-    console.log(`Performing ${action} on emails:`, selectedEmails);
+    log.info(`Performing ${action} on emails:`, selectedEmails, 'EmailList');
     clearEmailSelection();
   };
 

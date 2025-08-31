@@ -13,7 +13,8 @@ import (
 
 // Service handles security policies and controls
 type Service struct {
-	db Database
+	db       Database
+	systemDB SystemSecurityRepository
 }
 
 // Database interface for security operations
@@ -29,9 +30,10 @@ type Database interface {
 }
 
 // NewService creates a new security service
-func NewService(db Database) *Service {
+func NewService(db Database, systemDB SystemSecurityRepository) *Service {
 	return &Service{
-		db: db,
+		db:       db,
+		systemDB: systemDB,
 	}
 }
 
@@ -105,31 +107,31 @@ func (s *Service) CreateSecurityPolicy(ctx context.Context, req models.CreateSec
 
 	// Log compliance audit event
 	auditDetails := map[string]interface{}{
-		"policy_id": policyID,
-		"link_id": req.LinkID,
-		"dlp_enabled": policy.DLPEnabled,
-		"watermark_enabled": policy.WatermarkEnabled,
-		"download_disabled": policy.DownloadDisabled,
-		"forwarding_disabled": policy.ForwardingDisabled,
+		"policy_id":               policyID,
+		"link_id":                 req.LinkID,
+		"dlp_enabled":             policy.DLPEnabled,
+		"watermark_enabled":       policy.WatermarkEnabled,
+		"download_disabled":       policy.DownloadDisabled,
+		"forwarding_disabled":     policy.ForwardingDisabled,
 		"auto_revoke_after_reply": policy.AutoRevokeAfterReply,
-		"max_views": policy.MaxViews,
-		"expires_at": policy.ExpiresAt,
-		"expires_after_views": policy.ExpiresAfterViews,
-		"template_id": req.TemplateID,
+		"max_views":               policy.MaxViews,
+		"expires_at":              policy.ExpiresAt,
+		"expires_after_views":     policy.ExpiresAfterViews,
+		"template_id":             req.TemplateID,
 	}
 
 	auditLog := models.ComplianceAuditLog{
-		AuditID:           s.generateAuditID(),
-		EventType:         "policy_created",
-		LinkID:            &req.LinkID,
-		ReplyID:           req.ReplyID,
-		PolicyID:          &policyID,
-		IPAddress:         nil, // Will be set by caller
-		UserAgent:         nil, // Will be set by caller
-		Severity:          "info",
+		AuditID:            s.generateAuditID(),
+		EventType:          "policy_created",
+		LinkID:             &req.LinkID,
+		ReplyID:            req.ReplyID,
+		PolicyID:           &policyID,
+		IPAddress:          nil, // Will be set by caller
+		UserAgent:          nil, // Will be set by caller
+		Severity:           "info",
 		ComplianceCategory: stringPtr("access_control"),
-		RetentionRequired: true,
-		CreatedAt:         time.Now(),
+		RetentionRequired:  true,
+		CreatedAt:          time.Now(),
 	}
 
 	if err := auditLog.SetEventDetails(auditDetails); err != nil {
@@ -171,23 +173,23 @@ func (s *Service) UpdateSecurityPolicy(ctx context.Context, policy *models.Secur
 
 	// Log compliance audit event
 	auditDetails := map[string]interface{}{
-		"policy_id": policy.PolicyID,
-		"link_id": policy.LinkID,
+		"policy_id":  policy.PolicyID,
+		"link_id":    policy.LinkID,
 		"updated_at": policy.UpdatedAt,
 	}
 
 	auditLog := models.ComplianceAuditLog{
-		AuditID:           s.generateAuditID(),
-		EventType:         "policy_updated",
-		LinkID:            &policy.LinkID,
-		ReplyID:           policy.ReplyID,
-		PolicyID:          &policy.PolicyID,
-		IPAddress:         nil, // Will be set by caller
-		UserAgent:         nil, // Will be set by caller
-		Severity:          "info",
+		AuditID:            s.generateAuditID(),
+		EventType:          "policy_updated",
+		LinkID:             &policy.LinkID,
+		ReplyID:            policy.ReplyID,
+		PolicyID:           &policy.PolicyID,
+		IPAddress:          nil, // Will be set by caller
+		UserAgent:          nil, // Will be set by caller
+		Severity:           "info",
 		ComplianceCategory: stringPtr("access_control"),
-		RetentionRequired: true,
-		CreatedAt:         time.Now(),
+		RetentionRequired:  true,
+		CreatedAt:          time.Now(),
 	}
 
 	if err := auditLog.SetEventDetails(auditDetails); err != nil {
@@ -237,8 +239,8 @@ func (s *Service) CheckAccessControl(ctx context.Context, linkID string, userID 
 		// Log expiration event
 		s.logExpirationEvent(linkID, userID, ipAddress, userAgent, policy)
 		return &models.SecurityPolicyResponse{
-			Success: false,
-			Error:   "Link has expired",
+			Success:   false,
+			Error:     "Link has expired",
 			ErrorCode: "LINK_EXPIRED",
 		}, nil
 	}
@@ -248,8 +250,8 @@ func (s *Service) CheckAccessControl(ctx context.Context, linkID string, userID 
 		// Log expiration event
 		s.logExpirationEvent(linkID, userID, ipAddress, userAgent, policy)
 		return &models.SecurityPolicyResponse{
-			Success: false,
-			Error:   "Link has expired after maximum views",
+			Success:   false,
+			Error:     "Link has expired after maximum views",
 			ErrorCode: "LINK_EXPIRED_VIEWS",
 		}, nil
 	}
@@ -259,8 +261,8 @@ func (s *Service) CheckAccessControl(ctx context.Context, linkID string, userID 
 		// Log revocation event
 		s.logRevocationEvent(linkID, userID, ipAddress, userAgent, policy)
 		return &models.SecurityPolicyResponse{
-			Success: false,
-			Error:   "Link has been revoked",
+			Success:   false,
+			Error:     "Link has been revoked",
 			ErrorCode: "LINK_REVOKED",
 		}, nil
 	}
@@ -286,24 +288,24 @@ func (s *Service) CheckAccessControl(ctx context.Context, linkID string, userID 
 // logExpirationEvent logs when a link expires
 func (s *Service) logExpirationEvent(linkID, userID, ipAddress, userAgent string, policy *models.SecurityPolicy) {
 	auditDetails := map[string]interface{}{
-		"link_id": linkID,
-		"user_id": userID,
+		"link_id":           linkID,
+		"user_id":           userID,
 		"expiration_reason": "time_expired",
-		"policy_id": policy.PolicyID,
+		"policy_id":         policy.PolicyID,
 	}
 
 	auditLog := models.ComplianceAuditLog{
-		AuditID:           s.generateAuditID(),
-		EventType:         "expiration_triggered",
-		LinkID:            &linkID,
-		PolicyID:          &policy.PolicyID,
-		UserID:            &userID,
-		IPAddress:         &ipAddress,
-		UserAgent:         &userAgent,
-		Severity:          "warning",
+		AuditID:            s.generateAuditID(),
+		EventType:          "expiration_triggered",
+		LinkID:             &linkID,
+		PolicyID:           &policy.PolicyID,
+		UserID:             &userID,
+		IPAddress:          &ipAddress,
+		UserAgent:          &userAgent,
+		Severity:           "warning",
 		ComplianceCategory: stringPtr("expiration"),
-		RetentionRequired: true,
-		CreatedAt:         time.Now(),
+		RetentionRequired:  true,
+		CreatedAt:          time.Now(),
 	}
 
 	auditLog.SetEventDetails(auditDetails)
@@ -313,24 +315,24 @@ func (s *Service) logExpirationEvent(linkID, userID, ipAddress, userAgent string
 // logRevocationEvent logs when a link is revoked
 func (s *Service) logRevocationEvent(linkID, userID, ipAddress, userAgent string, policy *models.SecurityPolicy) {
 	auditDetails := map[string]interface{}{
-		"link_id": linkID,
-		"user_id": userID,
+		"link_id":           linkID,
+		"user_id":           userID,
 		"revocation_reason": "manual_revoke",
-		"policy_id": policy.PolicyID,
+		"policy_id":         policy.PolicyID,
 	}
 
 	auditLog := models.ComplianceAuditLog{
-		AuditID:           s.generateAuditID(),
-		EventType:         "revocation_triggered",
-		LinkID:            &linkID,
-		PolicyID:          &policy.PolicyID,
-		UserID:            &userID,
-		IPAddress:         &ipAddress,
-		UserAgent:         &userAgent,
-		Severity:          "warning",
+		AuditID:            s.generateAuditID(),
+		EventType:          "revocation_triggered",
+		LinkID:             &linkID,
+		PolicyID:           &policy.PolicyID,
+		UserID:             &userID,
+		IPAddress:          &ipAddress,
+		UserAgent:          &userAgent,
+		Severity:           "warning",
 		ComplianceCategory: stringPtr("revocation"),
-		RetentionRequired: true,
-		CreatedAt:         time.Now(),
+		RetentionRequired:  true,
+		CreatedAt:          time.Now(),
 	}
 
 	auditLog.SetEventDetails(auditDetails)
@@ -340,24 +342,24 @@ func (s *Service) logRevocationEvent(linkID, userID, ipAddress, userAgent string
 // logAccessEvent logs when access is granted
 func (s *Service) logAccessEvent(linkID, userID, ipAddress, userAgent string, policy *models.SecurityPolicy) {
 	auditDetails := map[string]interface{}{
-		"link_id": linkID,
-		"user_id": userID,
+		"link_id":        linkID,
+		"user_id":        userID,
 		"access_granted": true,
-		"policy_id": policy.PolicyID,
+		"policy_id":      policy.PolicyID,
 	}
 
 	auditLog := models.ComplianceAuditLog{
-		AuditID:           s.generateAuditID(),
-		EventType:         "policy_enforced",
-		LinkID:            &linkID,
-		PolicyID:          &policy.PolicyID,
-		UserID:            &userID,
-		IPAddress:         &ipAddress,
-		UserAgent:         &userAgent,
-		Severity:          "info",
+		AuditID:            s.generateAuditID(),
+		EventType:          "policy_enforced",
+		LinkID:             &linkID,
+		PolicyID:           &policy.PolicyID,
+		UserID:             &userID,
+		IPAddress:          &ipAddress,
+		UserAgent:          &userAgent,
+		Severity:           "info",
 		ComplianceCategory: stringPtr("access_control"),
-		RetentionRequired: true,
-		CreatedAt:         time.Now(),
+		RetentionRequired:  true,
+		CreatedAt:          time.Now(),
 	}
 
 	auditLog.SetEventDetails(auditDetails)
@@ -369,6 +371,107 @@ func (s *Service) generatePolicyID() string {
 	bytes := make([]byte, 8)
 	rand.Read(bytes)
 	return "policy_" + hex.EncodeToString(bytes)
+}
+
+// GetSystemSecurityPolicies retrieves all system security policies
+func (s *Service) GetSystemSecurityPolicies(ctx context.Context) (*models.SystemSecurityPolicyResponse, error) {
+	policies, err := s.systemDB.GetAllSystemPolicies()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get system security policies: %w", err)
+	}
+
+	return &models.SystemSecurityPolicyResponse{
+		Success:  true,
+		Policies: policies,
+		Message:  fmt.Sprintf("Retrieved %d system security policies", len(policies)),
+	}, nil
+}
+
+// GetSystemSecurityPoliciesByType retrieves system security policies by type
+func (s *Service) GetSystemSecurityPoliciesByType(ctx context.Context, policyType string) (*models.SystemSecurityPolicyResponse, error) {
+	policies, err := s.systemDB.GetSystemPoliciesByType(policyType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get system security policies by type: %w", err)
+	}
+
+	return &models.SystemSecurityPolicyResponse{
+		Success:  true,
+		Policies: policies,
+		Message:  fmt.Sprintf("Retrieved %d system security policies of type %s", len(policies), policyType),
+	}, nil
+}
+
+// UpdateSystemSecurityPolicy updates a system security policy
+func (s *Service) UpdateSystemSecurityPolicy(ctx context.Context, req models.SystemSecurityPolicyUpdateRequest) (*models.SystemSecurityPolicyResponse, error) {
+	// Get existing policy
+	existingPolicy, err := s.systemDB.GetSystemPolicyByID(req.PolicyID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get existing policy: %w", err)
+	}
+	if existingPolicy == nil {
+		return nil, fmt.Errorf("policy not found: %s", req.PolicyID)
+	}
+
+	// Update fields
+	if req.PolicyValue != "" {
+		existingPolicy.PolicyValue = req.PolicyValue
+	}
+	if req.IsActive != nil {
+		existingPolicy.IsActive = *req.IsActive
+	}
+	if req.Severity != nil {
+		existingPolicy.Severity = *req.Severity
+	}
+	if req.EnforcementLevel != nil {
+		existingPolicy.EnforcementLevel = *req.EnforcementLevel
+	}
+	if req.UpdatedBy != nil {
+		existingPolicy.LastModifiedBy = req.UpdatedBy
+	}
+
+	existingPolicy.UpdatedAt = time.Now()
+
+	// Save to database
+	if err := s.systemDB.UpdateSystemPolicy(existingPolicy); err != nil {
+		return nil, fmt.Errorf("failed to update system policy: %w", err)
+	}
+
+	// Log audit event
+	auditLog := models.ComplianceAuditLog{
+		AuditID:            s.generateAuditID(),
+		EventType:          "system_policy_updated",
+		PolicyID:           &req.PolicyID,
+		Severity:           "info",
+		ComplianceCategory: stringPtr("security_policy"),
+		RetentionRequired:  true,
+		CreatedAt:          time.Now(),
+	}
+
+	auditDetails := map[string]interface{}{
+		"policy_id": req.PolicyID,
+		"updated_fields": map[string]interface{}{
+			"policy_value":      req.PolicyValue,
+			"is_active":         req.IsActive,
+			"severity":          req.Severity,
+			"enforcement_level": req.EnforcementLevel,
+		},
+		"updated_by": req.UpdatedBy,
+	}
+
+	if err := auditLog.SetEventDetails(auditDetails); err != nil {
+		return nil, fmt.Errorf("failed to set audit details: %w", err)
+	}
+
+	if err := s.db.CreateComplianceAuditLog(&auditLog); err != nil {
+		// Log error but don't fail the update
+		fmt.Printf("Warning: failed to create audit log: %v\n", err)
+	}
+
+	return &models.SystemSecurityPolicyResponse{
+		Success:  true,
+		Policies: []models.SystemSecurityPolicy{*existingPolicy},
+		Message:  fmt.Sprintf("System security policy %s updated successfully", req.PolicyID),
+	}, nil
 }
 
 // generateAuditID generates a unique audit ID

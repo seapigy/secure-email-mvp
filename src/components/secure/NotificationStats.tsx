@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { log } from '@/lib/logger';
 import { 
   BarChart3, 
   Bell, 
@@ -92,7 +93,7 @@ const NotificationStats: React.FC<NotificationStatsProps> = ({ className = '' })
       const data = await response.json();
       setSuppressions(data);
     } catch (err) {
-      console.error('Failed to load suppressions:', err);
+      log.error('Failed to load suppressions:', err, 'NotificationStats');
     } finally {
       setIsLoading(false);
     }

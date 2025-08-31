@@ -5,6 +5,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { log } from '@/lib/logger';
 import { 
   Table, 
   TableBody, 
@@ -359,7 +360,7 @@ const AuditLogDashboard: React.FC = () => {
           return;
         }
       } catch (err) {
-        console.error('Failed to poll export status:', err);
+        log.error('Failed to poll export status:', err, 'AuditLogDashboard');
       }
 
       attempts++;

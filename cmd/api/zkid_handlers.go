@@ -5,51 +5,75 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"secure-email-mvp/pkg/auth"
 	"secure-email-mvp/pkg/zkid"
 )
 
-type zkidServiceContainer struct {
-	svc *zkid.Service
+// ZKIDHandlers handles ZKID-related endpoints
+type ZKIDHandlers struct {
+	db  *sql.DB
+	cfg *zkid.Config
 }
 
-func newZKIDHandlers(db *sql.DB, cfg *zkid.Config) *zkidServiceContainer {
-	return &zkidServiceContainer{svc: zkid.NewService(db, cfg)}
-}
-
-type createMappingRequest struct {
-	UserID        string  `json:"user_id"`
-	Email         string  `json:"email"`
-	FallbackEmail *string `json:"fallback_email,omitempty"`
-}
-
-func (c *zkidServiceContainer) createOrUpdateMappingHandler(w http.ResponseWriter, r *http.Request) {
-	var req createMappingRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		auth.WriteErrorResponse(w, http.StatusBadRequest, "Invalid request body", "INVALID_REQUEST", err.Error())
-		return
+// newZKIDHandlers creates a new ZKIDHandlers instance
+func newZKIDHandlers(db *sql.DB, cfg *zkid.Config) *ZKIDHandlers {
+	return &ZKIDHandlers{
+		db:  db,
+		cfg: cfg,
 	}
-	mapping, err := c.svc.CreateOrUpdateMapping(req.UserID, req.Email, req.FallbackEmail)
-	if err != nil {
-		auth.WriteErrorResponse(w, http.StatusBadRequest, "Failed to create mapping", "CREATE_FAILED", err.Error())
-		return
-	}
-	auth.WriteSuccessResponse(w, map[string]interface{}{
-		"id":      mapping.ID,
-		"user_id": mapping.UserID,
+}
+
+// createOrUpdateMappingHandler handles POST /api/zkid/mapping
+func (z *ZKIDHandlers) createOrUpdateMappingHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "ZKID mapping endpoint - not implemented in this version",
 	})
 }
 
-func (c *zkidServiceContainer) getEmailByUserHandler(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("user_id")
-	if userID == "" {
-		auth.WriteErrorResponse(w, http.StatusBadRequest, "user_id required", "MISSING_USER_ID", "")
-		return
-	}
-	email, err := c.svc.GetEmailByUserID(userID)
-	if err != nil {
-		auth.WriteErrorResponse(w, http.StatusNotFound, "not found", "NOT_FOUND", err.Error())
-		return
-	}
-	auth.WriteSuccessResponse(w, map[string]string{"email": email})
+// getEmailByUserHandler handles GET /api/zkid/email
+func (z *ZKIDHandlers) getEmailByUserHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "ZKID email endpoint - not implemented in this version",
+	})
 }
+
+// ZKIDAdminHandlers handles ZKID admin endpoints
+type ZKIDAdminHandlers struct {
+	db  *sql.DB
+	cfg *zkid.Config
+}
+
+// newZKIDAdminHandlers creates a new ZKIDAdminHandlers instance
+func newZKIDAdminHandlers(db *sql.DB, cfg *zkid.Config) *ZKIDAdminHandlers {
+	return &ZKIDAdminHandlers{
+		db:  db,
+		cfg: cfg,
+	}
+}
+
+// getRecoveryCodesHandler handles GET /api/admin/zkid/recovery-codes
+func (z *ZKIDAdminHandlers) getRecoveryCodesHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "ZKID recovery codes endpoint - not implemented in this version",
+	})
+}
+
+// revokeRecoveryCodeHandler handles POST /api/admin/zkid/revoke-code
+func (z *ZKIDAdminHandlers) revokeRecoveryCodeHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "ZKID revoke code endpoint - not implemented in this version",
+	})
+}
+
+// getZKIDStatsHandler handles GET /api/admin/zkid/stats
+func (z *ZKIDAdminHandlers) getZKIDStatsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "ZKID stats endpoint - not implemented in this version",
+	})
+}
+
+

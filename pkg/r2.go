@@ -14,10 +14,10 @@ import (
 // UploadToR2 uploads the given data to Cloudflare R2 under the specified blobID (object key).
 // It uses environment variables for credentials and endpoint configuration.
 func UploadToR2(blobID string, data []byte) error {
-	accessKey := os.Getenv("R2_ACCESS_KEY_ID")
-	secretKey := os.Getenv("R2_SECRET_ACCESS_KEY")
-	bucket := os.Getenv("R2_BUCKET")
-	endpoint := os.Getenv("R2_ENDPOINT")
+	accessKey := os.Getenv("CLOUDFLARE_R2_ACCESS_KEY")
+	secretKey := os.Getenv("CLOUDFLARE_R2_SECRET_KEY")
+	bucket := os.Getenv("CLOUDFLARE_R2_BUCKET")
+	endpoint := os.Getenv("CLOUDFLARE_R2_ENDPOINT")
 
 	if accessKey == "" || secretKey == "" || bucket == "" || endpoint == "" {
 		return fmt.Errorf("cloudflare R2 environment variables not set")

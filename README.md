@@ -1,3 +1,28 @@
+# ⚠️ CRITICAL WARNING - DESIGN PRESERVATION ⚠️
+
+## 🚨 CRITICAL RULES FOR ALL DEVELOPERS:
+
+1. **NEVER change the visual layout or design of any frontend components**
+2. **NEVER modify the ComposeModal.tsx design - it is PERFECT as restored from commit e291daf**
+3. **NEVER alter the two-column structure (email composition left, security panel right)**
+4. **NEVER change the toggle switch styling or appearance**
+5. **NEVER modify the color scheme or Tailwind classes**
+6. **ONLY add new security features to the existing right-side panel**
+7. **ONLY add new form fields to the existing left-side panel**
+8. **ALWAYS maintain the exact same visual appearance**
+
+### User's Explicit Statement:
+> **"MAKE A NOTE IN THE CODE NEVER CHANGE THE DESIGN EVER. ITS NEVER OK TO DO REMEMBER IT"**
+
+### Design Status:
+- The ComposeModal design was restored from commit `e291daf` and represents the "perfect" design
+- Any changes to the visual design will result in immediate user dissatisfaction
+- The user has stated: "This is the perfect design, never change it"
+
+### ⚠️ IF YOU ARE CONSIDERING CHANGING THE DESIGN, STOP IMMEDIATELY ⚠️
+
+---
+
 # Secure Email MVP
 
 A secure email system with end-to-end encryption, built with React, TypeScript, and Go.
@@ -150,6 +175,8 @@ The SecureChat Email system now features **real NIST-standardized Post-Quantum C
    ```bash
    npm run lint
    npm run type-check
+   npm test
+   npm run test:watch
    ```
 
 ### Backend Setup
@@ -192,6 +219,92 @@ The SecureChat Email system now features **real NIST-standardized Post-Quantum C
    go test ./cmd/api
    ```
 
+## Testing
+
+### Frontend Testing
+The frontend uses **Vitest** with **React Testing Library** for comprehensive testing:
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+**Test Coverage:**
+- ✅ **SecureEmailViewer** - Basic rendering, error handling, security validation
+- ✅ **SecurityValidationModal** - Password/MFA flows, error handling, accessibility
+- ✅ **Burn-after-read functionality** - Message destruction, warnings, expiration
+- ✅ **MFA functionality** - TOTP verification, step transitions, validation
+
+**Testing Framework:**
+- **Vitest** - Fast test runner with native TypeScript support
+- **React Testing Library** - User-centric testing with accessibility focus
+- **jsdom** - DOM environment for component testing
+- **Mocked fetch** - API testing with controlled responses
+
+### Backend Testing
+The backend uses Go's built-in testing framework:
+
+```bash
+# Run all tests
+go test ./...
+
+# Run specific package tests
+go test ./pkg/auth
+go test ./pkg/securelinks/dlp
+go test ./pkg/securelinks/security
+
+# Run tests with coverage
+go test -cover ./...
+
+# Run integration tests
+go test ./cmd/api
+```
+
+**Test Coverage:**
+- ✅ **Authentication** - JWT generation, TOTP verification, login flows
+- ✅ **DLP Service** - Content scanning, pattern detection, risk assessment
+- ✅ **Security Policies** - Policy management, validation, audit logging
+- ✅ **Integration Tests** - End-to-end API testing with mocked databases
+
+## Code Quality
+
+### Frontend Linting
+The frontend uses **ESLint** with TypeScript and React rules:
+
+```bash
+# Run linting
+npm run lint
+
+# Type checking
+npm run type-check
+```
+
+**Linting Rules:**
+- ✅ **TypeScript** - Strict type checking, no `any` types
+- ✅ **React Hooks** - Proper dependency arrays, no missing dependencies
+- ✅ **Accessibility** - ARIA labels, semantic HTML, keyboard navigation
+- ✅ **Code Style** - Consistent formatting, import organization
+
+### Backend Code Quality
+The backend follows Go best practices:
+
+```bash
+# Format code
+go fmt ./...
+
+# Run linter
+golangci-lint run
+
+# Check for security issues
+gosec ./...
+```
+
 ## API Endpoints
 
 ### Authentication
@@ -208,6 +321,30 @@ The SecureChat Email system now features **real NIST-standardized Post-Quantum C
 - `GET /api/email/list` - List user's emails
 - `GET /api/email/view/{id}` - View individual email
 - `DELETE /api/email/{id}` - Delete email with cleanup
+
+### Email Sending with Dynamic From Addresses
+The system now supports **dynamic From addresses** where each user's own email address (e.g., `username@securesystem.email`) is used as the sender:
+
+**Features:**
+- ✅ **Dynamic From Addresses** - Each user's email appears as the sender
+- ✅ **Domain Validation** - Only `@securesystem.email` addresses allowed
+- ✅ **SES Integration** - Amazon SES SMTP for reliable email delivery
+- ✅ **Security Validation** - Comprehensive From address validation
+- ✅ **Graceful Fallback** - Falls back to `noreply@securesystem.email` if needed
+
+**Configuration:**
+```bash
+# Required SMTP credentials (no SMTP_FROM needed)
+SES_SMTP_HOST=email-smtp.us-east-1.amazonaws.com
+SES_SMTP_PORT=587
+SES_SMTP_USERNAME=your_ses_smtp_username
+SES_SMTP_PASSWORD=your_ses_smtp_password
+```
+
+**SES Requirements:**
+- ✅ `securesystem.email` domain must be verified in Amazon SES
+- ✅ SPF, DKIM, and DMARC records configured
+- ✅ Once verified, all sub-user addresses are automatically authorized
 
 ### Multi-Factor Authentication
 - `POST /api/mfa/setup` - Setup TOTP or email-based MFA

@@ -4,22 +4,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"regexp"
-	"strings"
 	"time"
 
-	"secure-email-mvp/pkg/auth"
-	"secure-email-mvp/pkg/emailpassword"
-	"secure-email-mvp/pkg/geolocation"
-	"secure-email-mvp/pkg/geoverify"
-	"secure-email-mvp/pkg/mfa"
 	"secure-email-mvp/pkg/pqc"
 	"secure-email-mvp/pkg/securelinks"
 	securelinksemail "secure-email-mvp/pkg/securelinks/email"
@@ -29,6 +20,8 @@ import (
 	"database/sql"
 
 	"github.com/google/uuid"
+
+	"secure-email-mvp/pkg/email"
 )
 
 // =============================================================================
@@ -125,22 +118,20 @@ type SendEmailResponse struct {
 // - Enhanced geolocation verification (city/country restrictions)
 // - Multi-factor authentication (TOTP or email-based)
 // - Per-email password protection (Argon2id hashing)
+// - Time-based access controls
+// - Remote revocation
+// - Decoy messages
+// - Metadata stripping
+// - Tamper alerts
 //
 // PROCESS FLOW:
 // 1. Validate all security parameters
-// 2. Normalize geolocation data (city names, country codes)
-// 3. Hash password with Argon2id if provided
-// 4. Compress email content with gzip
-// 5. Encrypt with AES-256-GCM
-// 6. Upload encrypted blob to Cloudflare R2
-// 7. Store metadata in SQLite database with foreign key integrity
-// 8. Return secure access link
-//
-// MICRO-ITERATION 4.4 FIXES:
-// - Convert JWT userID string to integer for database insert
-// - Verify user exists before email creation
-// - Use complete INSERT statement with all required columns
-// - Add comprehensive error logging and debugging
+// 2. Create email with basic metadata
+// 3. Apply security features using EmailSecurityService
+// 4. Compress and encrypt email content
+// 5. Upload encrypted blob to Cloudflare R2
+// 6. Send email (internal/external) using EmailSecurityService
+// 7. Return secure access link
 func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("=== sendEmailHandler started ===")
 
@@ -164,7 +155,6 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// User ID is already a string, which matches the TEXT type in the database
 	log.Printf("✅ Authenticated user ID: %s", userID)
 
 	// Step 3: Check if database is available
@@ -177,7 +167,6 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Step 4: Verify that the user exists in the database before proceeding
-	// This prevents foreign key constraint violations and ensures data integrity
 	var existingUserID string
 	userCheckErr := srv.db.QueryRow("SELECT id FROM users WHERE id = ?", userID).Scan(&existingUserID)
 	if userCheckErr != nil {
@@ -208,200 +197,56 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Step 7: Validate self-destruct settings (Micro-Iteration 4.12)
-	if req.SelfDestructAfterAttempts {
-		if req.MaxFailedAttempts < 1 || req.MaxFailedAttempts > 10 {
-			log.Printf("❌ Invalid maxFailedAttempts: %d (must be between 1-10)", req.MaxFailedAttempts)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"error":"maxFailedAttempts must be between 1 and 10"}`))
-			return
-		}
-	} else {
-		// If self-destruct is disabled, set maxFailedAttempts to 0
-		req.MaxFailedAttempts = 0
-	}
-
-	// Step 8: Validate expiration timestamp if provided
-	var expiresAtValue interface{} = nil
-	if req.ExpiresAt != "" {
-		// Parse the ISO 8601 UTC timestamp
-		expiresAt, err := time.Parse(time.RFC3339, req.ExpiresAt)
-		if err != nil {
-			log.Printf("❌ Invalid expiresAt format: %q (expected ISO 8601 UTC format)", req.ExpiresAt)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"error":"expiresAt must be in ISO 8601 UTC format (e.g., 2024-01-15T14:30:00Z)"}`))
-			return
-		}
-
-		// Check that expiration is in the future
-		if expiresAt.Before(time.Now()) {
-			log.Printf("❌ Expiration time is in the past: %v", expiresAt)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"error":"expiresAt must be in the future"}`))
-			return
-		}
-
-		expiresAtValue = expiresAt
-	}
-
-	// Step 9: Validate geolocation restrictions (Micro-Iteration 4.10)
-	allowedCityValue := req.AllowedCity
-	allowedCountryValue := req.AllowedCountry
-
-	// Validate country code if provided
-	if allowedCountryValue != "" {
-		if !geolocation.ValidateCountryCode(allowedCountryValue) {
-			log.Printf("❌ Invalid country code: %q", allowedCountryValue)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"error":"Invalid country code. Must be ISO 3166-1 alpha-2 format (e.g., US, CA, GB)"}`))
-			return
-		}
-		// Normalize to lowercase
-		allowedCountryValue = strings.ToLower(strings.TrimSpace(allowedCountryValue))
-	}
-
-	// Validate city name if provided
-	if allowedCityValue != "" {
-		if !geolocation.ValidateCityName(allowedCityValue) {
-			log.Printf("❌ Invalid city name: %q", allowedCityValue)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"error":"Invalid city name. Must be 2-100 characters, letters, spaces, hyphens, and apostrophes only"}`))
-			return
-		}
-		// Normalize city name
-		allowedCityValue = geolocation.NormalizeCityName(allowedCityValue)
-	}
-
-	// Step 9: Validate enhanced geolocation verification (Micro-Iteration 4.15)
-	geoVerifier := geoverify.NewGeolocationVerifier()
-
-	// Set default verification type if not provided
-	geoVerificationType := req.GeoVerificationType
-	if geoVerificationType == "" {
-		geoVerificationType = "none"
-	}
-
-	// Validate verification type
-	if err := geoVerifier.ValidateVerificationType(geoVerificationType); err != nil {
-		log.Printf("❌ Invalid geolocation verification type: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error":"` + err.Error() + `"}`))
-		return
-	}
-
-	// Validate verification fields based on type
-	if err := geoVerifier.ValidateVerificationFields(
-		geoverify.VerificationType(geoVerificationType),
-		req.GeoCity,
-		req.GeoCountry,
-	); err != nil {
-		log.Printf("❌ Invalid geolocation verification fields: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error":"` + err.Error() + `"}`))
-		return
-	}
-
-	// Normalize verification fields
-	normalizedGeoCity, normalizedGeoCountry := geoVerifier.NormalizeVerificationFields(
-		geoverify.VerificationType(geoVerificationType),
-		req.GeoCity,
-		req.GeoCountry,
-	)
-
-	// Step 10: Generate emailID early for MFA processing
+	// Step 7: Generate unique email ID
 	emailID := uuid.New().String()
+	log.Printf("✅ Generated email ID: %s", emailID)
 
-	// Step 11: Validate MFA settings (Micro-Iteration 4.12)
-	requireMFAInt := 0
-	var mfaTypeValue interface{} = nil
-	var encryptedTOTPSecretValue interface{} = nil
+	// Step 8: Convert request to SecurityFeatureConfig
+	securityConfig := email.SecurityFeatureConfig{
+		// Basic Security
+		PasswordProtection: req.Password != "",
+		Password:           req.Password,
 
-	if req.RequireMFA {
-		requireMFAInt = 1
+		// Access Control
+		BurnAfterRead:             req.BurnAfterRead,
+		SelfDestructAfterAttempts: req.SelfDestructAfterAttempts,
+		MaxFailedAttempts:         req.MaxFailedAttempts,
 
-		// Validate MFA type
-		if req.MFAType != "TOTP" && req.MFAType != "EMAIL_CODE" {
-			log.Printf("❌ Invalid MFA type: %q", req.MFAType)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"error":"MFA type must be 'TOTP' or 'EMAIL_CODE'"}`))
-			return
-		}
+		// Time-based Controls
+		TimeLock:    req.TimeLock,
+		UnlockAfter: req.UnlockAfter,
+		ExpiresAt:   req.ExpiresAt,
 
-		mfaTypeValue = req.MFAType
+		// Geolocation
+		GeoVerificationType: req.GeoVerificationType,
+		GeoCity:             req.GeoCity,
+		GeoCountry:          req.GeoCountry,
 
-		// If TOTP is selected, generate and encrypt the TOTP secret
-		if req.MFAType == "TOTP" {
-			mfaService := mfa.NewMFAService(srv.db)
-			totpConfig, err := mfaService.GenerateTOTPSecret(emailID)
-			if err != nil {
-				log.Printf("❌ Failed to generate TOTP secret: %v", err)
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"error":"Failed to generate TOTP secret"}`))
-				return
-			}
+		// Multi-Factor Authentication
+		RequireMFA:   req.RequireMFA,
+		MFAType:      req.MFAType,
+		MFAOnOpen:    false, // These can be added to the request if needed
+		MFAOnReply:   false,
+		MFAOnForward: false,
 
-			// Encrypt the TOTP secret for storage
-			encryptedData, err := auth.EncryptAES256GCM([]byte(totpConfig.Secret))
-			if err != nil {
-				log.Printf("❌ Failed to encrypt TOTP secret: %v", err)
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"error":"Failed to encrypt TOTP secret"}`))
-				return
-			}
-
-			// Convert encrypted data to base64 for storage
-			encryptedSecret := base64.StdEncoding.EncodeToString(encryptedData.Ciphertext)
-			encryptedKey := base64.StdEncoding.EncodeToString(encryptedData.Key)
-			encryptedNonce := base64.StdEncoding.EncodeToString(encryptedData.Nonce)
-			encryptedAuthTag := base64.StdEncoding.EncodeToString(encryptedData.AuthTag)
-
-			// Store encrypted components as JSON
-			encryptedComponents := map[string]string{
-				"ciphertext": encryptedSecret,
-				"key":        encryptedKey,
-				"nonce":      encryptedNonce,
-				"auth_tag":   encryptedAuthTag,
-			}
-
-			encryptedJSON, err := json.Marshal(encryptedComponents)
-			if err != nil {
-				log.Printf("❌ Failed to marshal encrypted TOTP components: %v", err)
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(`{"error":"Failed to process TOTP secret"}`))
-				return
-			}
-
-			encryptedTOTPSecretValue = string(encryptedJSON)
-		}
+		// Advanced Security
+		RemoteRevoke:  req.RemoteRevoke,
+		DecoyMessage:  req.DecoyMessage,
+		DecoySecret:   "", // Will be generated by the service
+		StripMetadata: req.StripMetadata,
+		TamperAlerts:  req.TamperAlerts,
 	}
 
-	// Step 12: Validate and process password protection (Micro-Iteration 4.14)
-	var isPasswordProtectedInt int = 0
-	if req.Password != "" {
-		// Validate password strength
-		emailPasswordService := emailpassword.NewEmailPasswordService(srv.db)
-		if err := emailPasswordService.ValidatePasswordStrength(req.Password); err != nil {
-			log.Printf("❌ Password validation failed: %v", err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"error":"` + err.Error() + `"}`))
-			return
-		}
-		isPasswordProtectedInt = 1
+	// Step 9: Validate security configuration
+	if err := srv.emailSecurityService.ValidateSecurityConfig(securityConfig); err != nil {
+		log.Printf("❌ Security configuration validation failed: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"` + err.Error() + `"}`))
+		return
 	}
 
-	// Step 13: Compress email content with gzip
+	// Step 10: Compress email content with gzip
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	if _, err := gz.Write([]byte(req.Body)); err != nil {
@@ -414,8 +259,7 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 	gz.Close()
 	compressed := buf.Bytes()
 
-	// Step 14: Encrypt compressed content using PQC Hybrid Encryption (most secure)
-	// Use PQC service for quantum-resistant encryption
+	// Step 11: Encrypt compressed content using PQC Hybrid Encryption
 	pqcConfig := pqc.LoadPQCConfigFromEnv()
 	pqcService, err := pqc.NewPQCService(pqcConfig)
 	if err != nil {
@@ -432,232 +276,79 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("❌ PQC encryption failed: %v", err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"PQC encryption failed"}`))
+		w.Write([]byte(`{"error":"Encryption failed"}`))
 		return
 	}
 
-	// Serialize hybrid encrypted data for storage
-	serializedData, err := pqcService.SerializeHybridData(hybridData)
-	if err != nil {
-		log.Printf("❌ PQC data serialization failed: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"PQC data serialization failed"}`))
-		return
-	}
-
-	// Convert serialized data to bytes for R2 storage
-	encrypted := []byte(serializedData)
-
-	// Step 15: Generate blobID for Cloudflare R2 storage
-	blobID := uuid.New().String() + ".blob"
-
-	// Step 16: Upload to Cloudflare R2 with context and timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	if err := storage.UploadToR2WithContext(ctx, blobID, encrypted); err != nil {
-		log.Printf("❌ R2 upload failed: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"R2 upload failed"}`))
-		return
-	}
-	log.Printf("✅ R2 upload succeeded: %s", blobID)
-
-	// Step 17: Compute SHA-256 hash of the encrypted content for integrity verification
-	hash := sha256.Sum256(encrypted)
-	hashB64 := base64.StdEncoding.EncodeToString(hash[:])
-
-	// Step 18: Check database connection
-	if srv.db == nil {
-		log.Printf("❌ CRITICAL ERROR: srv.db is nil!")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"Database connection is nil"}`))
-		return
-	}
-
-	// Step 19: Simulated DB failure block (for testing purposes)
-	// --- SIMULATED DB FAILURE BLOCK ---
-	if os.Getenv("SIMULATE_DB_FAILURE") == "1" {
-		log.Printf("❌ Simulated DB insert failure triggered by SIMULATE_DB_FAILURE env var")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"Database insert failed (simulated)"}`))
-		return
-	}
-	// --- END SIMULATED DB FAILURE BLOCK ---
-
-	// Step 20: Prepare encryption metadata for database storage
-	// Store PQC hybrid encrypted data as a single serialized blob
-	// The hybrid data contains all necessary components for decryption
-	encryptedKeyB64 := base64.StdEncoding.EncodeToString(hybridData.KyberCiphertext)
-	nonceB64 := base64.StdEncoding.EncodeToString(hybridData.AES256GCMData.Nonce)
-	authTagB64 := base64.StdEncoding.EncodeToString(hybridData.AES256GCMData.AuthTag)
-
-	// Step 21: Convert boolean values to integers for SQLite storage
-	selfDestructInt := 0
-	if req.SelfDestructAfterAttempts {
-		selfDestructInt = 1
-	}
-
-	burnAfterReadInt := 0
-	if req.BurnAfterRead {
-		burnAfterReadInt = 1
-	}
-
-	// Step 22: Try to find recipient_id by email address (optional)
-	var recipientID *string
-	var recipientUserID string
-	recipientErr := srv.db.QueryRow(`SELECT id FROM users WHERE email = ?`, req.Recipient).Scan(&recipientUserID)
-	if recipientErr == nil {
-		recipientID = &recipientUserID
-		log.Printf("✅ Found recipient_id %s for email %s", recipientUserID, req.Recipient)
-	} else {
-		log.Printf("ℹ️ No registered user found for email %s - recipient_id will be NULL", req.Recipient)
-	}
-
-	// Step 23: Log all parameters for debugging (MICRO-ITERATION 4.4 ENHANCEMENT)
-	log.Printf("=== DATABASE INSERT PARAMETERS ===")
-	log.Printf("emailID=%s, userID=%s, recipient=%s, subject=%s, blobID=%s",
-		emailID, userID, req.Recipient, req.Subject, blobID)
-	log.Printf("recipientID=%v, expiresAtValue=%v, allowedCityValue=%v, allowedCountryValue=%v",
-		recipientID, expiresAtValue, allowedCityValue, allowedCountryValue)
-	log.Printf("encryptedKeyB64=%s, nonceB64=%s, authTagB64=%s, hashB64=%s",
-		encryptedKeyB64, nonceB64, authTagB64, hashB64)
-
-	// Step 24: Build the INSERT statement with all required columns (MICRO-ITERATION 4.4 FIX)
-	// The emails table has many columns, but we'll include all essential ones
-	insertQuery := `
-		INSERT INTO emails (
-			email_id, sender_id, recipient, subject, encrypted_blob_url, encrypted_key, 
-			encryption_nonce, encryption_auth_tag, sha256_hash, self_destruct_after_attempts, 
-			burn_after_read, expires_at, allowed_city, allowed_country, geo_verification_type,
-			geo_city, geo_country, require_mfa, mfa_type, encrypted_totp_secret,
-			is_password_protected
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-
-	// Step 25: Log SQL query and parameters for debugging (MICRO-ITERATION 4.4 ENHANCEMENT)
-	log.Printf("=== SQL EXECUTION ===")
-	log.Printf("SQL Query: %s", insertQuery)
-	log.Printf("Parameters: emailID=%s, userID=%s, recipient=%s, subject=%s, blobID=%s",
-		emailID, userID, req.Recipient, req.Subject, blobID)
-	log.Printf("Security params: selfDestructInt=%d, burnAfterReadInt=%d, requireMFAInt=%d, isPasswordProtectedInt=%d",
-		selfDestructInt, burnAfterReadInt, requireMFAInt, isPasswordProtectedInt)
-
-	// Step 26: Execute database insert with comprehensive error handling (MICRO-ITERATION 4.4 FIX)
-	_, insertErr := srv.db.Exec(insertQuery,
-		emailID, userID, req.Recipient, req.Subject, blobID, encryptedKeyB64,
-		nonceB64, authTagB64, hashB64, selfDestructInt, burnAfterReadInt, expiresAtValue,
-		allowedCityValue, allowedCountryValue, geoVerificationType,
-		normalizedGeoCity, normalizedGeoCountry, requireMFAInt, mfaTypeValue, encryptedTOTPSecretValue,
-		isPasswordProtectedInt,
-	)
-
-	// Step 27: Handle database insert errors with detailed logging (MICRO-ITERATION 4.4 ENHANCEMENT)
-	if insertErr != nil {
-		log.Printf("❌ DATABASE INSERT FAILED")
-		log.Printf("Error: %v", insertErr)
-		log.Printf("Failed INSERT parameters: emailID=%s, userID=%s, recipient=%s, subject=%s, blobID=%s",
-			emailID, userID, req.Recipient, req.Subject, blobID)
-		log.Printf("Security parameters: selfDestructInt=%d, burnAfterReadInt=%d, requireMFAInt=%d, isPasswordProtectedInt=%d",
-			selfDestructInt, burnAfterReadInt, requireMFAInt, isPasswordProtectedInt)
-		log.Printf("Geolocation params: allowedCityValue=%q, allowedCountryValue=%q, geoVerificationType=%q",
-			allowedCityValue, allowedCountryValue, geoVerificationType)
-		log.Printf("MFA params: mfaTypeValue=%v, encryptedTOTPSecretValue=%v", mfaTypeValue, encryptedTOTPSecretValue)
-		log.Printf("Expiration: expiresAtValue=%v", expiresAtValue)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		errorResponse := map[string]string{
-			"error":   "Database insert failed",
-			"details": insertErr.Error(), // MICRO-ITERATION 4.4: Return actual database error
-		}
-		json.NewEncoder(w).Encode(errorResponse)
-		return
-	}
-
-	log.Printf("✅ Database insert successful: emailID=%s", emailID)
-
-	// Step 28: PQC + KT Validation and SES Handoff (NEW SECURITY LAYER)
-	if srv.sesHandler != nil {
-		log.Printf("🔐 Starting PQC + KT validation for email %s", emailID)
-
-		// Serialize hybrid data for validation
+	// Step 12: Upload encrypted content to Cloudflare R2
+	var blobID string
+	if srv.r2Client != nil {
+		// Serialize hybrid data for storage
 		hybridDataBytes, err := json.Marshal(hybridData)
 		if err != nil {
-			log.Printf("❌ Failed to serialize hybrid data for email %s: %v", emailID, err)
+			log.Printf("❌ Failed to serialize hybrid data: %v", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(`{"error":"Failed to serialize encryption data"}`))
 			return
 		}
 
-		// Validate PQC encryption and Key Transparency
-		validationResult, validationErr := srv.sesHandler.ValidatePQCAndKT(r.Context(), emailID, userID, req.Recipient, hybridDataBytes)
-		if validationErr != nil {
-			log.Printf("❌ PQC + KT validation failed for email %s: %v", emailID, validationErr)
+		// Upload to R2 using the storage package
+		blobID = emailID + ".blob"
+		if err := storage.UploadToR2WithContext(r.Context(), blobID, hybridDataBytes); err != nil {
+			log.Printf("❌ R2 upload failed: %v", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			errorResponse := map[string]string{
-				"error":      "Security validation failed",
-				"details":    validationErr.Error(),
-				"error_code": validationResult.ErrorCode,
-			}
-			json.NewEncoder(w).Encode(errorResponse)
+			w.Write([]byte(`{"error":"Failed to upload encrypted content"}`))
 			return
 		}
-
-		if !validationResult.Valid {
-			log.Printf("❌ PQC + KT validation rejected email %s: %s", emailID, validationResult.ErrorMessage)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			errorResponse := map[string]string{
-				"error":      "Security validation rejected",
-				"details":    validationResult.ErrorMessage,
-				"error_code": validationResult.ErrorCode,
-			}
-			json.NewEncoder(w).Encode(errorResponse)
-			return
-		}
-
-		log.Printf("✅ PQC + KT validation successful for email %s", emailID)
-
-		// Send email via SES with retry logic and quota handling
-		log.Printf("📧 Sending email %s via SES", emailID)
-		transaction, sesErr := srv.sesHandler.SendEmailViaSES(r.Context(), emailID, userID, req.Recipient, req.Subject, req.Body)
-		if sesErr != nil {
-			log.Printf("❌ SES send failed for email %s: %v", emailID, sesErr)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			errorResponse := map[string]string{
-				"error":   "Email delivery failed",
-				"details": sesErr.Error(),
-			}
-			json.NewEncoder(w).Encode(errorResponse)
-			return
-		}
-
-		log.Printf("✅ Email %s sent successfully via SES, transaction ID: %s", emailID, transaction.TransactionID)
+		log.Printf("✅ Encrypted content uploaded to R2: %s", blobID)
 	} else {
-		log.Printf("⚠️ SES handler not available, skipping PQC + KT validation and SES handoff")
+		// For testing without R2, use emailID as blobID
+		blobID = emailID
+		log.Printf("⚠️ R2 client not available, using emailID as blobID: %s", blobID)
 	}
 
-	// Step 29: Set password if provided (Micro-Iteration 4.14)
-	if req.Password != "" {
-		emailPasswordService := emailpassword.NewEmailPasswordService(srv.db)
-		if err := emailPasswordService.SetEmailPassword(emailID, req.Password); err != nil {
-			log.Printf("❌ Failed to set email password: %v", err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"error":"Failed to set email password"}`))
-			return
+	// Step 13: Create email delivery configuration
+	deliveryConfig := email.EmailDeliveryConfig{
+		DeliveryType:             "both", // Send both internally and externally
+		InternalRecipient:        req.Recipient,
+		ExternalRecipient:        req.Recipient,
+		ExternalSubject:          req.Subject,
+		ExternalBody:             req.Body,
+		ExternalSecurityFeatures: securityConfig,
+	}
+
+	// Step 14: Apply security features and send email using EmailSecurityService
+	ctx := r.Context()
+	err = srv.emailSecurityService.SendEmailWithSecurity(ctx, userID, deliveryConfig)
+	if err != nil {
+		log.Printf("❌ Failed to send email with security features: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"Failed to send email: ` + err.Error() + `"}`))
+		return
+	}
+
+	// Step 14.5: Send notification email to recipient via SMTP
+	if req.Recipient != "" {
+		// Get sender email from database
+		var senderEmail string
+		if err := srv.db.QueryRow("SELECT email FROM users WHERE id = ?", userID).Scan(&senderEmail); err != nil {
+			log.Printf("⚠️ Failed to get sender email for SMTP notification: %v", err)
+			// Use a fallback address if we can't get the sender email
+			senderEmail = "noreply@securesystem.email"
 		}
-		log.Printf("✅ Email password set successfully")
+		
+		if err := srv.emailSecurityService.SendNotificationEmail(req.Recipient, emailID, senderEmail); err != nil {
+			log.Printf("⚠️ Failed to send SMTP notification email: %v", err)
+			// Don't fail the entire operation if SMTP notification fails
+		} else {
+			log.Printf("✅ SMTP notification email sent successfully from %s to: %s", senderEmail, req.Recipient)
+		}
 	}
 
-	// Step 30: Check if recipient is external and create secure link (NEW)
+	// Step 15: Check if recipient is external and create secure link
 	log.Printf("🔍 Checking if recipient %s is external...", req.Recipient)
 	isExternalRecipient, err := srv.isExternalRecipient(req.Recipient)
 	if err != nil {
@@ -696,7 +387,7 @@ func (srv *Server) sendEmailHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("✅ Recipient %s is internal - proceeding with normal email flow", req.Recipient)
 	}
 
-	// Step 29: Return success response with tracking fields (Micro-Iteration 4.21)
+	// Step 16: Return success response with tracking fields
 	log.Printf("✅ Email send operation completed successfully")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

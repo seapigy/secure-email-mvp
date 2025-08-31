@@ -525,3 +525,12 @@ ORDER BY date DESC;
 - **Caching Layer**: Cache quota and validation results
 
 
+
+
+
+
+
+
+
+
+

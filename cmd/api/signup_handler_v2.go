@@ -217,3 +217,4 @@ func isValidPasswordStrength(password string) bool {
 
 	return hasUpper && hasLower && hasDigit && hasSpecial
 }
+

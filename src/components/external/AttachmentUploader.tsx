@@ -11,6 +11,7 @@ import {
   Download,
   Eye
 } from 'lucide-react';
+import { log } from '@/lib/logger';
 
 interface Attachment {
   id: string;
@@ -76,7 +77,7 @@ const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
     return File;
   };
 
-  const validateFile = (file: File): string | null => {
+  const validateFile = useCallback((file: File): string | null => {
     // Check file size
     if (file.size > maxFileSize) {
       return `File too large. Maximum size is ${formatFileSize(maxFileSize)}`;
@@ -93,9 +94,9 @@ const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
     }
 
     return null;
-  };
+  }, [maxFileSize, allowedTypes, attachments.length, maxFiles]);
 
-  const uploadFile = async (file: File): Promise<void> => {
+  const uploadFile = useCallback(async (file: File): Promise<void> => {
     const attachmentId = `att_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     const attachment: Attachment = {
@@ -167,18 +168,10 @@ const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
       }, 2000);
 
     } catch (error) {
-      console.error('Upload error:', error);
-      setAttachments(prev => prev.map(att => 
-        att.id === attachmentId 
-          ? { 
-              ...att, 
-              status: 'error' as const, 
-              error: error instanceof Error ? error.message : 'Upload failed'
-            }
-          : att
-      ));
+      log.error('Upload error:', error, 'AttachmentUploader');
+      setUploadError('Failed to upload file. Please try again.');
     }
-  };
+  }, [linkID, replyID, onAttachmentUploaded]);
 
   const handleFileSelect = useCallback((files: FileList | null) => {
     if (!files) return;
@@ -192,7 +185,7 @@ const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
       }
       uploadFile(file);
     });
-  }, [attachments.length, maxFiles, maxFileSize, allowedTypes, linkID, replyID]);
+  }, [validateFile, uploadFile]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -263,7 +256,7 @@ const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
       document.body.removeChild(link);
 
     } catch (error) {
-      console.error('Download error:', error);
+      log.error('Download error:', error, 'AttachmentUploader');
       alert('Failed to download file');
     }
   };

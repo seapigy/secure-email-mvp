@@ -200,3 +200,12 @@ Write-Output "4. Set up monitoring and alerting for the cleanup process"
 
 
 
+
+
+
+
+
+
+
+
+

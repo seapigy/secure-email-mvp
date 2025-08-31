@@ -257,8 +257,8 @@ go test ./cmd/api -run TestErrorHandling -v
 # R2 Storage
 CLOUDFLARE_R2_ACCESS_KEY=your_access_key
 CLOUDFLARE_R2_SECRET_KEY=your_secret_key
-CLOUDFLARE_R2_BUCKET=secure-email-blobs
-CLOUDFLARE_R2_ENDPOINT=https://account-id.r2.cloudflarestorage.com
+CLOUDFLARE_CLOUDFLARE_R2_BUCKET=secure-email-blobs
+CLOUDFLARE_CLOUDFLARE_R2_ENDPOINT=https://account-id.r2.cloudflarestorage.com
 
 # Database
 SQLITE_DB=/var/db/secure-email.db

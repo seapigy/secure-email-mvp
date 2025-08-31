@@ -209,3 +209,4 @@ sqlite3 your_database.db < migrations/xxxx_add_signup_v2_support.sql
 - Rate limiting prevents abuse
 - UUIDs prevent user enumeration attacks
 - No sensitive data is logged or exposed in error messages
+

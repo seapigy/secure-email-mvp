@@ -382,3 +382,12 @@ sudo /usr/local/bin/test-ses-email.sh verified@email.com
 **Note**: This configuration is designed for production use with proper security measures. Always test in a staging environment first and monitor logs for any issues after deployment.
 
 
+
+
+
+
+
+
+
+
+

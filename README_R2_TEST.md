@@ -10,10 +10,10 @@ Create a `.env` file in the project root with your R2 credentials:
 
 ```bash
 # Required R2 Configuration
-R2_ACCESS_KEY_ID=your_access_key_id
-R2_SECRET_ACCESS_KEY=your_secret_access_key
-R2_BUCKET=secure-email-blobs
-R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
+CLOUDFLARE_R2_ACCESS_KEY=your_access_key_id
+CLOUDFLARE_R2_SECRET_KEY=your_secret_access_key
+CLOUDFLARE_R2_BUCKET=secure-email-blobs
+CLOUDFLARE_R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
 ```
 
 ### 2. Manual Environment Variables (Alternative)
@@ -22,26 +22,26 @@ If you prefer to set environment variables manually:
 
 **Windows PowerShell:**
 ```powershell
-$env:R2_ACCESS_KEY_ID="your_access_key_id"
-$env:R2_SECRET_ACCESS_KEY="your_secret_access_key"
-$env:R2_BUCKET="secure-email-blobs"
-$env:R2_ENDPOINT="https://your-account-id.r2.cloudflarestorage.com"
+$env:CLOUDFLARE_R2_ACCESS_KEY="your_access_key_id"
+$env:CLOUDFLARE_R2_SECRET_KEY="your_secret_access_key"
+$env:CLOUDFLARE_R2_BUCKET="secure-email-blobs"
+$env:CLOUDFLARE_R2_ENDPOINT="https://your-account-id.r2.cloudflarestorage.com"
 ```
 
 **Windows Command Prompt:**
 ```cmd
-set R2_ACCESS_KEY_ID=your_access_key_id
-set R2_SECRET_ACCESS_KEY=your_secret_access_key
-set R2_BUCKET=secure-email-blobs
-set R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
+set CLOUDFLARE_R2_ACCESS_KEY=your_access_key_id
+set CLOUDFLARE_R2_SECRET_KEY=your_secret_access_key
+set CLOUDFLARE_R2_BUCKET=secure-email-blobs
+set CLOUDFLARE_R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
 ```
 
 **Linux/macOS:**
 ```bash
-export R2_ACCESS_KEY_ID=your_access_key_id
-export R2_SECRET_ACCESS_KEY=your_secret_access_key
-export R2_BUCKET=secure-email-blobs
-export R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
+export CLOUDFLARE_R2_ACCESS_KEY=your_access_key_id
+export CLOUDFLARE_R2_SECRET_KEY=your_secret_access_key
+export CLOUDFLARE_R2_BUCKET=secure-email-blobs
+export CLOUDFLARE_R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
 ```
 
 ## Running the Test
@@ -53,7 +53,7 @@ go run test_r2_upload.go
 
 ### Option 2: Run with manual environment variables
 ```bash
-R2_ACCESS_KEY_ID=your_key R2_SECRET_ACCESS_KEY=your_secret R2_BUCKET=your_bucket R2_ENDPOINT=your_endpoint go run test_r2_upload.go
+CLOUDFLARE_R2_ACCESS_KEY=your_key CLOUDFLARE_R2_SECRET_KEY=your_secret CLOUDFLARE_R2_BUCKET=your_bucket CLOUDFLARE_R2_ENDPOINT=your_endpoint go run test_r2_upload.go
 ```
 
 ## Expected Output
@@ -80,7 +80,7 @@ R2_ACCESS_KEY_ID=your_key R2_SECRET_ACCESS_KEY=your_secret R2_BUCKET=your_bucket
 
 ### Error Case:
 ```
-2024/01/XX XX:XX:XX Missing required environment variables: [R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET R2_ENDPOINT]
+2024/01/XX XX:XX:XX Missing required environment variables: [CLOUDFLARE_R2_ACCESS_KEY CLOUDFLARE_R2_SECRET_KEY CLOUDFLARE_R2_BUCKET CLOUDFLARE_R2_ENDPOINT]
 ```
 
 ## What the Test Does
