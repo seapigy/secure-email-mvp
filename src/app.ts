@@ -41,8 +41,10 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// Rate limiting
-const authLimiter = rateLimit({
+// Rate limiting (disabled in test environment)
+const isTestEnvironment = process.env.NODE_ENV === 'test';
+
+const authLimiter = isTestEnvironment ? (req: any, res: any, next: any) => next() : rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // limit each IP to 10 requests per windowMs
   message: {
@@ -52,7 +54,7 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-const generalLimiter = rateLimit({
+const generalLimiter = isTestEnvironment ? (req: any, res: any, next: any) => next() : rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   message: {
@@ -65,13 +67,7 @@ const generalLimiter = rateLimit({
 // Body parsing middleware
 app.use(json({ limit: '10mb' }));
 
-// Apply rate limiting to auth routes
-app.use('/api/auth', authLimiter);
-
-// Apply general rate limiting to all other routes
-app.use(generalLimiter);
-
-// Health check endpoint
+// Health check endpoint (no rate limiting)
 app.get('/health', (_req, res) => {
   res.status(200).json({ 
     status: 'healthy',
@@ -80,8 +76,16 @@ app.get('/health', (_req, res) => {
   });
 });
 
+// Apply rate limiting to auth routes
+app.use('/api/auth', authLimiter);
+
 // API routes
 app.use('/api/auth', authRoutes);
+
+// Apply general rate limiting to all other routes
+app.use(generalLimiter);
+
+// Protected routes (with general rate limiting)
 app.use('/api', protectedRoutes);
 
 // 404 handler

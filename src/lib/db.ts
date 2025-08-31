@@ -3,7 +3,7 @@
  * Supports both SQLite (for testing) and PostgreSQL (for production)
  */
 
-import * as knex from 'knex';
+import knex from 'knex';
 import { config } from 'dotenv';
 
 // Load environment variables
@@ -48,13 +48,23 @@ export async function initializeTestDatabase(): Promise<void> {
   try {
     // Create users table if it doesn't exist
     await db.schema.createTableIfNotExists('users', (table) => {
-      table.uuid('id').primary();
-      table.string('email').unique().notNullable();
-      table.text('password_hash').notNullable();
-      table.string('totp_secret').notNullable();
+      table.text('id').primary();
+      table.text('email').unique().notNullable();
+      table.text('password').notNullable();
+      table.text('fallback_email');
+      table.text('fallback_token');
+      table.boolean('fallback_confirmed').defaultTo(false);
+      table.timestamp('fallback_token_expiration');
+      table.timestamp('created_at').defaultTo(db.fn.now());
+      table.integer('failed_login_attempts').defaultTo(0);
+      table.timestamp('last_failed_login');
+      table.timestamp('account_locked_until');
+      table.text('phone_number');
+      table.text('totp_secret');
+      table.text('password_hash');
+      table.text('name');
       table.boolean('is_active').defaultTo(true);
       table.boolean('email_verified').defaultTo(false);
-      table.timestamp('created_at').defaultTo(db.fn.now());
       table.timestamp('updated_at').defaultTo(db.fn.now());
     });
 
