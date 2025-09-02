@@ -132,11 +132,27 @@ func main() {
 	// Load environment variables from .env file with fallback paths
 	if err := godotenv.Load(); err != nil {
 		log.Printf("Warning: Error loading .env file: %v", err)
-		log.Printf("Attempting to load .env from /home/opc/secure-email-mvp/.env")
-		if err := godotenv.Load("/home/opc/secure-email-mvp/.env"); err != nil {
-			log.Fatal("Error loading .env from /home/opc/secure-email-mvp/.env:", err)
+		log.Printf("Attempting to load .env from current directory")
+		// Try to load from current directory first
+		if err := godotenv.Load(".env"); err != nil {
+			log.Printf("Warning: Error loading .env from current directory: %v", err)
+			// Try to load from project root
+			if err := godotenv.Load("../.env"); err != nil {
+				log.Printf("Warning: Error loading .env from project root: %v", err)
+				// Try to load from parent directory
+				if err := godotenv.Load("../../.env"); err != nil {
+					log.Printf("Warning: Error loading .env from parent directory: %v", err)
+					// Continue without .env file - use environment variables
+					log.Printf("Continuing without .env file - using environment variables")
+				} else {
+					log.Printf("Successfully loaded .env from parent directory")
+				}
+			} else {
+				log.Printf("Successfully loaded .env from project root")
+			}
+		} else {
+			log.Printf("Successfully loaded .env from current directory")
 		}
-		log.Printf("Successfully loaded .env from /home/opc/secure-email-mvp/.env")
 	} else {
 		log.Printf("Successfully loaded .env from current directory")
 	}
@@ -152,7 +168,7 @@ func main() {
 	// Initialize SQLite database connection
 	dbPath := os.Getenv("SQLITE_DB")
 	if dbPath == "" {
-		dbPath = "/var/db/secure-email.db"
+		dbPath = "./data/secure-email.db"
 	}
 
 	// Get absolute path for logging
@@ -194,7 +210,7 @@ func main() {
 	// Run database migrations
 	log.Printf("Running database migrations...")
 	migrator := migrations.NewMigrator(db)
-	migrationsDir := "db/migrations"
+	migrationsDir := "../../db/migrations"
 	if err := migrator.RunMigrations(migrationsDir); err != nil {
 		log.Fatal("Error running migrations:", err)
 	}
@@ -408,7 +424,7 @@ func main() {
 	// 10. Notification system (Micro-Iteration 4.17)
 	// =============================================================================
 	log.Printf("Loading database schema...")
-	schemaPath := "schema/users_simple.sql"
+	schemaPath := "../../schema/users_simple.sql"
 	log.Printf("Attempting to read schema from: %s", schemaPath)
 
 	schema, err := os.ReadFile(schemaPath)
@@ -429,7 +445,7 @@ func main() {
 		log.Printf("Attempting to apply migration for existing database...")
 
 		// Apply migration for existing database if schema application fails
-		migrationPath := "schema/migrate_to_simple.sql"
+		migrationPath := "../../schema/migrate_to_simple.sql"
 		log.Printf("Attempting to read migration from: %s", migrationPath)
 
 		migration, err := os.ReadFile(migrationPath)
@@ -455,7 +471,7 @@ func main() {
 
 	// Apply emails schema
 	log.Printf("Loading emails schema...")
-	emailsSchemaPath := "schema/emails.sql"
+	emailsSchemaPath := "../../schema/emails.sql"
 	log.Printf("Attempting to read emails schema from: %s", emailsSchemaPath)
 
 	emailsSchema, err := os.ReadFile(emailsSchemaPath)
@@ -509,7 +525,7 @@ func main() {
 
 	// Apply schema fix migration to fix sender_id type mismatch
 	log.Printf("=== MICRO-ITERATION 4.4: Loading schema fix migration ===")
-	schemaFixMigrationPath := "schema/fix_sender_id_type.sql"
+	schemaFixMigrationPath := "../../schema/fix_sender_id_type.sql"
 	log.Printf("Attempting to read schema fix migration from: %s", schemaFixMigrationPath)
 
 	schemaFixMigration, err := os.ReadFile(schemaFixMigrationPath)
@@ -550,7 +566,7 @@ func main() {
 
 	// Apply failed attempts migration
 	log.Printf("Loading failed attempts migration...")
-	failedAttemptsMigrationPath := "schema/migrate_add_failed_attempts.sql"
+	failedAttemptsMigrationPath := "../../schema/migrate_add_failed_attempts.sql"
 	log.Printf("Attempting to read failed attempts migration from: %s", failedAttemptsMigrationPath)
 
 	failedAttemptsMigration, err := os.ReadFile(failedAttemptsMigrationPath)
@@ -583,7 +599,7 @@ func main() {
 
 	// Apply fail_count migration
 	log.Printf("Loading fail_count migration...")
-	failCountMigrationPath := "schema/migrate_add_fail_count.sql"
+	failCountMigrationPath := "../../schema/migrate_add_fail_count.sql"
 	log.Printf("Attempting to read fail_count migration from: %s", failCountMigrationPath)
 
 	failCountMigration, err := os.ReadFile(failCountMigrationPath)
@@ -616,7 +632,7 @@ func main() {
 
 	// Apply geolocation restrictions migration
 	log.Printf("Loading geolocation restrictions migration...")
-	geolocationMigrationPath := "schema/migrate_add_geolocation_restrictions.sql"
+	geolocationMigrationPath := "../../schema/migrate_add_geolocation_restrictions.sql"
 	log.Printf("Attempting to read geolocation restrictions migration from: %s", geolocationMigrationPath)
 
 	geolocationMigration, err := os.ReadFile(geolocationMigrationPath)

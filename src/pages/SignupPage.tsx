@@ -40,6 +40,7 @@ interface SignupData {
   password: string;
   confirmPassword: string;
   fallbackEmail: string;
+  name?: string;
   companyName?: string;
   companyDomain?: string;
   selectedPlan?: string;
@@ -108,17 +109,16 @@ const SignupPage: React.FC = () => {
     try {
       log.info('Final signup submission', { accountType: signupData.accountType }, 'SignupPage');
       
-      // Use the new privacy-compliant signup endpoint for all account types
-      const response = await fetch('/api/signup', {
+      // Use the Go backend signup endpoint
+      const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          plan: signupData.accountType,
           email: signupData.email,
           password: signupData.password,
-          company_code: signupData.accountType === 'company' ? signupData.companyName : undefined,
+          fallback_email: signupData.fallbackEmail,
         }),
       });
 

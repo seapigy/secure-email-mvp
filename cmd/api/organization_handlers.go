@@ -77,3 +77,4 @@ func removeUserFromOrganizationHandler(db *sql.DB) http.HandlerFunc {
 }
 
 
+

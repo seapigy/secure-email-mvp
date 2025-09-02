@@ -1,0 +1,319 @@
+package main
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"secure-email-mvp/pkg/models"
+)
+
+func TestAuditLogsEndpoint_Unauthorized(t *testing.T) {
+	// Create a test request without authentication
+	req, err := http.NewRequest("GET", "/api/admin/audit/logs", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a response recorder
+	rr := httptest.NewRecorder()
+
+	// Create a test server with the handler
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Mock the admin auth middleware
+		http.Error(w, `{"error":"Authorization header required"}`, http.StatusUnauthorized)
+	})
+
+	// Serve the request
+	handler.ServeHTTP(rr, req)
+
+	// Check the status code
+	if status := rr.Code; status != http.StatusUnauthorized {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusUnauthorized)
+	}
+
+	// Check the response body
+	expected := `{"error":"Authorization header required"}`
+	if strings.TrimSpace(rr.Body.String()) != expected {
+		t.Errorf("handler returned unexpected body: got %v want %v", rr.Body.String(), expected)
+	}
+}
+
+func TestAuditLogsEndpoint_ValidRequest(t *testing.T) {
+	// Create a test request with authentication
+	req, err := http.NewRequest("GET", "/api/admin/audit/logs", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add authorization header
+	req.Header.Set("Authorization", "Bearer test-token")
+
+	// Create a response recorder
+	rr := httptest.NewRecorder()
+
+	// Create a test server with the handler
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Mock successful response
+		response := models.AuditLogResponse{
+			Success: true,
+			Logs: []models.AuditLog{
+				{
+					ID:        1,
+					Timestamp: "2024-01-15T10:30:00Z",
+					UserID:    "admin@test.com",
+					Action:    "login",
+					Entity:    "admin",
+					Details:   "Admin login successful",
+					Severity:  "low",
+				},
+				{
+					ID:        2,
+					Timestamp: "2024-01-15T11:15:00Z",
+					UserID:    "user@example.com",
+					Action:    "dlp_scan",
+					Entity:    "secure_link",
+					Details:   "Detected sensitive data",
+					Severity:  "high",
+				},
+			},
+			Total: 2,
+			Page:  1,
+			Limit: 50,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	})
+
+	// Serve the request
+	handler.ServeHTTP(rr, req)
+
+	// Check the status code
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	// Parse the response
+	var response models.AuditLogResponse
+	if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+
+	// Check the response structure
+	if !response.Success {
+		t.Error("Expected success to be true")
+	}
+
+	if response.Total != 2 {
+		t.Errorf("Expected total 2, got %d", response.Total)
+	}
+
+	if len(response.Logs) != 2 {
+		t.Errorf("Expected 2 logs, got %d", len(response.Logs))
+	}
+
+	// Check the first log
+	log := response.Logs[0]
+	if log.UserID != "admin@test.com" {
+		t.Errorf("Expected user ID 'admin@test.com', got '%s'", log.UserID)
+	}
+	if log.Action != "login" {
+		t.Errorf("Expected action 'login', got '%s'", log.Action)
+	}
+	if log.Entity != "admin" {
+		t.Errorf("Expected entity 'admin', got '%s'", log.Entity)
+	}
+	if log.Severity != "low" {
+		t.Errorf("Expected severity 'low', got '%s'", log.Severity)
+	}
+}
+
+func TestAuditLogsEndpoint_WithFilters(t *testing.T) {
+	// Create a test request with filters
+	req, err := http.NewRequest("GET", "/api/admin/audit/logs?severity=high&user_id=user@example.com", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add authorization header
+	req.Header.Set("Authorization", "Bearer test-token")
+
+	// Create a response recorder
+	rr := httptest.NewRecorder()
+
+	// Create a test server with the handler
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check that filters are being passed correctly
+		severity := r.URL.Query().Get("severity")
+		userID := r.URL.Query().Get("user_id")
+
+		if severity != "high" {
+			t.Errorf("Expected severity 'high', got '%s'", severity)
+		}
+		if userID != "user@example.com" {
+			t.Errorf("Expected user_id 'user@example.com', got '%s'", userID)
+		}
+
+		// Mock filtered response
+		response := models.AuditLogResponse{
+			Success: true,
+			Logs: []models.AuditLog{
+				{
+					ID:        2,
+					Timestamp: "2024-01-15T11:15:00Z",
+					UserID:    "user@example.com",
+					Action:    "dlp_scan",
+					Entity:    "secure_link",
+					Details:   "Detected sensitive data",
+					Severity:  "high",
+				},
+			},
+			Total: 1,
+			Page:  1,
+			Limit: 50,
+			Filters: models.AuditLogFilters{
+				UserID:   "user@example.com",
+				Severity: "high",
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	})
+
+	// Serve the request
+	handler.ServeHTTP(rr, req)
+
+	// Check the status code
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	// Parse the response
+	var response models.AuditLogResponse
+	if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+
+	// Check the filtered response
+	if response.Total != 1 {
+		t.Errorf("Expected total 1, got %d", response.Total)
+	}
+
+	if len(response.Logs) != 1 {
+		t.Errorf("Expected 1 log, got %d", len(response.Logs))
+	}
+
+	// Check that all returned logs match the filters
+	for _, log := range response.Logs {
+		if log.UserID != "user@example.com" {
+			t.Errorf("Expected user ID 'user@example.com', got '%s'", log.UserID)
+		}
+		if log.Severity != "high" {
+			t.Errorf("Expected severity 'high', got '%s'", log.Severity)
+		}
+	}
+}
+
+func TestAuditLogsEndpoint_WithPagination(t *testing.T) {
+	// Create a test request with pagination
+	req, err := http.NewRequest("GET", "/api/admin/audit/logs?page=2&limit=10", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add authorization header
+	req.Header.Set("Authorization", "Bearer test-token")
+
+	// Create a response recorder
+	rr := httptest.NewRecorder()
+
+	// Create a test server with the handler
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check that pagination parameters are being passed correctly
+		page := r.URL.Query().Get("page")
+		limit := r.URL.Query().Get("limit")
+
+		if page != "2" {
+			t.Errorf("Expected page '2', got '%s'", page)
+		}
+		if limit != "10" {
+			t.Errorf("Expected limit '10', got '%s'", limit)
+		}
+
+		// Mock paginated response
+		response := models.AuditLogResponse{
+			Success: true,
+			Logs:    []models.AuditLog{}, // Empty for page 2
+			Total:   25,                   // Total records
+			Page:    2,
+			Limit:   10,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	})
+
+	// Serve the request
+	handler.ServeHTTP(rr, req)
+
+	// Check the status code
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	// Parse the response
+	var response models.AuditLogResponse
+	if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+
+	// Check the pagination response
+	if response.Page != 2 {
+		t.Errorf("Expected page 2, got %d", response.Page)
+	}
+	if response.Limit != 10 {
+		t.Errorf("Expected limit 10, got %d", response.Limit)
+	}
+	if response.Total != 25 {
+		t.Errorf("Expected total 25, got %d", response.Total)
+	}
+}
+
+func TestAuditLogsEndpoint_InvalidMethod(t *testing.T) {
+	// Create a test request with POST method (should not be allowed)
+	req, err := http.NewRequest("POST", "/api/admin/audit/logs", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add authorization header
+	req.Header.Set("Authorization", "Bearer test-token")
+
+	// Create a response recorder
+	rr := httptest.NewRecorder()
+
+	// Create a test server with the handler
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+	})
+
+	// Serve the request
+	handler.ServeHTTP(rr, req)
+
+	// Check the status code
+	if status := rr.Code; status != http.StatusMethodNotAllowed {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusMethodNotAllowed)
+	}
+}
+
+
+
+
+
+

@@ -1,0 +1,422 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"secure-email-mvp/pkg/models"
+	"secure-email-mvp/pkg/securelinks"
+	"secure-email-mvp/pkg/securelinks/security"
+)
+
+// MockSystemSecurityRepository for testing
+type MockSystemSecurityRepository struct {
+	policies []models.SystemSecurityPolicy
+}
+
+func (m *MockSystemSecurityRepository) GetAllSystemPolicies() ([]models.SystemSecurityPolicy, error) {
+	return m.policies, nil
+}
+
+func (m *MockSystemSecurityRepository) GetSystemPolicyByID(policyID string) (*models.SystemSecurityPolicy, error) {
+	for _, policy := range m.policies {
+		if policy.PolicyID == policyID {
+			return &policy, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *MockSystemSecurityRepository) GetSystemPoliciesByType(policyType string) ([]models.SystemSecurityPolicy, error) {
+	var filtered []models.SystemSecurityPolicy
+	for _, policy := range m.policies {
+		if policy.PolicyType == policyType {
+			filtered = append(filtered, policy)
+		}
+	}
+	return filtered, nil
+}
+
+func (m *MockSystemSecurityRepository) GetSystemPoliciesByCategory(category string) ([]models.SystemSecurityPolicy, error) {
+	var filtered []models.SystemSecurityPolicy
+	for _, policy := range m.policies {
+		if policy.PolicyCategory == category {
+			filtered = append(filtered, policy)
+		}
+	}
+	return filtered, nil
+}
+
+func (m *MockSystemSecurityRepository) CreateSystemPolicy(policy *models.SystemSecurityPolicy) error {
+	m.policies = append(m.policies, *policy)
+	return nil
+}
+
+func (m *MockSystemSecurityRepository) UpdateSystemPolicy(policy *models.SystemSecurityPolicy) error {
+	for i, existingPolicy := range m.policies {
+		if existingPolicy.PolicyID == policy.PolicyID {
+			m.policies[i] = *policy
+			return nil
+		}
+	}
+	return nil
+}
+
+func (m *MockSystemSecurityRepository) DeleteSystemPolicy(policyID string) error {
+	for i, policy := range m.policies {
+		if policy.PolicyID == policyID {
+			m.policies = append(m.policies[:i], m.policies[i+1:]...)
+			return nil
+		}
+	}
+	return nil
+}
+
+// MockSecurityDatabase for testing
+type MockSecurityDatabase struct{}
+
+func (m *MockSecurityDatabase) CreateSecurityPolicy(policy *models.SecurityPolicy) error { return nil }
+func (m *MockSecurityDatabase) GetSecurityPolicy(linkID string) (*models.SecurityPolicy, error) {
+	return nil, nil
+}
+func (m *MockSecurityDatabase) UpdateSecurityPolicy(policy *models.SecurityPolicy) error { return nil }
+func (m *MockSecurityDatabase) GetSecurityPolicyTemplate(templateID string) (*models.SecurityPolicyTemplate, error) {
+	return nil, nil
+}
+func (m *MockSecurityDatabase) GetSecurityPolicyTemplates() ([]models.SecurityPolicyTemplate, error) {
+	return nil, nil
+}
+func (m *MockSecurityDatabase) CreateComplianceAuditLog(audit *models.ComplianceAuditLog) error {
+	return nil
+}
+func (m *MockSecurityDatabase) GetSecureLink(linkID string) (*securelinks.SecureLink, error) {
+	return nil, nil
+}
+func (m *MockSecurityDatabase) UpdateSecureLink(link *securelinks.SecureLink) error { return nil }
+
+func TestSecurityPoliciesEndpointGET(t *testing.T) {
+	// Create test data
+	testPolicies := []models.SystemSecurityPolicy{
+		{
+			PolicyID:         "sys_pwd_001",
+			PolicyName:       "Password Complexity",
+			PolicyType:       "password",
+			IsActive:         true,
+			PolicyValue:      `{"min_length": 12}`,
+			PolicyCategory:   "authentication",
+			Severity:         "high",
+			EnforcementLevel: "required",
+			CreatedAt:        time.Now(),
+			UpdatedAt:        time.Now(),
+		},
+		{
+			PolicyID:         "sys_mfa_001",
+			PolicyName:       "MFA Requirement",
+			PolicyType:       "mfa",
+			IsActive:         true,
+			PolicyValue:      `{"enabled": true}`,
+			PolicyCategory:   "authentication",
+			Severity:         "critical",
+			EnforcementLevel: "mandatory",
+			CreatedAt:        time.Now(),
+			UpdatedAt:        time.Now(),
+		},
+	}
+
+	// Create mock repositories
+	mockSystemRepo := &MockSystemSecurityRepository{policies: testPolicies}
+	mockDB := &MockDatabase{}
+
+	// Create service
+	securityService := security.NewService(mockDB, mockSystemRepo)
+
+	// Create server
+	srv := &Server{
+		securityService: securityService,
+	}
+
+	// Test GET all policies
+	t.Run("GET all policies", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/security/policies", nil)
+		w := httptest.NewRecorder()
+
+		srv.securityPoliciesHandler(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		var response models.SystemSecurityPolicyResponse
+		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+			t.Fatalf("Failed to unmarshal response: %v", err)
+		}
+
+		if !response.Success {
+			t.Error("Expected success to be true")
+		}
+
+		if len(response.Policies) != 2 {
+			t.Errorf("Expected 2 policies, got %d", len(response.Policies))
+		}
+
+		if response.Message == "" {
+			t.Error("Expected message to be set")
+		}
+	})
+
+	// Test GET policies by type
+	t.Run("GET policies by type", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/security/policies?type=password", nil)
+		w := httptest.NewRecorder()
+
+		srv.securityPoliciesHandler(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		var response models.SystemSecurityPolicyResponse
+		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+			t.Fatalf("Failed to unmarshal response: %v", err)
+		}
+
+		if !response.Success {
+			t.Error("Expected success to be true")
+		}
+
+		if len(response.Policies) != 1 {
+			t.Errorf("Expected 1 password policy, got %d", len(response.Policies))
+		}
+
+		if response.Policies[0].PolicyType != "password" {
+			t.Errorf("Expected policy type 'password', got %s", response.Policies[0].PolicyType)
+		}
+	})
+}
+
+func TestSecurityPoliciesEndpointPOST(t *testing.T) {
+	// Create test data
+	testPolicies := []models.SystemSecurityPolicy{
+		{
+			PolicyID:         "sys_pwd_001",
+			PolicyName:       "Password Complexity",
+			PolicyType:       "password",
+			IsActive:         true,
+			PolicyValue:      `{"min_length": 12}`,
+			PolicyCategory:   "authentication",
+			Severity:         "high",
+			EnforcementLevel: "required",
+			CreatedAt:        time.Now(),
+			UpdatedAt:        time.Now(),
+		},
+	}
+
+	// Create mock repositories
+	mockSystemRepo := &MockSystemSecurityRepository{policies: testPolicies}
+	mockDB := &MockDatabase{}
+
+	// Create service
+	securityService := security.NewService(mockDB, mockSystemRepo)
+
+	// Create server
+	srv := &Server{
+		securityService: securityService,
+	}
+
+	// Test POST update policy
+	t.Run("POST update policy", func(t *testing.T) {
+		updateReq := models.SystemSecurityPolicyUpdateRequest{
+			PolicyID:    "sys_pwd_001",
+			PolicyValue: `{"min_length": 16}`,
+			IsActive:    boolPtr(false),
+		}
+
+		body, err := json.Marshal(updateReq)
+		if err != nil {
+			t.Fatalf("Failed to marshal request: %v", err)
+		}
+
+		req := httptest.NewRequest("POST", "/api/security/policies", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-User-ID", "test_user")
+		w := httptest.NewRecorder()
+
+		srv.securityPoliciesHandler(w, req)
+
+		if w.Code != http.StatusCreated {
+			t.Errorf("Expected status 201, got %d", w.Code)
+		}
+
+		var response models.SystemSecurityPolicyResponse
+		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+			t.Fatalf("Failed to unmarshal response: %v", err)
+		}
+
+		if !response.Success {
+			t.Error("Expected success to be true")
+		}
+
+		if len(response.Policies) != 1 {
+			t.Errorf("Expected 1 updated policy, got %d", len(response.Policies))
+		}
+
+		updatedPolicy := response.Policies[0]
+		if updatedPolicy.PolicyValue != `{"min_length": 16}` {
+			t.Errorf("Expected updated policy value, got %s", updatedPolicy.PolicyValue)
+		}
+
+		if updatedPolicy.IsActive {
+			t.Error("Expected policy to be inactive")
+		}
+
+		if response.Message == "" {
+			t.Error("Expected message to be set")
+		}
+	})
+
+	// Test POST invalid request
+	t.Run("POST invalid request", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/api/security/policies", bytes.NewBufferString(`{"invalid": "json"`))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		srv.securityPoliciesHandler(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400, got %d", w.Code)
+		}
+	})
+
+	// Test POST missing policy ID
+	t.Run("POST missing policy ID", func(t *testing.T) {
+		updateReq := models.SystemSecurityPolicyUpdateRequest{
+			PolicyValue: `{"min_length": 16}`,
+		}
+
+		body, err := json.Marshal(updateReq)
+		if err != nil {
+			t.Fatalf("Failed to marshal request: %v", err)
+		}
+
+		req := httptest.NewRequest("POST", "/api/security/policies", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		srv.securityPoliciesHandler(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400, got %d", w.Code)
+		}
+	})
+}
+
+func TestSecurityPoliciesEndpointPUT(t *testing.T) {
+	// Create test data
+	testPolicies := []models.SystemSecurityPolicy{
+		{
+			PolicyID:         "sys_pwd_001",
+			PolicyName:       "Password Complexity",
+			PolicyType:       "password",
+			IsActive:         true,
+			PolicyValue:      `{"min_length": 12}`,
+			PolicyCategory:   "authentication",
+			Severity:         "high",
+			EnforcementLevel: "required",
+			CreatedAt:        time.Now(),
+			UpdatedAt:        time.Now(),
+		},
+	}
+
+	// Create mock repositories
+	mockSystemRepo := &MockSystemSecurityRepository{policies: testPolicies}
+	mockDB := &MockDatabase{}
+
+	// Create service
+	securityService := security.NewService(mockDB, mockSystemRepo)
+
+	// Create server
+	srv := &Server{
+		securityService: securityService,
+	}
+
+	// Test PUT update policy
+	t.Run("PUT update policy", func(t *testing.T) {
+		updateReq := models.SystemSecurityPolicyUpdateRequest{
+			PolicyID:    "sys_pwd_001",
+			PolicyValue: `{"min_length": 20}`,
+			Severity:    stringPtr("critical"),
+		}
+
+		body, err := json.Marshal(updateReq)
+		if err != nil {
+			t.Fatalf("Failed to marshal request: %v", err)
+		}
+
+		req := httptest.NewRequest("PUT", "/api/security/policies", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		srv.securityPoliciesHandler(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("Expected status 200, got %d", w.Code)
+		}
+
+		var response models.SystemSecurityPolicyResponse
+		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+			t.Fatalf("Failed to unmarshal response: %v", err)
+		}
+
+		if !response.Success {
+			t.Error("Expected success to be true")
+		}
+
+		if len(response.Policies) != 1 {
+			t.Errorf("Expected 1 updated policy, got %d", len(response.Policies))
+		}
+
+		updatedPolicy := response.Policies[0]
+		if updatedPolicy.PolicyValue != `{"min_length": 20}` {
+			t.Errorf("Expected updated policy value, got %s", updatedPolicy.PolicyValue)
+		}
+
+		if updatedPolicy.Severity != "critical" {
+			t.Errorf("Expected severity 'critical', got %s", updatedPolicy.Severity)
+		}
+	})
+}
+
+func TestSecurityPoliciesEndpointMethodNotAllowed(t *testing.T) {
+	// Create mock repositories
+	mockSystemRepo := &MockSystemSecurityRepository{policies: []models.SystemSecurityPolicy{}}
+	mockDB := &MockDatabase{}
+
+	// Create service
+	securityService := security.NewService(mockDB, mockSystemRepo)
+
+	// Create server
+	srv := &Server{
+		securityService: securityService,
+	}
+
+	// Test DELETE method (not allowed)
+	t.Run("DELETE method not allowed", func(t *testing.T) {
+		req := httptest.NewRequest("DELETE", "/api/security/policies", nil)
+		w := httptest.NewRecorder()
+
+		srv.securityPoliciesHandler(w, req)
+
+		if w.Code != http.StatusMethodNotAllowed {
+			t.Errorf("Expected status 405, got %d", w.Code)
+		}
+	})
+}
+
+// Helper functions
+func boolPtr(b bool) *bool {
+	return &b
+}
