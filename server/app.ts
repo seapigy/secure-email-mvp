@@ -44,7 +44,7 @@ app.use(cors({
 // Rate limiting (disabled in test environment)
 const isTestEnvironment = process.env.NODE_ENV === 'test';
 
-const authLimiter = isTestEnvironment ? (req: any, res: any, next: any) => next() : rateLimit({
+const authLimiter = isTestEnvironment ? (_req: any, _res: any, next: any) => next() : rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // limit each IP to 10 requests per windowMs
   message: {
@@ -54,7 +54,7 @@ const authLimiter = isTestEnvironment ? (req: any, res: any, next: any) => next(
   legacyHeaders: false,
 });
 
-const generalLimiter = isTestEnvironment ? (req: any, res: any, next: any) => next() : rateLimit({
+const generalLimiter = isTestEnvironment ? (_req: any, _res: any, next: any) => next() : rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   message: {

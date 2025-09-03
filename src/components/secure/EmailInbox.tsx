@@ -137,15 +137,43 @@ const EmailInbox: React.FC<EmailInboxProps> = ({ onEmailSelect, selectedEmail: e
     setIsLoading(true);
     setError(null);
     
+    // Debug logging for development
+    if (import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true') {
+      console.log('🔍 [EmailInbox] Loading inbox data...');
+      console.log('🔍 [EmailInbox] API endpoint: /api/inbox/list');
+    }
+    
     try {
       const response = await getInboxEmails();
+      
+      // Debug logging for development
+      if (import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true') {
+        console.log('✅ [EmailInbox] API response received:', response);
+      }
+      
       const { emails: inboxEmails, stats: inboxStats } = transformInboxResponse(response);
       setEmails(inboxEmails);
       setStats(inboxStats);
+      
+      // Debug logging for development
+      if (import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true') {
+        console.log('✅ [EmailInbox] Inbox data loaded successfully');
+        console.log('📧 [EmailInbox] Emails count:', inboxEmails.length);
+        console.log('📊 [EmailInbox] Stats:', inboxStats);
+      }
     } catch (err) {
       const errorMessage = handleInboxError(err);
       setError(errorMessage);
-      console.error('Failed to load inbox:', err);
+      
+      // Enhanced error logging for development
+      if (import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true') {
+        console.error('❌ [EmailInbox] Failed to load inbox:', err);
+        console.error('❌ [EmailInbox] Error message:', errorMessage);
+        console.error('❌ [EmailInbox] Error type:', err?.constructor?.name);
+        console.error('❌ [EmailInbox] Error stack:', err?.stack);
+      } else {
+        console.error('Failed to load inbox:', err);
+      }
     } finally {
       setIsLoading(false);
     }

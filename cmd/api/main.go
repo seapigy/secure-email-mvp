@@ -49,6 +49,7 @@ import (
 	"secure-email-mvp/pkg/auth"
 	"secure-email-mvp/pkg/cleanup"
 	"secure-email-mvp/pkg/devicefingerprint"
+	"secure-email-mvp/pkg/domains"
 	"secure-email-mvp/pkg/email"
 	"secure-email-mvp/pkg/errors"
 	"secure-email-mvp/pkg/geofencing"
@@ -77,6 +78,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	_ "modernc.org/sqlite"
@@ -201,20 +203,29 @@ func main() {
 	db.SetConnMaxIdleTime(10 * time.Minute) // Close idle connections
 
 	// Test database connectivity
-	log.Printf("Testing database connection...")
+	log.Printf("[STARTUP_DEBUG] 🔍 Testing database connection...")
 	if err := db.Ping(); err != nil {
-		log.Fatal("Error connecting to database:", err)
+		log.Fatal("[STARTUP_DEBUG] ❌ Error connecting to database:", err)
 	}
-	log.Printf("Database connection successful (MaxOpen: 100, MaxIdle: 25)")
+	log.Printf("[STARTUP_DEBUG] ✅ Database connection successful (MaxOpen: 100, MaxIdle: 25)")
+
+	// Test first query to ensure connection is fully established
+	log.Printf("[STARTUP_DEBUG] 🔍 Testing first database query...")
+	var testResult int
+	if err := db.QueryRow("SELECT 1").Scan(&testResult); err != nil {
+		log.Fatal("[STARTUP_DEBUG] ❌ First database query failed:", err)
+	}
+	log.Printf("[STARTUP_DEBUG] ✅ First database query successful, result: %d", testResult)
 
 	// Run database migrations
-	log.Printf("Running database migrations...")
+	log.Printf("[STARTUP_DEBUG] 🔍 Running database migrations...")
 	migrator := migrations.NewMigrator(db)
-	migrationsDir := "../../db/migrations"
+	migrationsDir := "db/migrations"
+	log.Printf("[STARTUP_DEBUG] 🔍 Using migrations directory: %s", migrationsDir)
 	if err := migrator.RunMigrations(migrationsDir); err != nil {
-		log.Fatal("Error running migrations:", err)
+		log.Fatal("[STARTUP_DEBUG] ❌ Error running migrations:", err)
 	}
-	log.Printf("Database migrations completed successfully")
+	log.Printf("[STARTUP_DEBUG] ✅ Database migrations completed successfully")
 
 	// Initialize test bypass and seed test user if enabled
 	log.Printf("Initializing test bypass configuration...")
@@ -255,6 +266,7 @@ func main() {
 	humanVerificationSvc := humanverification.NewHumanVerificationService(db, humanVerificationConfig)
 
 	// Initialize server instance with database and rate limiting
+	log.Printf("[STARTUP_DEBUG] 🔍 Initializing Server struct...")
 	srv := &Server{
 		db:                       db,
 		r2Client:                 r2Client,
@@ -424,14 +436,14 @@ func main() {
 	// 10. Notification system (Micro-Iteration 4.17)
 	// =============================================================================
 	log.Printf("Loading database schema...")
-	schemaPath := "../../schema/users_simple.sql"
+	schemaPath := "schema/users_simple.sql"
 	log.Printf("Attempting to read schema from: %s", schemaPath)
 
 	schema, err := os.ReadFile(schemaPath)
 	if err != nil {
 		log.Printf("Error reading schema from %s: %v", schemaPath, err)
 		log.Printf("Attempting to read schema from absolute path...")
-		absPath := filepath.Join(getCurrentDir(), "schema", "users_simple.sql")
+		absPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "users_simple.sql")
 		log.Printf("Trying absolute path: %s", absPath)
 		schema, err = os.ReadFile(absPath)
 		if err != nil {
@@ -452,7 +464,7 @@ func main() {
 		if err != nil {
 			log.Printf("Error reading migration from %s: %v", migrationPath, err)
 			log.Printf("Attempting to read migration from absolute path...")
-			absMigrationPath := filepath.Join(getCurrentDir(), "schema", "migrate_to_simple.sql")
+			absMigrationPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_to_simple.sql")
 			log.Printf("Trying absolute path: %s", absMigrationPath)
 			migration, err = os.ReadFile(absMigrationPath)
 			if err != nil {
@@ -471,14 +483,14 @@ func main() {
 
 	// Apply emails schema
 	log.Printf("Loading emails schema...")
-	emailsSchemaPath := "../../schema/emails.sql"
+	emailsSchemaPath := "schema/emails.sql"
 	log.Printf("Attempting to read emails schema from: %s", emailsSchemaPath)
 
 	emailsSchema, err := os.ReadFile(emailsSchemaPath)
 	if err != nil {
 		log.Printf("Error reading emails schema from %s: %v", emailsSchemaPath, err)
 		log.Printf("Attempting to read emails schema from absolute path...")
-		absEmailsPath := filepath.Join(getCurrentDir(), "schema", "emails.sql")
+		absEmailsPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "emails.sql")
 		log.Printf("Trying absolute path: %s", absEmailsPath)
 		emailsSchema, err = os.ReadFile(absEmailsPath)
 		if err != nil {
@@ -532,7 +544,7 @@ func main() {
 	if err != nil {
 		log.Printf("❌ Error reading schema fix migration from %s: %v", schemaFixMigrationPath, err)
 		log.Printf("Attempting to read schema fix migration from absolute path...")
-		absSchemaFixPath := filepath.Join(getCurrentDir(), "schema", "fix_sender_id_type.sql")
+		absSchemaFixPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "fix_sender_id_type.sql")
 		log.Printf("Trying absolute path: %s", absSchemaFixPath)
 		schemaFixMigration, err = os.ReadFile(absSchemaFixPath)
 		if err != nil {
@@ -573,7 +585,7 @@ func main() {
 	if err != nil {
 		log.Printf("Error reading failed attempts migration from %s: %v", failedAttemptsMigrationPath, err)
 		log.Printf("Attempting to read failed attempts migration from absolute path...")
-		absFailedAttemptsPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_failed_attempts.sql")
+		absFailedAttemptsPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_failed_attempts.sql")
 		log.Printf("Trying absolute path: %s", absFailedAttemptsPath)
 		failedAttemptsMigration, err = os.ReadFile(absFailedAttemptsPath)
 		if err != nil {
@@ -606,7 +618,7 @@ func main() {
 	if err != nil {
 		log.Printf("Error reading fail_count migration from %s: %v", failCountMigrationPath, err)
 		log.Printf("Attempting to read fail_count migration from absolute path...")
-		absFailCountPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_fail_count.sql")
+		absFailCountPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_fail_count.sql")
 		log.Printf("Trying absolute path: %s", absFailCountPath)
 		failCountMigration, err = os.ReadFile(absFailCountPath)
 		if err != nil {
@@ -639,7 +651,7 @@ func main() {
 	if err != nil {
 		log.Printf("Error reading geolocation restrictions migration from %s: %v", geolocationMigrationPath, err)
 		log.Printf("Attempting to read geolocation restrictions migration from absolute path...")
-		absGeolocationPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_geolocation_restrictions.sql")
+		absGeolocationPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_geolocation_restrictions.sql")
 		log.Printf("Trying absolute path: %s", absGeolocationPath)
 		geolocationMigration, err = os.ReadFile(absGeolocationPath)
 		if err != nil {
@@ -665,14 +677,14 @@ func main() {
 
 	// Apply MFA migration
 	log.Printf("Loading MFA migration...")
-	mfaMigrationPath := "schema/migrate_add_mfa_fields.sql"
+	mfaMigrationPath := "../../schema/migrate_add_mfa_fields.sql"
 	log.Printf("Attempting to read MFA migration from: %s", mfaMigrationPath)
 
 	mfaMigration, err := os.ReadFile(mfaMigrationPath)
 	if err != nil {
 		log.Printf("Error reading MFA migration from %s: %v", mfaMigrationPath, err)
 		log.Printf("Attempting to read MFA migration from absolute path...")
-		absMFAPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_mfa_fields.sql")
+		absMFAPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_mfa_fields.sql")
 		log.Printf("Trying absolute path: %s", absMFAPath)
 		mfaMigration, err = os.ReadFile(absMFAPath)
 		if err != nil {
@@ -698,14 +710,14 @@ func main() {
 
 	// Apply simple geolocation migration (Micro-Iteration 4.10)
 	log.Printf("Loading simple geolocation migration...")
-	simpleGeoMigrationPath := "schema/migrate_add_simple_geolocation.sql"
+	simpleGeoMigrationPath := "../../schema/migrate_add_simple_geolocation.sql"
 	log.Printf("Attempting to read simple geolocation migration from: %s", simpleGeoMigrationPath)
 
 	simpleGeoMigration, err := os.ReadFile(simpleGeoMigrationPath)
 	if err != nil {
 		log.Printf("Error reading simple geolocation migration from %s: %v", simpleGeoMigrationPath, err)
 		log.Printf("Attempting to read simple geolocation migration from absolute path...")
-		absSimpleGeoPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_simple_geolocation.sql")
+		absSimpleGeoPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_simple_geolocation.sql")
 		log.Printf("Trying absolute path: %s", absSimpleGeoPath)
 		simpleGeoMigration, err = os.ReadFile(absSimpleGeoPath)
 		if err != nil {
@@ -731,14 +743,14 @@ func main() {
 
 	// Apply brute-force protection migration (Micro-Iteration 4.12)
 	log.Printf("Loading brute-force protection migration...")
-	bruteForceMigrationPath := "schema/migrate_add_brute_force_protection.sql"
+	bruteForceMigrationPath := "../../schema/migrate_add_brute_force_protection.sql"
 	log.Printf("Attempting to read brute-force protection migration from: %s", bruteForceMigrationPath)
 
 	bruteForceMigration, err := os.ReadFile(bruteForceMigrationPath)
 	if err != nil {
 		log.Printf("Error reading brute-force protection migration from %s: %v", bruteForceMigrationPath, err)
 		log.Printf("Attempting to read brute-force protection migration from absolute path...")
-		absBruteForcePath := filepath.Join(getCurrentDir(), "schema", "migrate_add_brute_force_protection.sql")
+		absBruteForcePath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_brute_force_protection.sql")
 		log.Printf("Trying absolute path: %s", absBruteForcePath)
 		bruteForceMigration, err = os.ReadFile(absBruteForcePath)
 		if err != nil {
@@ -764,14 +776,14 @@ func main() {
 
 	// Apply IP tracking migration (Micro-Iteration 4.13)
 	log.Printf("Loading IP tracking migration...")
-	ipTrackingMigrationPath := "schema/migrate_add_ip_tracking.sql"
+	ipTrackingMigrationPath := "../../schema/migrate_add_ip_tracking.sql"
 	log.Printf("Attempting to read IP tracking migration from: %s", ipTrackingMigrationPath)
 
 	ipTrackingMigration, err := os.ReadFile(ipTrackingMigrationPath)
 	if err != nil {
 		log.Printf("Error reading IP tracking migration from %s: %v", ipTrackingMigrationPath, err)
 		log.Printf("Attempting to read IP tracking migration from absolute path...")
-		absIPTrackingPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_ip_tracking.sql")
+		absIPTrackingPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_ip_tracking.sql")
 		log.Printf("Trying absolute path: %s", absIPTrackingPath)
 		ipTrackingMigration, err = os.ReadFile(absIPTrackingPath)
 		if err != nil {
@@ -805,14 +817,14 @@ func main() {
 
 	// Apply login lockout migration (Micro-Iteration 4.6)
 	log.Printf("Loading login lockout migration...")
-	loginLockoutMigrationPath := "schema/migrate_add_login_lockout.sql"
+	loginLockoutMigrationPath := "../../schema/migrate_add_login_lockout.sql"
 	log.Printf("Attempting to read login lockout migration from: %s", loginLockoutMigrationPath)
 
 	loginLockoutMigration, err := os.ReadFile(loginLockoutMigrationPath)
 	if err != nil {
 		log.Printf("Error reading login lockout migration from %s: %v", loginLockoutMigrationPath, err)
 		log.Printf("Attempting to read login lockout migration from absolute path...")
-		absLoginLockoutPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_login_lockout.sql")
+		absLoginLockoutPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_login_lockout.sql")
 		log.Printf("Trying absolute path: %s", absLoginLockoutPath)
 		loginLockoutMigration, err = os.ReadFile(absLoginLockoutPath)
 		if err != nil {
@@ -838,14 +850,14 @@ func main() {
 
 	// Apply password protection migration (Micro-Iteration 4.14)
 	log.Printf("Loading password protection migration...")
-	passwordProtectionMigrationPath := "schema/migrate_add_email_password_protection.sql"
+	passwordProtectionMigrationPath := "../../schema/migrate_add_email_password_protection.sql"
 	log.Printf("Attempting to read password protection migration from: %s", passwordProtectionMigrationPath)
 
 	passwordProtectionMigration, err := os.ReadFile(passwordProtectionMigrationPath)
 	if err != nil {
 		log.Printf("Error reading password protection migration from %s: %v", passwordProtectionMigrationPath, err)
 		log.Printf("Attempting to read password protection migration from absolute path...")
-		absPasswordProtectionPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_email_password_protection.sql")
+		absPasswordProtectionPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_email_password_protection.sql")
 		log.Printf("Trying absolute path: %s", absPasswordProtectionPath)
 		passwordProtectionMigration, err = os.ReadFile(absPasswordProtectionPath)
 		if err != nil {
@@ -871,14 +883,14 @@ func main() {
 
 	// Apply enhanced geolocation verification migration (Micro-Iteration 4.15)
 	log.Printf("Loading enhanced geolocation verification migration...")
-	geoVerificationMigrationPath := "schema/migrate_add_city_country_verification.sql"
+	geoVerificationMigrationPath := "../../schema/migrate_add_city_country_verification.sql"
 	log.Printf("Attempting to read enhanced geolocation verification migration from: %s", geoVerificationMigrationPath)
 
 	geoVerificationMigration, err := os.ReadFile(geoVerificationMigrationPath)
 	if err != nil {
 		log.Printf("Error reading enhanced geolocation verification migration from %s: %v", geoVerificationMigrationPath, err)
 		log.Printf("Attempting to read enhanced geolocation verification migration from absolute path...")
-		absGeoVerificationPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_city_country_verification.sql")
+		absGeoVerificationPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_city_country_verification.sql")
 		log.Printf("Trying absolute path: %s", absGeoVerificationPath)
 		geoVerificationMigration, err = os.ReadFile(absGeoVerificationPath)
 		if err != nil {
@@ -904,14 +916,14 @@ func main() {
 
 	// Apply notification system migration (Micro-Iteration 4.17)
 	log.Printf("Loading notification system migration...")
-	notificationMigrationPath := "schema/migrate_add_notification_system.sql"
+	notificationMigrationPath := "../../schema/migrate_add_notification_system.sql"
 	log.Printf("Attempting to read notification system migration from: %s", notificationMigrationPath)
 
 	notificationMigration, err := os.ReadFile(notificationMigrationPath)
 	if err != nil {
 		log.Printf("Error reading notification system migration from %s: %v", notificationMigrationPath, err)
 		log.Printf("Attempting to read notification system migration from absolute path...")
-		absNotificationPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_notification_system.sql")
+		absNotificationPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_notification_system.sql")
 		log.Printf("Trying absolute path: %s", absNotificationPath)
 		notificationMigration, err = os.ReadFile(absNotificationPath)
 		if err != nil {
@@ -937,14 +949,14 @@ func main() {
 
 	// Apply notification delivery controls migration (Micro-Iteration 4.18)
 	log.Printf("Loading notification delivery controls migration...")
-	deliveryControlsMigrationPath := "schema/migrate_add_notification_delivery_controls.sql"
+	deliveryControlsMigrationPath := "../../schema/migrate_add_notification_delivery_controls.sql"
 	log.Printf("Attempting to read notification delivery controls migration from: %s", deliveryControlsMigrationPath)
 
 	deliveryControlsMigration, err := os.ReadFile(deliveryControlsMigrationPath)
 	if err != nil {
 		log.Printf("Error reading notification delivery controls migration from %s: %v", deliveryControlsMigrationPath, err)
 		log.Printf("Attempting to read notification delivery controls migration from absolute path...")
-		absDeliveryControlsPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_notification_delivery_controls.sql")
+		absDeliveryControlsPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_notification_delivery_controls.sql")
 		log.Printf("Trying absolute path: %s", absDeliveryControlsPath)
 		deliveryControlsMigration, err = os.ReadFile(absDeliveryControlsPath)
 		if err != nil {
@@ -970,14 +982,14 @@ func main() {
 
 	// Apply daily digest delivery migration (Micro-Iteration 4.19)
 	log.Printf("Loading daily digest delivery migration...")
-	dailyDigestMigrationPath := "schema/migrate_add_daily_digest_delivery.sql"
+	dailyDigestMigrationPath := "../../schema/migrate_add_daily_digest_delivery.sql"
 	log.Printf("Attempting to read daily digest delivery migration from: %s", dailyDigestMigrationPath)
 
 	dailyDigestMigration, err := os.ReadFile(dailyDigestMigrationPath)
 	if err != nil {
 		log.Printf("Error reading daily digest delivery migration from %s: %v", dailyDigestMigrationPath, err)
 		log.Printf("Attempting to read daily digest delivery migration from absolute path...")
-		absDailyDigestPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_daily_digest_delivery.sql")
+		absDailyDigestPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_daily_digest_delivery.sql")
 		log.Printf("Trying absolute path: %s", absDailyDigestPath)
 		dailyDigestMigration, err = os.ReadFile(absDailyDigestPath)
 		if err != nil {
@@ -1003,14 +1015,14 @@ func main() {
 
 	// Apply geofencing migration (Micro-Iteration 4.13)
 	log.Printf("Loading geofencing migration...")
-	geofencingMigrationPath := "schema/migrate_add_geofencing.sql"
+	geofencingMigrationPath := "../../schema/migrate_add_geofencing.sql"
 	log.Printf("Attempting to read geofencing migration from: %s", geofencingMigrationPath)
 
 	geofencingMigration, err := os.ReadFile(geofencingMigrationPath)
 	if err != nil {
 		log.Printf("Error reading geofencing migration from %s: %v", geofencingMigrationPath, err)
 		log.Printf("Attempting to read geofencing migration from absolute path...")
-		absGeofencingPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_geofencing.sql")
+		absGeofencingPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_geofencing.sql")
 		log.Printf("Trying absolute path: %s", absGeofencingPath)
 		geofencingMigration, err = os.ReadFile(absGeofencingPath)
 		if err != nil {
@@ -1036,14 +1048,14 @@ func main() {
 
 	// Apply device fingerprinting migration (Micro-Iteration 4.14)
 	log.Printf("Loading device fingerprinting migration...")
-	deviceFingerprintingMigrationPath := "schema/migrate_add_device_fingerprinting.sql"
+	deviceFingerprintingMigrationPath := "../../schema/migrate_add_device_fingerprinting.sql"
 	log.Printf("Attempting to read device fingerprinting migration from: %s", deviceFingerprintingMigrationPath)
 
 	deviceFingerprintingMigration, err := os.ReadFile(deviceFingerprintingMigrationPath)
 	if err != nil {
 		log.Printf("Error reading device fingerprinting migration from %s: %v", deviceFingerprintingMigrationPath, err)
 		log.Printf("Attempting to read device fingerprinting migration from absolute path...")
-		absDeviceFingerprintingPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_device_fingerprinting.sql")
+		absDeviceFingerprintingPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_device_fingerprinting.sql")
 		log.Printf("Trying absolute path: %s", absDeviceFingerprintingPath)
 		deviceFingerprintingMigration, err = os.ReadFile(absDeviceFingerprintingPath)
 		if err != nil {
@@ -1069,14 +1081,14 @@ func main() {
 
 	// Apply session tokens migration (Micro-Iteration 4.15)
 	log.Printf("Loading session tokens migration...")
-	sessionTokensMigrationPath := "schema/migrate_add_session_tokens.sql"
+	sessionTokensMigrationPath := "../../schema/migrate_add_session_tokens.sql"
 	log.Printf("Attempting to read session tokens migration from: %s", sessionTokensMigrationPath)
 
 	sessionTokensMigration, err := os.ReadFile(sessionTokensMigrationPath)
 	if err != nil {
 		log.Printf("Error reading session tokens migration from %s: %v", sessionTokensMigrationPath, err)
 		log.Printf("Attempting to read session tokens migration from absolute path...")
-		absSessionTokensPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_session_tokens.sql")
+		absSessionTokensPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_session_tokens.sql")
 		log.Printf("Trying absolute path: %s", absSessionTokensPath)
 		sessionTokensMigration, err = os.ReadFile(absSessionTokensPath)
 		if err != nil {
@@ -1102,14 +1114,14 @@ func main() {
 
 	// Apply human verification migration (Micro-Iteration 4.16)
 	log.Printf("Loading human verification migration...")
-	humanVerificationMigrationPath := "schema/migrate_add_human_verification.sql"
+	humanVerificationMigrationPath := "../../schema/migrate_add_human_verification.sql"
 	log.Printf("Attempting to read human verification migration from: %s", humanVerificationMigrationPath)
 
 	humanVerificationMigration, err := os.ReadFile(humanVerificationMigrationPath)
 	if err != nil {
 		log.Printf("Error reading human verification migration from %s: %v", humanVerificationMigrationPath, err)
 		log.Printf("Attempting to read human verification migration from absolute path...")
-		absHumanVerificationPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_human_verification.sql")
+		absHumanVerificationPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_human_verification.sql")
 		log.Printf("Trying absolute path: %s", absHumanVerificationPath)
 		humanVerificationMigration, err = os.ReadFile(absHumanVerificationPath)
 		if err != nil {
@@ -1135,14 +1147,14 @@ func main() {
 
 	// Apply recipient ID migration (Micro-Iteration 4.18)
 	log.Printf("Loading recipient ID migration...")
-	recipientIDMigrationPath := "schema/migrate_add_recipient_id.sql"
+	recipientIDMigrationPath := "../../schema/migrate_add_recipient_id.sql"
 	log.Printf("Attempting to read recipient ID migration from: %s", recipientIDMigrationPath)
 
 	recipientIDMigration, err := os.ReadFile(recipientIDMigrationPath)
 	if err != nil {
 		log.Printf("Error reading recipient ID migration from %s: %v", recipientIDMigrationPath, err)
 		log.Printf("Attempting to read recipient ID migration from absolute path...")
-		absRecipientIDPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_recipient_id.sql")
+		absRecipientIDPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_recipient_id.sql")
 		log.Printf("Trying absolute path: %s", absRecipientIDPath)
 		recipientIDMigration, err = os.ReadFile(absRecipientIDPath)
 		if err != nil {
@@ -1168,14 +1180,14 @@ func main() {
 
 	// Apply read receipts and expiration alerts migration (Micro-Iteration 4.19)
 	log.Printf("Loading read receipts and expiration alerts migration...")
-	readReceiptsMigrationPath := "schema/migrate_add_read_receipts_expiration_alerts.sql"
+	readReceiptsMigrationPath := "../../schema/migrate_add_read_receipts_expiration_alerts.sql"
 	log.Printf("Attempting to read read receipts migration from: %s", readReceiptsMigrationPath)
 
 	readReceiptsMigration, err := os.ReadFile(readReceiptsMigrationPath)
 	if err != nil {
 		log.Printf("Error reading read receipts migration from %s: %v", readReceiptsMigrationPath, err)
 		log.Printf("Attempting to read read receipts migration from absolute path...")
-		absReadReceiptsPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_read_receipts_expiration_alerts.sql")
+		absReadReceiptsPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_read_receipts_expiration_alerts.sql")
 		log.Printf("Trying absolute path: %s", absReadReceiptsPath)
 		readReceiptsMigration, err = os.ReadFile(absReadReceiptsPath)
 		if err != nil {
@@ -1201,14 +1213,14 @@ func main() {
 
 	// Apply audit log migration (Micro-Iteration 4.20)
 	log.Printf("Loading audit log migration...")
-	auditMigrationPath := "schema/migrate_add_audit_log.sql"
+	auditMigrationPath := "../../schema/migrate_add_audit_log.sql"
 	log.Printf("Attempting to read audit migration from: %s", auditMigrationPath)
 
 	auditMigration, err := os.ReadFile(auditMigrationPath)
 	if err != nil {
 		log.Printf("Error reading audit migration from %s: %v", auditMigrationPath, err)
 		log.Printf("Attempting to read audit migration from absolute path...")
-		absAuditPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_audit_log.sql")
+		absAuditPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_audit_log.sql")
 		log.Printf("Trying absolute path: %s", absAuditPath)
 		auditMigration, err = os.ReadFile(absAuditPath)
 		if err != nil {
@@ -1234,14 +1246,14 @@ func main() {
 
 	// Apply suspicious access detection migration (Micro-Iteration 4.18)
 	log.Printf("Loading suspicious access detection migration...")
-	suspiciousMigrationPath := "schema/migrate_add_suspicious_access_detection.sql"
+	suspiciousMigrationPath := "../../schema/migrate_add_suspicious_access_detection.sql"
 	log.Printf("Attempting to read suspicious detection migration from: %s", suspiciousMigrationPath)
 
 	suspiciousMigration, err := os.ReadFile(suspiciousMigrationPath)
 	if err != nil {
 		log.Printf("Error reading suspicious detection migration from %s: %v", suspiciousMigrationPath, err)
 		log.Printf("Attempting to read suspicious detection migration from absolute path...")
-		absSuspiciousPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_suspicious_access_detection.sql")
+		absSuspiciousPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_suspicious_access_detection.sql")
 		log.Printf("Trying absolute path: %s", absSuspiciousPath)
 		suspiciousMigration, err = os.ReadFile(absSuspiciousPath)
 		if err != nil {
@@ -1267,14 +1279,14 @@ func main() {
 
 	// Apply enhanced geo-restriction migration (Micro-Iteration 4.7)
 	log.Printf("Loading enhanced geo-restriction migration...")
-	enhancedGeoRestrictionMigrationPath := "schema/migrate_add_enhanced_geo_restrictions.sql"
+	enhancedGeoRestrictionMigrationPath := "../../schema/migrate_add_enhanced_geo_restrictions.sql"
 	log.Printf("Attempting to read enhanced geo-restriction migration from: %s", enhancedGeoRestrictionMigrationPath)
 
 	enhancedGeoRestrictionMigration, err := os.ReadFile(enhancedGeoRestrictionMigrationPath)
 	if err != nil {
 		log.Printf("Error reading enhanced geo-restriction migration from %s: %v", enhancedGeoRestrictionMigrationPath, err)
 		log.Printf("Attempting to read enhanced geo-restriction migration from absolute path...")
-		absEnhancedGeoRestrictionPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_enhanced_geo_restrictions.sql")
+		absEnhancedGeoRestrictionPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_enhanced_geo_restrictions.sql")
 		log.Printf("Trying absolute path: %s", absEnhancedGeoRestrictionPath)
 		enhancedGeoRestrictionMigration, err = os.ReadFile(absEnhancedGeoRestrictionPath)
 		if err != nil {
@@ -1300,14 +1312,14 @@ func main() {
 
 	// Apply user TOTP fields migration (Micro-Iteration 4.5)
 	log.Printf("Loading user TOTP fields migration...")
-	userTOTPMigrationPath := "schema/migrate_add_user_totp_fields.sql"
+	userTOTPMigrationPath := "../../schema/migrate_add_user_totp_fields.sql"
 	log.Printf("Attempting to read user TOTP migration from: %s", userTOTPMigrationPath)
 
 	userTOTPMigration, err := os.ReadFile(userTOTPMigrationPath)
 	if err != nil {
 		log.Printf("Error reading user TOTP migration from %s: %v", userTOTPMigrationPath, err)
 		log.Printf("Attempting to read user TOTP migration from absolute path...")
-		absUserTOTPPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_user_totp_fields.sql")
+		absUserTOTPPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_user_totp_fields.sql")
 		log.Printf("Trying absolute path: %s", absUserTOTPPath)
 		userTOTPMigration, err = os.ReadFile(absUserTOTPPath)
 		if err != nil {
@@ -1333,14 +1345,14 @@ func main() {
 
 	// Apply email access logs migration (Micro-Iteration 4.22)
 	log.Printf("Loading email access logs migration...")
-	emailAccessLogsMigrationPath := "schema/migrate_add_email_access_logs.sql"
+	emailAccessLogsMigrationPath := "../../schema/migrate_add_email_access_logs.sql"
 	log.Printf("Attempting to read email access logs migration from: %s", emailAccessLogsMigrationPath)
 
 	emailAccessLogsMigration, err := os.ReadFile(emailAccessLogsMigrationPath)
 	if err != nil {
 		log.Printf("Error reading email access logs migration from %s: %v", emailAccessLogsMigrationPath, err)
 		log.Printf("Attempting to read email access logs migration from absolute path...")
-		absEmailAccessLogsPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_email_access_logs.sql")
+		absEmailAccessLogsPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_email_access_logs.sql")
 		log.Printf("Trying absolute path: %s", absEmailAccessLogsPath)
 		emailAccessLogsMigration, err = os.ReadFile(absEmailAccessLogsPath)
 		if err != nil {
@@ -1366,14 +1378,14 @@ func main() {
 
 	// Apply Secure Links External Email Flow migration (Phase 1)
 	log.Printf("Loading secure links migration...")
-	secureLinksMigrationPath := "schema/migrate_add_secure_links.sql"
+	secureLinksMigrationPath := "../../schema/migrate_add_secure_links.sql"
 	log.Printf("Attempting to read secure links migration from: %s", secureLinksMigrationPath)
 
 	secureLinksMigration, err := os.ReadFile(secureLinksMigrationPath)
 	if err != nil {
 		log.Printf("Error reading secure links migration from %s: %v", secureLinksMigrationPath, err)
 		log.Printf("Attempting to read secure links migration from absolute path...")
-		absSecureLinksPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_secure_links.sql")
+		absSecureLinksPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_secure_links.sql")
 		log.Printf("Trying absolute path: %s", absSecureLinksPath)
 		secureLinksMigration, err = os.ReadFile(absSecureLinksPath)
 		if err != nil {
@@ -1403,14 +1415,14 @@ func main() {
 
 	// Apply Iteration 5 - Rich Messaging migration
 	log.Printf("Loading Iteration 5 - Rich Messaging migration...")
-	richMessagingMigrationPath := "schema/migrate_add_rich_messaging.sql"
+	richMessagingMigrationPath := "../../schema/migrate_add_rich_messaging.sql"
 	log.Printf("Attempting to read rich messaging migration from: %s", richMessagingMigrationPath)
 
 	richMessagingMigration, err := os.ReadFile(richMessagingMigrationPath)
 	if err != nil {
 		log.Printf("Error reading rich messaging migration from %s: %v", richMessagingMigrationPath, err)
 		log.Printf("Attempting to read rich messaging migration from absolute path...")
-		absRichMessagingPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_rich_messaging.sql")
+		absRichMessagingPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_rich_messaging.sql")
 		log.Printf("Trying absolute path: %s", absRichMessagingPath)
 		richMessagingMigration, err = os.ReadFile(absRichMessagingPath)
 		if err != nil {
@@ -1436,14 +1448,14 @@ func main() {
 
 	// Apply Iteration 6 - Advanced Security & Compliance migration
 	log.Printf("Loading Iteration 6 - Advanced Security & Compliance migration...")
-	advancedSecurityMigrationPath := "schema/migrate_add_advanced_security_compliance.sql"
+	advancedSecurityMigrationPath := "../../schema/migrate_add_advanced_security_compliance.sql"
 	log.Printf("Attempting to read advanced security migration from: %s", advancedSecurityMigrationPath)
 
 	advancedSecurityMigration, err := os.ReadFile(advancedSecurityMigrationPath)
 	if err != nil {
 		log.Printf("Error reading advanced security migration from %s: %v", advancedSecurityMigrationPath, err)
 		log.Printf("Attempting to read advanced security migration from absolute path...")
-		absAdvancedSecurityPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_advanced_security_compliance.sql")
+		absAdvancedSecurityPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_advanced_security_compliance.sql")
 		log.Printf("Trying absolute path: %s", absAdvancedSecurityPath)
 		advancedSecurityMigration, err = os.ReadFile(absAdvancedSecurityPath)
 		if err != nil {
@@ -1469,14 +1481,14 @@ func main() {
 
 	// Apply Iteration 7 - AI DLP migration
 	log.Printf("Loading Iteration 7 - AI DLP migration...")
-	aiDlpMigrationPath := "schema/migrate_add_ai_dlp.sql"
+	aiDlpMigrationPath := "../../schema/migrate_add_ai_dlp.sql"
 	log.Printf("Attempting to read AI DLP migration from: %s", aiDlpMigrationPath)
 
 	aiDlpMigration, err := os.ReadFile(aiDlpMigrationPath)
 	if err != nil {
 		log.Printf("Error reading AI DLP migration from %s: %v", aiDlpMigrationPath, err)
 		log.Printf("Attempting to read AI DLP migration from absolute path...")
-		absAiDlpPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_ai_dlp.sql")
+		absAiDlpPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_ai_dlp.sql")
 		log.Printf("Trying absolute path: %s", absAiDlpPath)
 		aiDlpMigration, err = os.ReadFile(absAiDlpPath)
 		if err != nil {
@@ -1502,14 +1514,14 @@ func main() {
 
 	// Apply Iteration 8 - Advanced Watermarking migration
 	log.Printf("Loading Iteration 8 - Advanced Watermarking migration...")
-	advancedWatermarkingMigrationPath := "schema/migrate_add_advanced_watermarking.sql"
+	advancedWatermarkingMigrationPath := "../../schema/migrate_add_advanced_watermarking.sql"
 	log.Printf("Attempting to read advanced watermarking migration from: %s", advancedWatermarkingMigrationPath)
 
 	advancedWatermarkingMigration, err := os.ReadFile(advancedWatermarkingMigrationPath)
 	if err != nil {
 		log.Printf("Error reading advanced watermarking migration from %s: %v", advancedWatermarkingMigrationPath, err)
 		log.Printf("Attempting to read advanced watermarking migration from absolute path...")
-		absAdvancedWatermarkingPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_advanced_watermarking.sql")
+		absAdvancedWatermarkingPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_advanced_watermarking.sql")
 		log.Printf("Trying absolute path: %s", absAdvancedWatermarkingPath)
 		advancedWatermarkingMigration, err = os.ReadFile(absAdvancedWatermarkingPath)
 		if err != nil {
@@ -1535,14 +1547,14 @@ func main() {
 
 	// Apply Iteration 9 - Real-Time Monitoring & Dashboards migration
 	log.Printf("Loading Iteration 9 - Real-Time Monitoring & Dashboards migration...")
-	monitoringMigrationPath := "schema/migrate_add_monitoring_simple.sql"
+	monitoringMigrationPath := "../../schema/migrate_add_monitoring_simple.sql"
 	log.Printf("Attempting to read monitoring migration from: %s", monitoringMigrationPath)
 
 	monitoringMigration, err := os.ReadFile(monitoringMigrationPath)
 	if err != nil {
 		log.Printf("Error reading monitoring migration from %s: %v", monitoringMigrationPath, err)
 		log.Printf("Attempting to read monitoring migration from absolute path...")
-		absMonitoringPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_monitoring_simple.sql")
+		absMonitoringPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_monitoring_simple.sql")
 		log.Printf("Trying absolute path: %s", absMonitoringPath)
 		monitoringMigration, err = os.ReadFile(absMonitoringPath)
 		if err != nil {
@@ -1614,11 +1626,13 @@ func main() {
 	r.Use(srv.secureHeadersMiddleware)
 	r.Use(srv.monitoringMiddleware)
 
+	log.Printf("[STARTUP_DEBUG] 🔍 Registering basic endpoints...")
 	log.Printf("Registering /ping endpoint")
 	r.HandleFunc("/ping", srv.pingHandler).Methods("GET")
 
 	log.Printf("Registering /health endpoint")
 	r.HandleFunc("/health", srv.healthHandler).Methods("GET")
+	log.Printf("[STARTUP_DEBUG] ✅ Basic endpoints registered")
 
 	// Initialize ZKID service and endpoints if enabled
 	zkidCfg := zkid.ConfigFromEnv()
@@ -1665,14 +1679,14 @@ func main() {
 
 	// Apply admin users migration
 	log.Printf("Loading admin users migration...")
-	adminUsersMigrationPath := "schema/migrate_add_admin_users.sql"
+	adminUsersMigrationPath := "../../schema/migrate_add_admin_users.sql"
 	log.Printf("Attempting to read admin users migration from: %s", adminUsersMigrationPath)
 
 	adminUsersMigration, err := os.ReadFile(adminUsersMigrationPath)
 	if err != nil {
 		log.Printf("Error reading admin users migration from %s: %v", adminUsersMigrationPath, err)
 		log.Printf("Attempting to read admin users migration from absolute path...")
-		absAdminUsersPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_admin_users.sql")
+		absAdminUsersPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_admin_users.sql")
 		log.Printf("Trying absolute path: %s", absAdminUsersPath)
 		adminUsersMigration, err = os.ReadFile(absAdminUsersPath)
 		if err != nil {
@@ -1698,14 +1712,14 @@ func main() {
 
 	// Apply audit logs migration
 	log.Printf("Loading audit logs migration...")
-	auditLogsMigrationPath := "schema/migrate_add_audit_logs.sql"
+	auditLogsMigrationPath := "../../schema/migrate_add_audit_logs.sql"
 	log.Printf("Attempting to read audit logs migration from: %s", auditLogsMigrationPath)
 
 	auditLogsMigration, err := os.ReadFile(auditLogsMigrationPath)
 	if err != nil {
 		log.Printf("Error reading audit logs migration from %s: %v", auditLogsMigrationPath, err)
 		log.Printf("Attempting to read audit logs migration from absolute path...")
-		absAuditLogsPath := filepath.Join(getCurrentDir(), "schema", "migrate_add_audit_logs.sql")
+		absAuditLogsPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "migrate_add_audit_logs.sql")
 		log.Printf("Trying absolute path: %s", absAuditLogsPath)
 		auditLogsMigration, err = os.ReadFile(absAuditLogsPath)
 		if err != nil {
@@ -1771,7 +1785,7 @@ func main() {
 	if err != nil {
 		log.Printf("Error reading refresh tokens schema from %s: %v", refreshTokensSchemaPath, err)
 		log.Printf("Attempting to read refresh tokens schema from absolute path...")
-		absRefreshTokensPath := filepath.Join(getCurrentDir(), "schema", "refresh_tokens.sql")
+		absRefreshTokensPath := filepath.Join(getCurrentDir(), "..", "..", "schema", "refresh_tokens.sql")
 		log.Printf("Trying absolute path: %s", absRefreshTokensPath)
 		refreshTokensSchema, err = os.ReadFile(absRefreshTokensPath)
 		if err != nil {
@@ -1796,7 +1810,7 @@ func main() {
 	}
 
 	// Apply retention notifications and analytics migration (Micro-Iteration 4.25)
-	retentionNotificationsAnalyticsSchema, err := os.ReadFile("schema/migrate_add_retention_notifications_analytics.sql")
+	retentionNotificationsAnalyticsSchema, err := os.ReadFile("../../schema/migrate_add_retention_notifications_analytics.sql")
 	if err != nil {
 		log.Printf("Error reading retention notifications and analytics schema from relative path: %v", err)
 		// Try absolute path
@@ -1823,7 +1837,7 @@ func main() {
 	}
 
 	// Apply retention policies and archival migration (Micro-Iteration 4.26)
-	retentionPoliciesArchivalSchema, err := os.ReadFile("schema/migrate_add_retention_policies_archival.sql")
+	retentionPoliciesArchivalSchema, err := os.ReadFile("../../schema/migrate_add_retention_policies_archival.sql")
 	if err != nil {
 		log.Printf("Error reading retention policies and archival schema from relative path: %v", err)
 		// Try absolute path
@@ -1856,6 +1870,161 @@ func main() {
 	r.Handle("/api/auth/login", signupLoginLimiter.Middleware(loginHandler(db))).Methods("POST")
 	log.Printf("Registering /api/auth/signup endpoint")
 	r.Handle("/api/auth/signup", signupLoginLimiter.Middleware(signupHandlerFactory(db))).Methods("POST")
+
+	// Test endpoints for debugging
+	log.Printf("Registering /api/test/basic endpoint")
+	r.HandleFunc("/api/test/basic", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "Basic test endpoint working",
+			"method":  r.Method,
+			"path":    r.URL.Path,
+		})
+	}).Methods("GET", "POST")
+
+	log.Printf("Registering /api/test/json endpoint")
+	r.HandleFunc("/api/test/json", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var data map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":   "JSON parsing failed",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message":       "JSON parsing successful",
+			"received_data": data,
+		})
+	}).Methods("POST")
+
+	log.Printf("Registering /api/test/signup-factory endpoint")
+	r.HandleFunc("/api/test/signup-factory", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Test the signup handler factory directly
+		handler := signupHandlerFactory(db)
+		handler(w, r)
+	}).Methods("POST")
+
+	// Test endpoint for debugging
+	// Debug database transaction endpoint (development only)
+	if os.Getenv("ENV") == "development" {
+		log.Printf("Registering /api/debug/db-transaction-test endpoint")
+		r.HandleFunc("/api/debug/db-transaction-test", func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != "POST" {
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+
+			// Test database transaction with explicit commit
+			w.Header().Set("Content-Type", "application/json")
+
+			// Begin transaction
+			tx, err := db.Begin()
+			if err != nil {
+				log.Printf("[DEBUG_DB] ❌ Failed to begin transaction: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error":   "Failed to begin transaction",
+					"details": err.Error(),
+				})
+				return
+			}
+
+			// Ensure rollback on error
+			defer func() {
+				if tx != nil {
+					log.Printf("[DEBUG_DB] 🔄 Rolling back transaction")
+					if rollbackErr := tx.Rollback(); rollbackErr != nil {
+						log.Printf("[DEBUG_DB] ⚠️ Failed to rollback: %v", rollbackErr)
+					}
+				}
+			}()
+
+			// Generate unique test email
+			testEmail := fmt.Sprintf("debug+%s@example.com", uuid.New().String())
+			testID := uuid.New().String()
+
+			// Insert test row
+			query := `INSERT INTO users (id, email, password, password_hash, totp_secret, fallback_email, fallback_confirmed, totp_configured, account_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			result, err := tx.Exec(query, testID, testEmail, "test_password", "test_hash", "test_totp", "test@backup.com", 0, 0, "pending")
+
+			if err != nil {
+				log.Printf("[DEBUG_DB] ❌ Insert failed: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error":   "Insert failed",
+					"details": err.Error(),
+				})
+				return
+			}
+
+			// Get rows affected
+			rowsAffected, err := result.RowsAffected()
+			if err != nil {
+				log.Printf("[DEBUG_DB] ⚠️ Could not get rows affected: %v", err)
+			}
+
+			// Commit transaction
+			if err = tx.Commit(); err != nil {
+				log.Printf("[DEBUG_DB] ❌ Commit failed: %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error":   "Commit failed",
+					"details": err.Error(),
+				})
+				return
+			}
+
+			// Clear defer rollback
+			tx = nil
+
+			// Verify the row was actually inserted
+			var actualCount int
+			err = db.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", testEmail).Scan(&actualCount)
+			if err != nil {
+				log.Printf("[DEBUG_DB] ⚠️ Could not verify insertion: %v", err)
+			}
+
+			// Clean up test data
+			_, cleanupErr := db.Exec("DELETE FROM users WHERE email = ?", testEmail)
+			if cleanupErr != nil {
+				log.Printf("[DEBUG_DB] ⚠️ Could not cleanup test data: %v", cleanupErr)
+			}
+
+			log.Printf("[DEBUG_DB] ✅ Transaction test successful - Rows affected: %d, Verified count: %d", rowsAffected, actualCount)
+
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success":            true,
+				"message":            "Database transaction test successful",
+				"test_email":         testEmail,
+				"test_id":            testID,
+				"rows_affected":      rowsAffected,
+				"verified_count":     actualCount,
+				"cleanup_successful": cleanupErr == nil,
+			})
+		}).Methods("POST")
+	}
+
+	log.Printf("Registering /api/test/signup endpoint")
+	r.HandleFunc("/api/test/signup", testSignupHandler).Methods("POST")
+
 	log.Printf("Registering /api/signup endpoint (v2)")
 	r.Handle("/api/signup", signupLoginLimiter.Middleware(signupHandlerV2Factory(db))).Methods("POST")
 	log.Printf("Registering /api/auth/verify-totp endpoint")
@@ -1870,6 +2039,22 @@ func main() {
 	r.HandleFunc("/confirm-fallback", confirmFallbackHandlerFactory(db)).Methods("GET")
 	log.Printf("Registering /resend-fallback endpoint")
 	r.HandleFunc("/resend-fallback", resendFallbackHandlerFactory(db)).Methods("POST")
+
+	// Register TOTP setup endpoints (Micro-Iteration 1.2)
+	log.Printf("Registering TOTP setup endpoints...")
+	r.HandleFunc("/api/auth/complete-totp-setup", totpSetupHandlerFactory(db)).Methods("POST")
+	r.HandleFunc("/api/auth/totp-setup-info", totpSetupHandlerFactory(db)).Methods("GET")
+
+	// Register domain verification endpoints (Micro-Iteration 1.4)
+	log.Printf("Registering domain verification endpoints...")
+	domainService := domains.NewDomainService(db, []byte(os.Getenv("JWT_SECRET")), domains.NewRealDNSResolver())
+	domainHandler := NewDomainHandler(domainService)
+	r.HandleFunc("/api/domains/register", domainHandler.RegisterDomain).Methods("POST")
+	r.HandleFunc("/api/domains/verify", domainHandler.VerifyDomain).Methods("POST")
+	r.HandleFunc("/api/domains/verify/manual", domainHandler.VerifyDomainManual).Methods("POST")
+	r.HandleFunc("/api/domains/list", domainHandler.ListDomains).Methods("GET")
+	r.HandleFunc("/api/domains/admin/approve", domainHandler.AdminApproveDomain).Methods("POST")
+	r.HandleFunc("/api/domains/{id}", domainHandler.GetDomainByID).Methods("GET")
 
 	// Register lockout management endpoints (Micro-Iteration 4.6)
 	log.Printf("Registering lockout management endpoints...")
@@ -2277,9 +2462,10 @@ func main() {
 
 	// Start server
 	addr := ":8080"
-	log.Printf("Starting API on %s", addr)
+	log.Printf("[STARTUP_DEBUG] 🔍 Starting HTTP server on %s", addr)
+	log.Printf("[STARTUP_DEBUG] 🔍 Server will begin listening for requests...")
 	if err := http.ListenAndServe(addr, handler); err != nil {
-		log.Fatal("Server error:", err)
+		log.Fatal("[STARTUP_DEBUG] ❌ Server error:", err)
 	}
 }
 
@@ -2406,10 +2592,15 @@ func (srv *Server) pingHandler(w http.ResponseWriter, r *http.Request) {
 
 // healthHandler returns a JSON status for monitoring and health checks.
 func (srv *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Health handler called from IP: %s", r.RemoteAddr)
+	log.Printf("[HEALTH_DEBUG] 🔍 Health handler called from IP: %s", r.RemoteAddr)
+	log.Printf("[HEALTH_DEBUG] 🔍 Request method: %s, Path: %s", r.Method, r.URL.Path)
+	log.Printf("[HEALTH_DEBUG] 🔍 User-Agent: %s", r.Header.Get("User-Agent"))
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+
+	log.Printf("[HEALTH_DEBUG] ✅ Health response sent successfully")
 }
 
 // incrementGeoRestrictionViolations increments the geo-restriction violation count for an email
@@ -3357,4 +3548,324 @@ func (srv *Server) systemHealthHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+// NewDomainHandler creates a new domain handler instance
+func NewDomainHandler(domainService *domains.DomainService) *DomainHandler {
+	return &DomainHandler{
+		domainService: domainService,
+	}
+}
+
+// DomainHandler handles domain verification HTTP requests
+type DomainHandler struct {
+	domainService *domains.DomainService
+}
+
+// RegisterDomain handles domain registration requests
+func (h *DomainHandler) RegisterDomain(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse request body
+	var req domains.DomainRegistrationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Validate domain
+	if req.Domain == "" {
+		http.Error(w, `{"error":"Domain is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Extract user ID from context (assuming it's set by auth middleware)
+	userID, ok := r.Context().Value("user_id").(int64)
+	if !ok {
+		http.Error(w, `{"error":"User not authenticated"}`, http.StatusUnauthorized)
+		return
+	}
+
+	// Register domain
+	token, err := h.domainService.RegisterDomain(r.Context(), userID, req.Domain)
+	if err != nil {
+		// Check for specific error types
+		if strings.Contains(err.Error(), "already registered") {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusConflict)
+			return
+		}
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// Build response
+	response := map[string]interface{}{
+		"domain":                          req.Domain,
+		"verification_token_instructions": fmt.Sprintf("Add TXT record: securesystem-verification=%s", token),
+		"status":                          "pending",
+		"message":                         "Domain registered successfully. Please add the TXT record to verify ownership.",
+	}
+
+	// Include manual token if in manual mode
+	if h.domainService.GetVerificationMode() == "manual" {
+		response["manual_token"] = token
+	}
+
+	// Return success response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+// VerifyDomain handles domain verification requests
+func (h *DomainHandler) VerifyDomain(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse request body
+	var req domains.DomainVerificationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Validate domain
+	if req.Domain == "" {
+		http.Error(w, `{"error":"Domain is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Verify domain
+	verified, err := h.domainService.VerifyDomainTXT(r.Context(), req.Domain)
+	if err != nil {
+		// Check for specific error types
+		if strings.Contains(err.Error(), "not registered") {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusNotFound)
+			return
+		}
+		if strings.Contains(err.Error(), "DNS verification is disabled") {
+			http.Error(w, `{"error":"DNS verification is disabled in manual mode"}`, http.StatusBadRequest)
+			return
+		}
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// Build response
+	response := map[string]interface{}{
+		"domain":  req.Domain,
+		"status":  "success",
+		"message": "Domain verified successfully",
+	}
+
+	if !verified {
+		response["status"] = "failed"
+		response["message"] = "Domain verification failed. Please check your DNS TXT records."
+	}
+
+	// Return response
+	w.Header().Set("Content-Type", "application/json")
+	if verified {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
+// VerifyDomainManual handles manual domain verification (for testing)
+func (h *DomainHandler) VerifyDomainManual(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse request body
+	var req domains.DomainVerificationManualRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Validate request
+	if req.Domain == "" || req.Token == "" {
+		http.Error(w, `{"error":"Domain and token are required"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Verify domain manually
+	verified, err := h.domainService.VerifyDomainManual(r.Context(), req.Domain, req.Token)
+	if err != nil {
+		// Check for specific error types
+		if strings.Contains(err.Error(), "not registered") {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusNotFound)
+		} else if strings.Contains(err.Error(), "invalid verification token") {
+			http.Error(w, `{"error":"Invalid verification token"}`, http.StatusBadRequest)
+		} else {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Build response
+	response := map[string]interface{}{
+		"domain":  req.Domain,
+		"status":  "success",
+		"message": "Domain verified successfully",
+	}
+
+	if !verified {
+		response["status"] = "failed"
+		response["message"] = "Domain verification failed. Please check your token."
+	}
+
+	// Return response
+	w.Header().Set("Content-Type", "application/json")
+	if verified {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
+// ListDomains handles requests to list user's domains
+func (h *DomainHandler) ListDomains(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract user ID from context
+	userID, ok := r.Context().Value("user_id").(int64)
+	if !ok {
+		http.Error(w, `{"error":"User not authenticated"}`, http.StatusUnauthorized)
+		return
+	}
+
+	// Get domains for user
+	domains, err := h.domainService.GetDomainsByOwner(r.Context(), userID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// Build response
+	response := map[string]interface{}{
+		"domains": domains,
+		"count":   len(domains),
+	}
+
+	// Return response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+// AdminApproveDomain handles admin domain approval requests
+func (h *DomainHandler) AdminApproveDomain(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check if user is admin (assuming admin check middleware)
+	isAdmin, ok := r.Context().Value("is_admin").(bool)
+	if !ok || !isAdmin {
+		http.Error(w, `{"error":"Admin access required"}`, http.StatusForbidden)
+		return
+	}
+
+	// Parse request body
+	var req domains.DomainVerificationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Validate domain
+	if req.Domain == "" {
+		http.Error(w, `{"error":"Domain is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Approve domain
+	err := h.domainService.AdminApproveDomain(r.Context(), req.Domain)
+	if err != nil {
+		// Check for specific error types
+		if strings.Contains(err.Error(), "not registered") {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusNotFound)
+			return
+		}
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// Build response
+	response := map[string]interface{}{
+		"domain":  req.Domain,
+		"status":  "success",
+		"message": "Domain approved by admin",
+	}
+
+	// Return response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+// GetDomainByID handles requests to get a specific domain by ID
+func (h *DomainHandler) GetDomainByID(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract domain ID from URL path
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 4 {
+		http.Error(w, `{"error":"Invalid domain ID"}`, http.StatusBadRequest)
+		return
+	}
+
+	domainIDStr := pathParts[len(pathParts)-1]
+	domainID, err := strconv.ParseInt(domainIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, `{"error":"Invalid domain ID"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Get domain by ID
+	domain, err := h.domainService.GetDomainByID(r.Context(), domainID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, `{"error":"Domain not found"}`, http.StatusNotFound)
+			return
+		}
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// Check if user owns this domain or is admin
+	userID, ok := r.Context().Value("user_id").(int64)
+	if !ok {
+		http.Error(w, `{"error":"User not authenticated"}`, http.StatusUnauthorized)
+		return
+	}
+
+	isAdmin, _ := r.Context().Value("is_admin").(bool)
+	if !isAdmin && domain.OwnerUserID != userID {
+		http.Error(w, `{"error":"Access denied"}`, http.StatusForbidden)
+		return
+	}
+
+	// Return domain
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(domain)
 }

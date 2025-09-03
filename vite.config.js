@@ -43,6 +43,25 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/health': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/ping': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+      },
+      // Frontend routes handled by React Router - no proxy needed
+      // '/login', '/signup', '/resend-fallback', '/confirm-fallback' are frontend routes
+    },
   },
   build: {
     outDir: 'dist',
