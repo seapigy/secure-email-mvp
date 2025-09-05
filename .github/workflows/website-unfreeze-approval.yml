@@ -1,0 +1,40 @@
+name: Website Unfreeze Approval
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to approve'
+        required: true
+        type: string
+      approver_username:
+        description: 'Username of the approver'
+        required: true
+        type: string
+
+jobs:
+  approve-website-changes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify PR has website changes
+        run: |
+          echo "Checking PR #${{ github.event.inputs.pr_number }} for website changes..."
+          # This would need to be implemented with GitHub API calls
+          echo "PR verification would happen here"
+
+      - name: Add website-edit-approved label
+        run: |
+          echo "Adding website-edit-approved label to PR #${{ github.event.inputs.pr_number }}"
+          echo "Approved by: ${{ github.event.inputs.approver_username }}"
+          echo "Note: This workflow requires manual GitHub API integration to add labels"
+          echo "For now, approvers should manually add the 'website-edit-approved' label"
+
+      - name: Log approval
+        run: |
+          echo "Website edit approval logged:"
+          echo "PR: #${{ github.event.inputs.pr_number }}"
+          echo "Approver: ${{ github.event.inputs.approver_username }}"
+          echo "Timestamp: $(date)"
+          echo "Label required: website-edit-approved"
