@@ -43,6 +43,69 @@ export default function Comparison() {
       protonmail: true
     },
     {
+      name: "Password-Protected Email Links",
+      securemail: true,
+      gmail: false,
+      outlook: false,
+      protonmail: false
+    },
+    {
+      name: "2FA/TOTP Email Access",
+      securemail: true,
+      gmail: false,
+      outlook: false,
+      protonmail: false
+    },
+    {
+      name: "Geo-Restriction Controls",
+      securemail: true,
+      gmail: false,
+      outlook: false,
+      protonmail: false
+    },
+    {
+      name: "Device Fingerprinting",
+      securemail: true,
+      gmail: false,
+      outlook: false,
+      protonmail: false
+    },
+    {
+      name: "Self-Destruct Timers",
+      securemail: true,
+      gmail: false,
+      outlook: false,
+      protonmail: false
+    },
+    {
+      name: "View Limits (1-3 opens)",
+      securemail: true,
+      gmail: false,
+      outlook: false,
+      protonmail: false
+    },
+    {
+      name: "Auto-Delete on Failed Attempts",
+      securemail: true,
+      gmail: false,
+      outlook: false,
+      protonmail: false
+    },
+    {
+      name: "Single-Use Access Tokens",
+      securemail: true,
+      gmail: false,
+      outlook: false,
+      protonmail: false
+    },
+    {
+      name: "Decoy Subjects & Steganography",
+      securemail: true,
+      gmail: false,
+      outlook: false,
+      protonmail: false
+    },
+    {
       name: "End-to-End Encryption",
       securemail: true,
       gmail: false,

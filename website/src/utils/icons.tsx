@@ -21,5 +21,8 @@ export {
   Building2,
   Users,
   Award,
-  Cpu
+  Cpu,
+  MapPin,
+  Timer,
+  Trash2
 } from 'lucide-react'

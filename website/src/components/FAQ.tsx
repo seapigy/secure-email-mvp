@@ -27,6 +27,26 @@ export default function FAQ() {
     {
       question: "When will quantum computers break current encryption?",
       answer: "While exact timelines are uncertain, experts predict that quantum computers capable of breaking current encryption could emerge between 2025-2030. SecureMail's PQC implementation ensures you're protected today, so you don't need to worry about future quantum threats."
+    },
+    {
+      question: "How easy is it to add security features to each email?",
+      answer: "Extremely easy! When composing an email, you'll see a simple security panel with toggle switches for each feature. Just click to enable password protection, set self-destruct timers, add geo-restrictions, or configure view limits. Each feature can be applied individually or combined for maximum security. The interface is designed to be intuitive - no technical knowledge required."
+    },
+    {
+      question: "Can I customize security settings for different types of emails?",
+      answer: "Absolutely! You can create security presets for different scenarios. For example, set up a 'High Security' preset with password protection, geo-restrictions, and self-destruct timers for sensitive business emails. Or create a 'Quick Secure' preset with just basic encryption for everyday use. You can also apply different settings to each individual email as needed."
+    },
+    {
+      question: "Do I need to configure security features every time I send an email?",
+      answer: "No! You can set default security preferences in your account settings, and they'll be applied automatically to all outgoing emails. You can then override these defaults on a per-email basis when you need different security levels. This gives you both convenience and flexibility."
+    },
+    {
+      question: "How do recipients know if an email has special security features?",
+      answer: "Recipients receive clear, user-friendly notifications about any security features enabled on the email. For example, if password protection is enabled, they'll see a simple prompt to enter the password. If geo-restrictions are active, they'll be informed if they're in an allowed location. The interface guides them through each security step without confusion."
+    },
+    {
+      question: "Can I change security settings after sending an email?",
+      answer: "Yes, for certain features! You can extend or reduce self-destruct timers, add or remove view limits, and modify geo-restrictions even after sending. However, once an email is opened or a self-destruct timer expires, those actions cannot be reversed. This gives you ongoing control while maintaining security integrity."
     }
   ]
 
@@ -54,8 +74,8 @@ export default function FAQ() {
             <span className="text-dark-900 dark:text-white">Questions</span>
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-            Everything you need to know about SecureMail's quantum-resistant encryption 
-            and advanced security features.
+            Everything you need to know about SecureMail's quantum-resistant encryption, 
+            advanced security features, and how easy it is to customize protection for each email.
           </p>
         </MotionDiv>
 
@@ -119,7 +139,7 @@ export default function FAQ() {
             
             <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">
               Our security experts are here to help you understand how SecureMail 
-              protects your privacy with quantum-resistant encryption.
+              protects your privacy with quantum-resistant encryption and customizable security controls.
             </p>
             
             <MotionDiv
