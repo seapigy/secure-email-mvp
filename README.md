@@ -151,3 +151,5 @@ Proprietary - All rights reserved
 ---
 
 **SecureMail** - Your messages, your privacy, your control.
+
+🚀 **Live Demo**: [View the encryption demo](https://your-netlify-site.netlify.app)
