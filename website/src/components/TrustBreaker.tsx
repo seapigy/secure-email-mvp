@@ -46,7 +46,7 @@ export default function TrustBreaker() {
   ]
 
   return (
-    <section ref={ref} className="section-padding bg-gradient-to-b from-gray-100 to-gray-200 dark:from-dark-800 dark:to-dark-900 relative overflow-hidden">
+    <section ref={ref} id="security" className="section-padding bg-gradient-to-b from-gray-100 to-gray-200 dark:from-dark-800 dark:to-dark-900 relative overflow-hidden">
       {/* Background Elements */}
       <div className="absolute inset-0">
         <MotionDiv
