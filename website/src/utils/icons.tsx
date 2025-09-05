@@ -5,7 +5,7 @@
 export { Shield, Lock, EyeOff, Eye } from 'lucide-react'
 
 // Navigation and UI icons
-export { Sun, Moon, Menu, X, ArrowRight } from 'lucide-react'
+export { Sun, Moon, Menu, X, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react'
 
 // Status and action icons
 export { Check, CheckCircle, Copy, RefreshCw } from 'lucide-react'

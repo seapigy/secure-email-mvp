@@ -3,16 +3,13 @@ import { useRef } from 'react'
 import { 
   Globe, 
   Clock, 
-  Eye, 
   EyeOff,
   Lock, 
-  Timer, 
-  MapPin, 
   Shield, 
   AlertTriangle, 
-  Trash2, 
   Key,
-  Plus
+  Server,
+  Zap
 } from '../utils/icons'
 
 export default function Features() {
@@ -20,41 +17,70 @@ export default function Features() {
   const { isInView } = useInView({ once: true, margin: "-100px" })
 
   const features = [
+    // Core Security Features
     {
       icon: Shield,
       title: "Zero-Knowledge Architecture",
       description: "We cannot see your emails. Not content, not metadata, nothing. Complete privacy by design.",
-      color: "text-indigo-500"
+      color: "text-indigo-500",
+      category: "core"
     },
     {
       icon: Key,
       title: "AES-256-GCM Encryption",
-      description: "Military-grade encryption that protects your data with the same standards used by governments.",
-      color: "text-blue-500"
+      description: "Military-grade encryption that protects your data with the same standards used by governments. Enhanced with Post-Quantum Cryptography (PQC) key exchange.",
+      color: "text-blue-500",
+      category: "core"
     },
     {
       icon: Lock,
       title: "End-to-End Security",
       description: "Your messages are encrypted on your device and only decrypted by the recipient.",
-      color: "text-indigo-500"
+      color: "text-indigo-500",
+      category: "core"
     },
     {
       icon: EyeOff,
       title: "Metadata Protection",
       description: "We don't store who you're talking to, when, or how often. Complete communication privacy.",
-      color: "text-blue-500"
+      color: "text-blue-500",
+      category: "core"
     },
     {
       icon: Globe,
       title: "Global Infrastructure",
       description: "Secure servers worldwide ensure fast, reliable access while maintaining security standards.",
-      color: "text-indigo-500"
+      color: "text-indigo-500",
+      category: "core"
     },
     {
       icon: Clock,
       title: "Real-Time Delivery",
       description: "Lightning-fast message delivery without compromising on security or privacy.",
-      color: "text-blue-500"
+      color: "text-blue-500",
+      category: "core"
+    },
+    // Advanced Security Features
+    {
+      icon: AlertTriangle,
+      title: "Advanced Threat Detection",
+      description: "Real-time monitoring and protection against sophisticated cyber attacks with machine learning algorithms.",
+      color: "text-red-500",
+      category: "advanced"
+    },
+    {
+      icon: Server,
+      title: "Secure Infrastructure",
+      description: "Hardened servers with end-to-end encryption and zero-logging policies for maximum security.",
+      color: "text-purple-500",
+      category: "advanced"
+    },
+    {
+      icon: Zap,
+      title: "Quantum-Resistant Keys",
+      description: "Future-proof encryption ready for the quantum computing era with post-quantum cryptography.",
+      color: "text-green-500",
+      category: "advanced"
     }
   ]
 
@@ -69,13 +95,13 @@ export default function Features() {
           className="text-center mb-20"
         >
           <h2 className="text-4xl md:text-6xl font-bold mb-6">
-            <span className="gradient-text">Core Security</span>
+            <span className="gradient-text">Complete Security</span>
             <br />
             <span className="text-dark-900 dark:text-white">Features</span>
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto mb-8">
-            Essential security features that form the foundation of truly secure email communication. 
-            These aren't optional extras—they're the minimum standard for real privacy.
+            From core encryption to advanced threat detection, SecureMail provides comprehensive security 
+            that goes far beyond what other email providers offer. Every feature applies to every email.
           </p>
           
           {/* Marketing Highlight */}
@@ -89,14 +115,18 @@ export default function Features() {
           </div>
         </MotionDiv>
 
-        {/* Features Grid */}
+        {/* Core Features Section */}
         <MotionDiv
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8, delay: 0.2 }}
+          className="mb-16"
         >
+          <h3 className="text-2xl md:text-3xl font-bold text-center mb-8 text-dark-900 dark:text-white">
+            Core Security Foundation
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
+            {features.filter(f => f.category === 'core').map((feature, index) => (
               <MotionDiv
                 key={feature.title}
                 initial={{ opacity: 0, y: 30, scale: 0.8 }}
@@ -116,6 +146,56 @@ export default function Features() {
               >
                 <MotionDiv 
                   className={`w-16 h-16 bg-gradient-to-br from-indigo-500/20 to-blue-500/20 rounded-2xl flex items-center justify-center mb-4 mx-auto group-hover:scale-110 transition-transform duration-300`}
+                  whileHover={{ 
+                    rotate: 5,
+                    transition: { duration: 0.2 }
+                  }}
+                >
+                  <feature.icon className={`w-8 h-8 ${feature.color}`} />
+                </MotionDiv>
+                
+                <h4 className="text-lg font-semibold mb-3 text-dark-900 dark:text-white text-center">
+                  {feature.title}
+                </h4>
+                
+                <p className="text-sm text-gray-700 dark:text-gray-300 text-center leading-relaxed">
+                  {feature.description}
+                </p>
+              </MotionDiv>
+            ))}
+          </div>
+        </MotionDiv>
+
+        {/* Advanced Features Section */}
+        <MotionDiv
+          initial={{ opacity: 0, y: 30 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.4 }}
+        >
+          <h3 className="text-2xl md:text-3xl font-bold text-center mb-8 text-dark-900 dark:text-white">
+            Advanced Security Arsenal
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.filter(f => f.category === 'advanced').map((feature, index) => (
+              <MotionDiv
+                key={feature.title}
+                initial={{ opacity: 0, y: 30, scale: 0.8 }}
+                animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
+                transition={{ 
+                  duration: 0.6, 
+                  delay: 0.6 + index * 0.1,
+                  type: "spring",
+                  stiffness: 100
+                }}
+                whileHover={{ 
+                  scale: 1.05,
+                  y: -5,
+                  transition: { duration: 0.2 }
+                }}
+                className="feature-card group cursor-pointer border-2 border-transparent hover:border-gradient-to-r hover:from-red-500/20 hover:to-purple-500/20"
+              >
+                <MotionDiv 
+                  className={`w-16 h-16 bg-gradient-to-br from-red-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center mb-4 mx-auto group-hover:scale-110 transition-transform duration-300`}
                   whileHover={{ 
                     rotate: 5,
                     transition: { duration: 0.2 }
@@ -160,12 +240,12 @@ export default function Features() {
             </MotionDiv>
             
             <h3 className="text-3xl md:text-4xl font-bold mb-4 text-dark-900 dark:text-white">
-              The Foundation of Trust
+              Complete Security Coverage
             </h3>
             
             <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
-              These core features aren't just checkboxes—they're the essential building blocks 
-              of truly secure communication. Without them, you don't have real security.
+              From core encryption to advanced threat detection, every feature applies to every email. 
+              This isn't just security—it's comprehensive protection that actually works.
             </p>
             
             <MotionDiv
@@ -174,7 +254,7 @@ export default function Features() {
               className="btn-primary text-lg px-8 py-3"
               as="button"
             >
-              Learn More About Security
+              Experience Complete Security
             </MotionDiv>
           </div>
         </MotionDiv>

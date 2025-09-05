@@ -8,28 +8,42 @@ export default function Comparison() {
 
   const features = [
     {
-      name: "End-to-End Encryption",
+      name: "Real-Time Encryption on Every Email",
+      securemail: true,
+      gmail: false,
+      outlook: false,
+      protonmail: false
+    },
+    {
+      name: "AES-256-GCM + PQC Hybrid on Every Message",
+      securemail: true,
+      gmail: false,
+      outlook: false,
+      protonmail: false
+    },
+    {
+      name: "Zero-Knowledge Message Processing",
+      securemail: true,
+      gmail: false,
+      outlook: false,
+      protonmail: false
+    },
+    {
+      name: "Quantum-Resistant Key Exchange",
+      securemail: true,
+      gmail: false,
+      outlook: false,
+      protonmail: false
+    },
+    {
+      name: "Complete Metadata Stripping",
       securemail: true,
       gmail: false,
       outlook: false,
       protonmail: true
     },
     {
-      name: "Zero-Knowledge Architecture",
-      securemail: true,
-      gmail: false,
-      outlook: false,
-      protonmail: false
-    },
-    {
-      name: "Quantum-Resistant Encryption",
-      securemail: true,
-      gmail: false,
-      outlook: false,
-      protonmail: false
-    },
-    {
-      name: "Metadata Protection",
+      name: "End-to-End Encryption",
       securemail: true,
       gmail: false,
       outlook: false,
@@ -152,6 +166,60 @@ export default function Comparison() {
           </div>
         </MotionDiv>
 
+        {/* What Makes Every SecureMail Email Different */}
+        <MotionDiv
+          initial={{ opacity: 0, y: 30 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.6 }}
+          className="mt-16"
+        >
+          <div className="bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-3xl p-8 md:p-12 max-w-6xl mx-auto">
+            <h3 className="text-3xl md:text-4xl font-bold mb-8 text-center text-dark-900 dark:text-white">
+              What Makes Every SecureMail Email Different
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Shield className="w-8 h-8 text-white" />
+                </div>
+                <h4 className="text-lg font-semibold text-dark-900 dark:text-white mb-2">AES-256-GCM</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Military-grade encryption on every message</p>
+              </div>
+              
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Lock className="w-8 h-8 text-white" />
+                </div>
+                <h4 className="text-lg font-semibold text-dark-900 dark:text-white mb-2">PQC Hybrid</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Quantum-resistant key exchange</p>
+              </div>
+              
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <EyeOff className="w-8 h-8 text-white" />
+                </div>
+                <h4 className="text-lg font-semibold text-dark-900 dark:text-white mb-2">Zero-Knowledge</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-300">We cannot see your emails</p>
+              </div>
+              
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Zap className="w-8 h-8 text-white" />
+                </div>
+                <h4 className="text-lg font-semibold text-dark-900 dark:text-white mb-2">Real-Time</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Instant encryption processing</p>
+              </div>
+            </div>
+            
+            <div className="text-center">
+              <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">
+                Every single email gets the full security treatment - no exceptions, no compromises.
+              </p>
+            </div>
+          </div>
+        </MotionDiv>
+
         {/* Bottom CTA */}
         <MotionDiv
           initial={{ opacity: 0, y: 30 }}
@@ -161,12 +229,12 @@ export default function Comparison() {
         >
           <div className="glass-effect rounded-3xl p-8 md:p-12 max-w-4xl mx-auto">
             <h3 className="text-3xl md:text-4xl font-bold mb-4 text-dark-900 dark:text-white">
-              The Clear Winner
+              Experience Email Security That Actually Works
             </h3>
             
             <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
               While others compromise on privacy and security, SecureMail delivers 
-              uncompromising protection without sacrificing usability.
+              uncompromising protection on every single email without sacrificing usability.
             </p>
             
             <MotionDiv
@@ -175,7 +243,7 @@ export default function Comparison() {
               className="btn-primary text-lg px-8 py-3"
               as="button"
             >
-              Make the Switch Today
+              See Why Every Email Matters
             </MotionDiv>
           </div>
         </MotionDiv>

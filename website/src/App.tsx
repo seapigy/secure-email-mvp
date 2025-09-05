@@ -8,10 +8,11 @@ import Footer from './components/Footer'
 
 // Lazy load heavy components
 const EncryptionDemo = lazy(() => import('./components/EncryptionDemo'))
-const SecurityFeaturesGrid = lazy(() => import('./components/SecurityFeaturesGrid'))
 const Features = lazy(() => import('./components/Features'))
+const QuantumResistant = lazy(() => import('./components/QuantumResistant'))
 const Trust = lazy(() => import('./components/Trust'))
 const Comparison = lazy(() => import('./components/Comparison'))
+const FAQ = lazy(() => import('./components/FAQ'))
 
 function App() {
   const [isDark, setIsDark] = useState(true)
@@ -65,22 +66,6 @@ function App() {
               <div className="animate-pulse">
                 <div className="h-8 bg-gray-300 dark:bg-gray-600 rounded w-1/2 mx-auto mb-8"></div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[...Array(6)].map((_, i) => (
-                    <div key={i} className="h-48 bg-gray-300 dark:bg-gray-600 rounded"></div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        }>
-          <SecurityFeaturesGrid />
-        </Suspense>
-        <Suspense fallback={
-          <div className="section-padding bg-gray-100 dark:bg-dark-800">
-            <div className="max-w-7xl mx-auto text-center">
-              <div className="animate-pulse">
-                <div className="h-8 bg-gray-300 dark:bg-gray-600 rounded w-1/2 mx-auto mb-8"></div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {[...Array(9)].map((_, i) => (
                     <div key={i} className="h-32 bg-gray-300 dark:bg-gray-600 rounded"></div>
                   ))}
@@ -90,6 +75,18 @@ function App() {
           </div>
         }>
           <Features />
+        </Suspense>
+        <Suspense fallback={
+          <div className="section-padding bg-gray-100 dark:bg-dark-800">
+            <div className="max-w-7xl mx-auto text-center">
+              <div className="animate-pulse">
+                <div className="h-8 bg-gray-300 dark:bg-gray-600 rounded w-1/2 mx-auto mb-8"></div>
+                <div className="h-64 bg-gray-300 dark:bg-gray-600 rounded"></div>
+              </div>
+            </div>
+          </div>
+        }>
+          <QuantumResistant />
         </Suspense>
         <Suspense fallback={
           <div className="section-padding bg-gray-100 dark:bg-dark-800">
@@ -118,6 +115,22 @@ function App() {
           </div>
         }>
           <Trust />
+        </Suspense>
+        <Suspense fallback={
+          <div className="section-padding bg-gray-100 dark:bg-dark-800">
+            <div className="max-w-7xl mx-auto text-center">
+              <div className="animate-pulse">
+                <div className="h-8 bg-gray-300 dark:bg-gray-600 rounded w-1/2 mx-auto mb-8"></div>
+                <div className="space-y-4">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="h-16 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        }>
+          <FAQ />
         </Suspense>
         <CTA />
       </main>

@@ -34,13 +34,21 @@ export default function Hero() {
             style={{ animationDelay: '0.4s' }}
           >
             <span className="font-semibold text-indigo-500">The Most Secure Email in the World</span> — powered by{' '}
-            <span className="font-semibold text-blue-500">AES-256-GCM</span>,{' '}
+            <span className="font-semibold text-blue-500 relative group cursor-help" title="AES-256-GCM with Post-Quantum Cryptography (PQC) key exchange">AES-256-GCM</span>,{' '}
             <span className="font-semibold text-indigo-500">Argon2id</span>,{' '}
             <span className="font-semibold text-blue-500">TLS 1.3</span>, and{' '}
             <span className="font-semibold text-indigo-500">PQC hybrid encryption</span>.{' '}
             <span className="font-semibold text-blue-500">Zero-knowledge.</span>{' '}
             <span className="font-semibold text-indigo-500">Zero visibility.</span>{' '}
             <span className="font-semibold text-blue-500">Absolute privacy.</span>
+          </p>
+
+          {/* PQC Subheadline */}
+          <p
+            className="text-lg md:text-xl text-indigo-600 dark:text-indigo-400 max-w-4xl mx-auto font-medium animate-slide-up"
+            style={{ animationDelay: '0.5s' }}
+          >
+            World's First Quantum-Resistant Email.
           </p>
 
           {/* CTA Buttons */}
@@ -73,7 +81,7 @@ export default function Hero() {
           >
             <div className="flex items-center space-x-2">
               <Shield className="w-5 h-5 text-indigo-500" />
-              <span className="text-sm">AES-256-GCM</span>
+              <span className="text-sm relative group cursor-help" title="AES-256-GCM with Post-Quantum Cryptography (PQC) key exchange">AES-256-GCM</span>
             </div>
             <div className="flex items-center space-x-2">
               <Lock className="w-5 h-5 text-blue-500" />
@@ -82,6 +90,10 @@ export default function Hero() {
             <div className="flex items-center space-x-2">
               <EyeOff className="w-5 h-5 text-indigo-500" />
               <span className="text-sm">No Visibility</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Shield className="w-5 h-5 text-green-500" />
+              <span className="text-sm">PQC Ready</span>
             </div>
           </div>
         </MotionDiv>

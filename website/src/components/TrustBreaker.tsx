@@ -10,7 +10,7 @@ export default function TrustBreaker() {
     {
       icon: Shield,
       title: "AES-256-GCM Encryption",
-      description: "Military-grade encryption that's virtually unbreakable",
+      description: "Military-grade encryption that's virtually unbreakable, enhanced with Post-Quantum Cryptography (PQC) key exchange",
       color: "text-indigo-500"
     },
     {
