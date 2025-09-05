@@ -19,8 +19,11 @@ Object.defineProperty(window, 'matchMedia', {
 })
 
 // Mock IntersectionObserver for useInView
-global.IntersectionObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
+global.IntersectionObserver = vi.fn().mockImplementation((callback) => ({
+  observe: vi.fn((element) => {
+    // Immediately call the callback with isIntersecting: true
+    callback([{ isIntersecting: true, target: element }])
+  }),
   unobserve: vi.fn(),
   disconnect: vi.fn(),
 }))

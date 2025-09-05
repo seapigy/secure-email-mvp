@@ -33,14 +33,14 @@ export default function Hero() {
             className="text-xl md:text-2xl lg:text-3xl text-gray-600 dark:text-gray-300 max-w-5xl mx-auto font-light animate-slide-up"
             style={{ animationDelay: '0.4s' }}
           >
-            <span className="font-semibold text-secure-400">The Most Secure Email in the World</span> — powered by{' '}
-            <span className="font-semibold text-primary-400">AES-256-GCM</span>,{' '}
-            <span className="font-semibold text-secure-400">Argon2id</span>,{' '}
-            <span className="font-semibold text-primary-400">TLS 1.3</span>, and{' '}
-            <span className="font-semibold text-secure-400">PQC hybrid encryption</span>.{' '}
-            <span className="font-semibold text-primary-400">Zero-knowledge.</span>{' '}
-            <span className="font-semibold text-secure-400">Zero visibility.</span>{' '}
-            <span className="font-semibold text-primary-400">Absolute privacy.</span>
+            <span className="font-semibold text-indigo-500">The Most Secure Email in the World</span> — powered by{' '}
+            <span className="font-semibold text-blue-500">AES-256-GCM</span>,{' '}
+            <span className="font-semibold text-indigo-500">Argon2id</span>,{' '}
+            <span className="font-semibold text-blue-500">TLS 1.3</span>, and{' '}
+            <span className="font-semibold text-indigo-500">PQC hybrid encryption</span>.{' '}
+            <span className="font-semibold text-blue-500">Zero-knowledge.</span>{' '}
+            <span className="font-semibold text-indigo-500">Zero visibility.</span>{' '}
+            <span className="font-semibold text-blue-500">Absolute privacy.</span>
           </p>
 
           {/* CTA Buttons */}
@@ -72,15 +72,15 @@ export default function Hero() {
             style={{ animationDelay: '0.8s' }}
           >
             <div className="flex items-center space-x-2">
-              <Shield className="w-5 h-5 text-secure-400" />
+              <Shield className="w-5 h-5 text-indigo-500" />
               <span className="text-sm">AES-256-GCM</span>
             </div>
             <div className="flex items-center space-x-2">
-              <Lock className="w-5 h-5 text-primary-400" />
+              <Lock className="w-5 h-5 text-blue-500" />
               <span className="text-sm">Zero-Knowledge</span>
             </div>
             <div className="flex items-center space-x-2">
-              <EyeOff className="w-5 h-5 text-secure-400" />
+              <EyeOff className="w-5 h-5 text-indigo-500" />
               <span className="text-sm">No Visibility</span>
             </div>
           </div>

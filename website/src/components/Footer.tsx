@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion'
-import { Shield, Lock, EyeOff } from 'lucide-react'
+import { MotionDiv } from '../utils/animations'
+import { Shield, Lock, EyeOff } from '../utils/icons'
 
 export default function Footer() {
   return (
@@ -7,58 +7,60 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           {/* Logo and Brand */}
-          <motion.div 
+          <MotionDiv 
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="flex items-center justify-center space-x-3 mb-6"
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-secure-500 to-primary-500 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-xl flex items-center justify-center">
               <span className="text-white font-bold text-lg">SM</span>
             </div>
             <span className="text-2xl font-bold gradient-text">SecureMail</span>
-          </motion.div>
+          </MotionDiv>
 
           {/* Tagline */}
-          <motion.p
+          <MotionDiv
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-lg text-gray-600 dark:text-gray-300 mb-8"
+            as="p"
           >
             The World's Most Secure Email
-          </motion.p>
+          </MotionDiv>
 
           {/* Security Icons */}
-          <motion.div
+          <MotionDiv
             initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="flex justify-center items-center space-x-6 text-secure-400 mb-8"
+            className="flex items-center justify-center space-x-6 mb-8"
           >
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 text-indigo-500">
               <Shield className="w-5 h-5" />
               <span className="text-sm font-medium">Zero-Knowledge</span>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 text-indigo-500">
               <Lock className="w-5 h-5" />
-              <span className="text-sm font-medium">Military-Grade</span>
+              <span className="text-sm font-medium">End-to-End</span>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 text-indigo-500">
               <EyeOff className="w-5 h-5" />
-              <span className="text-sm font-medium">No Visibility</span>
+              <span className="text-sm font-medium">Private</span>
             </div>
-          </motion.div>
+          </MotionDiv>
 
           {/* Copyright */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+          <MotionDiv
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.6 }}
-            className="text-gray-500 dark:text-gray-400 text-sm"
+            className="text-sm text-gray-500 dark:text-gray-400"
+            as="p"
           >
             © 2024 SecureMail. All rights reserved. Privacy by design.
-          </motion.div>
+          </MotionDiv>
         </div>
       </div>
     </footer>

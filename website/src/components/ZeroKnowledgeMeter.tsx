@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Shield, Lock, Zap } from 'lucide-react';
+import { Eye, EyeOff, Shield, Lock, Zap } from '../utils/icons';
 
 interface ZeroKnowledgeMeterProps {
   isActive: boolean;
@@ -13,7 +13,7 @@ export default function ZeroKnowledgeMeter({
   serverVisibility 
 }: ZeroKnowledgeMeterProps) {
   const getVisibilityColor = (level: number) => {
-    if (level === 0) return 'text-secure-400';
+    if (level === 0) return 'text-indigo-500';
     if (level < 30) return 'text-yellow-400';
     if (level < 70) return 'text-orange-400';
     return 'text-red-400';
@@ -46,7 +46,7 @@ export default function ZeroKnowledgeMeter({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: isActive ? 1 : 0.7, scale: isActive ? 1 : 0.95 }}
       transition={{ duration: 0.5 }}
-      className="bg-gradient-to-r from-dark-800 to-dark-900 rounded-2xl p-6 border border-secure-400/30 shadow-2xl"
+      className="bg-gradient-to-r from-dark-800 to-dark-900 rounded-2xl p-6 border border-indigo-400/30 shadow-2xl"
     >
       <div className="text-center mb-6">
         <motion.div
@@ -59,7 +59,7 @@ export default function ZeroKnowledgeMeter({
             repeat: isActive ? Infinity : 0,
             ease: "easeInOut"
           }}
-          className="w-16 h-16 bg-gradient-to-br from-secure-500 to-primary-500 rounded-full flex items-center justify-center mx-auto mb-4"
+          className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4"
         >
           <Zap className="w-8 h-8 text-white" />
         </motion.div>
@@ -67,7 +67,7 @@ export default function ZeroKnowledgeMeter({
         <h3 className="text-2xl font-bold text-white mb-2">
           Zero-Knowledge Meter
         </h3>
-        <p className="text-gray-300 text-sm">
+        <p className="text-green-500 text-sm">
           Real-time privacy protection visualization
         </p>
       </div>
@@ -86,7 +86,7 @@ export default function ZeroKnowledgeMeter({
             initial={{ width: 0 }}
             animate={{ width: `${(encryptionLevel === 'none' ? 0 : encryptionLevel === 'aes' ? 25 : encryptionLevel === 'hybrid' ? 75 : 100)}%` }}
             transition={{ duration: 1, ease: "easeOut" }}
-            className="h-full bg-gradient-to-r from-secure-500 to-primary-500"
+            className="h-full bg-gradient-to-r from-indigo-500 to-blue-500"
           />
         </div>
         
@@ -112,7 +112,7 @@ export default function ZeroKnowledgeMeter({
             initial={{ width: 0 }}
             animate={{ width: `${serverVisibility}%` }}
             transition={{ duration: 1, ease: "easeOut" }}
-            className={`h-full ${serverVisibility === 0 ? 'bg-secure-500' : serverVisibility < 30 ? 'bg-yellow-500' : serverVisibility < 70 ? 'bg-orange-500' : 'bg-red-500'}`}
+            className={`h-full ${serverVisibility === 0 ? 'bg-indigo-500' : serverVisibility < 30 ? 'bg-yellow-500' : serverVisibility < 70 ? 'bg-orange-500' : 'bg-red-500'}`}
           />
         </div>
         
@@ -125,28 +125,28 @@ export default function ZeroKnowledgeMeter({
       {/* Privacy Features */}
       <div className="space-y-3">
         <div className="flex items-center space-x-3">
-          <div className={`w-3 h-3 rounded-full ${encryptionLevel !== 'none' ? 'bg-secure-400' : 'bg-gray-600'}`} />
+          <div className={`w-3 h-3 rounded-full ${encryptionLevel !== 'none' ? 'bg-green-500' : 'bg-gray-600'}`} />
           <span className={`text-sm ${encryptionLevel !== 'none' ? 'text-white' : 'text-gray-500'}`}>
             AES-256-GCM Encryption
           </span>
         </div>
         
         <div className="flex items-center space-x-3">
-          <div className={`w-3 h-3 rounded-full ${encryptionLevel === 'hybrid' || encryptionLevel === 'complete' ? 'bg-secure-400' : 'bg-gray-600'}`} />
+          <div className={`w-3 h-3 rounded-full ${encryptionLevel === 'hybrid' || encryptionLevel === 'complete' ? 'bg-green-500' : 'bg-gray-600'}`} />
           <span className={`text-sm ${encryptionLevel === 'hybrid' || encryptionLevel === 'complete' ? 'text-white' : 'text-gray-500'}`}>
             PQC Hybrid Key Exchange
           </span>
         </div>
         
         <div className="flex items-center space-x-3">
-          <div className={`w-3 h-3 rounded-full ${encryptionLevel === 'complete' ? 'bg-secure-400' : 'bg-gray-600'}`} />
+          <div className={`w-3 h-3 rounded-full ${encryptionLevel === 'complete' ? 'bg-green-500' : 'bg-gray-600'}`} />
           <span className={`text-sm ${encryptionLevel === 'complete' ? 'text-white' : 'text-gray-500'}`}>
             Zero-Knowledge Architecture
           </span>
         </div>
         
         <div className="flex items-center space-x-3">
-          <div className={`w-3 h-3 rounded-full ${encryptionLevel !== 'none' ? 'bg-secure-400' : 'bg-gray-600'}`} />
+          <div className={`w-3 h-3 rounded-full ${encryptionLevel !== 'none' ? 'bg-green-500' : 'bg-gray-600'}`} />
           <span className={`text-sm ${encryptionLevel !== 'none' ? 'text-white' : 'text-gray-500'}`}>
             Client-Side Only
           </span>
@@ -158,10 +158,10 @@ export default function ZeroKnowledgeMeter({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="mt-6 p-4 bg-dark-700 rounded-xl border-l-4 border-secure-400"
+        className="mt-6 p-4 bg-dark-700 rounded-xl border-l-4 border-indigo-400"
       >
         <div className="flex items-start space-x-3">
-          <Shield className="w-5 h-5 text-secure-400 mt-0.5 flex-shrink-0" />
+          <Shield className="w-5 h-5 text-indigo-500 mt-0.5 flex-shrink-0" />
           <div>
             <p className="text-white font-medium text-sm">
               {serverVisibility === 0 ? 'Complete Privacy Achieved' : 'Privacy Protection Active'}

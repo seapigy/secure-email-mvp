@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
+    host: true,
     open: true
   },
   build: {
@@ -12,10 +13,10 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          // Separate vendor chunks
-          vendor: ['react', 'react-dom'],
-          icons: ['lucide-react'],
-          crypto: ['hash-wasm', 'kyber-crystals', 'tweetnacl', 'tweetnacl-util']
+          // Separate vendor chunks for better optimization
+          'react-vendor': ['react', 'react-dom'],
+          'ui-vendor': ['lucide-react'],
+          'crypto-vendor': ['hash-wasm']
         }
       }
     },

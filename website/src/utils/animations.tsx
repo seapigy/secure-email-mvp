@@ -61,6 +61,7 @@ export const MotionDiv: React.FC<AnimationProps & {
   transition?: any;
   whileHover?: any;
   whileTap?: any;
+  as?: keyof JSX.IntrinsicElements;
 }> = ({ 
   children, 
   className = '', 
@@ -73,6 +74,7 @@ export const MotionDiv: React.FC<AnimationProps & {
   onClick,
   onMouseEnter,
   onMouseLeave,
+  as = 'div',
   ...props 
 }) => {
   const [isVisible, setIsVisible] = React.useState(false);
@@ -81,6 +83,12 @@ export const MotionDiv: React.FC<AnimationProps & {
   const ref = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
+    // Skip IntersectionObserver in test environment
+    if (typeof window === 'undefined' || !window.IntersectionObserver || process.env.NODE_ENV === 'test') {
+      setIsVisible(true);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -94,7 +102,11 @@ export const MotionDiv: React.FC<AnimationProps & {
       observer.observe(ref.current);
     }
 
-    return () => observer.disconnect();
+    return () => {
+      if (observer && typeof observer.disconnect === 'function') {
+        observer.disconnect();
+      }
+    };
   }, []);
 
   const getAnimationStyle = () => {
@@ -117,8 +129,10 @@ export const MotionDiv: React.FC<AnimationProps & {
     return animationStyle;
   };
 
+  const Component = as as any;
+  
   return (
-    <div
+    <Component
       ref={ref}
       className={`transition-all duration-500 ease-out ${className}`}
       style={getAnimationStyle()}
@@ -136,7 +150,7 @@ export const MotionDiv: React.FC<AnimationProps & {
       {...props}
     >
       {children}
-    </div>
+    </Component>
   );
 };
 
@@ -164,6 +178,12 @@ export const MotionButton: React.FC<AnimationProps & {
   const ref = React.useRef<HTMLButtonElement>(null);
 
   React.useEffect(() => {
+    // Skip IntersectionObserver in test environment
+    if (typeof window === 'undefined' || !window.IntersectionObserver || process.env.NODE_ENV === 'test') {
+      setIsVisible(true);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -177,7 +197,11 @@ export const MotionButton: React.FC<AnimationProps & {
       observer.observe(ref.current);
     }
 
-    return () => observer.disconnect();
+    return () => {
+      if (observer && typeof observer.disconnect === 'function') {
+        observer.disconnect();
+      }
+    };
   }, []);
 
   const getAnimationStyle = () => {
@@ -234,6 +258,12 @@ export const MotionSection: React.FC<AnimationProps & {
   const ref = React.useRef<HTMLElement>(null);
 
   React.useEffect(() => {
+    // Skip IntersectionObserver in test environment
+    if (typeof window === 'undefined' || !window.IntersectionObserver || process.env.NODE_ENV === 'test') {
+      setIsVisible(true);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -247,7 +277,11 @@ export const MotionSection: React.FC<AnimationProps & {
       observer.observe(ref.current);
     }
 
-    return () => observer.disconnect();
+    return () => {
+      if (observer && typeof observer.disconnect === 'function') {
+        observer.disconnect();
+      }
+    };
   }, []);
 
   const getAnimationStyle = () => {
@@ -280,6 +314,12 @@ export const useInView = (options = { threshold: 0.1 }) => {
   const ref = React.useRef<HTMLElement>(null);
 
   React.useEffect(() => {
+    // Skip IntersectionObserver in test environment
+    if (typeof window === 'undefined' || !window.IntersectionObserver || process.env.NODE_ENV === 'test') {
+      setIsInView(true);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         setIsInView(entry.isIntersecting);
@@ -291,7 +331,11 @@ export const useInView = (options = { threshold: 0.1 }) => {
       observer.observe(ref.current);
     }
 
-    return () => observer.disconnect();
+    return () => {
+      if (observer && typeof observer.disconnect === 'function') {
+        observer.disconnect();
+      }
+    };
   }, [options]);
 
   return { ref, isInView };
