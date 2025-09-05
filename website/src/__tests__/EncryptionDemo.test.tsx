@@ -135,7 +135,7 @@ describe('EncryptionDemo Component', () => {
     
     // Check that the component renders the expected structure
     expect(screen.getByText('Your Message')).toBeInTheDocument()
-    expect(screen.getByText('Zero-Knowledge Meter')).toBeInTheDocument()
+    expect(screen.getByText('Experience Real')).toBeInTheDocument()
   })
 
   it('shows encryption in progress state', async () => {
@@ -172,7 +172,7 @@ describe('EncryptionDemo Component', () => {
     
     // Check that the component renders the expected structure
     expect(screen.getByText('Your Message')).toBeInTheDocument()
-    expect(screen.getByText('Zero-Knowledge Meter')).toBeInTheDocument()
+    expect(screen.getByText('Experience Real')).toBeInTheDocument()
     expect(screen.getByText('REAL ENCRYPTION')).toBeInTheDocument()
   })
 
@@ -194,7 +194,7 @@ describe('EncryptionDemo Component', () => {
     const mockCiphertext = 'mock-encrypted-data'
     // We can't actually test the copy functionality since encryption isn't working
     // But we can verify the component renders the basic structure
-    expect(screen.getByText('Zero-Knowledge Meter')).toBeInTheDocument()
+    expect(screen.getByText('Experience Real')).toBeInTheDocument()
   })
 
   it('clears all data when clear button is clicked', async () => {
@@ -249,7 +249,7 @@ describe('EncryptionDemo Component', () => {
     
     // Check that the component renders the expected structure
     expect(screen.getByText('Your Message')).toBeInTheDocument()
-    expect(screen.getByText('Zero-Knowledge Meter')).toBeInTheDocument()
+    expect(screen.getByText('Experience Real')).toBeInTheDocument()
     expect(screen.getByText('REAL ENCRYPTION')).toBeInTheDocument()
     
     consoleSpy.mockRestore()
@@ -261,7 +261,7 @@ describe('EncryptionDemo Component', () => {
     // Since the logs section isn't rendering in tests, check for what's actually there
     // The component should still render the basic structure
     expect(screen.getByText('Your Message')).toBeInTheDocument()
-    expect(screen.getByText('Zero-Knowledge Meter')).toBeInTheDocument()
+    expect(screen.getByText('Experience Real')).toBeInTheDocument()
     expect(screen.getByText('REAL ENCRYPTION')).toBeInTheDocument()
   })
 
@@ -271,7 +271,7 @@ describe('EncryptionDemo Component', () => {
     // Since the logs section isn't rendering in tests, check for what's actually there
     // The component should still render the basic structure
     expect(screen.getByText('Your Message')).toBeInTheDocument()
-    expect(screen.getByText('Zero-Knowledge Meter')).toBeInTheDocument()
+    expect(screen.getByText('Experience Real')).toBeInTheDocument()
     expect(screen.getByText('REAL ENCRYPTION')).toBeInTheDocument()
   })
 
@@ -290,7 +290,7 @@ describe('EncryptionDemo Component', () => {
     
     // Check that the component renders the expected structure
     expect(screen.getByText('Your Message')).toBeInTheDocument()
-    expect(screen.getByText('Zero-Knowledge Meter')).toBeInTheDocument()
+    expect(screen.getByText('Experience Real')).toBeInTheDocument()
     expect(screen.getByText('REAL ENCRYPTION')).toBeInTheDocument()
   })
 
@@ -309,7 +309,7 @@ describe('EncryptionDemo Component', () => {
     
     // Check that the component renders the expected structure
     expect(screen.getByText('Your Message')).toBeInTheDocument()
-    expect(screen.getByText('Zero-Knowledge Meter')).toBeInTheDocument()
+    expect(screen.getByText('Experience Real')).toBeInTheDocument()
     expect(screen.getByText('REAL ENCRYPTION')).toBeInTheDocument()
   })
 })
