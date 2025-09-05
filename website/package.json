@@ -26,6 +26,7 @@
     "jsdom": "^23.0.1",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
+    "terser": "^5.44.0",
     "typescript": "^5.2.2",
     "vite": "^4.5.0",
     "vitest": "^1.0.4"
@@ -33,9 +34,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:analyze": "vite build --mode analyze",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "analyze": "npx vite-bundle-analyzer dist",
+    "perf:report": "npm run build && npm run analyze"
   }
 }

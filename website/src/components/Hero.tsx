@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion'
-import { Shield, Lock, EyeOff, ArrowRight } from 'lucide-react'
+import { MotionDiv, MotionButton, fadeIn, slideUp, slideInLeft, slideInRight } from '../utils/animations'
+import { Shield, Lock, EyeOff, ArrowRight } from '../utils/icons'
 
 export default function Hero() {
   return (
@@ -10,32 +10,28 @@ export default function Hero() {
 
       {/* Content */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.2, ease: "easeOut" }}
+        <MotionDiv
+          initial={{ opacity: 0, transform: 'translateY(50px)' }}
+          animate={{ opacity: 1, transform: 'translateY(0)' }}
+          transition={{ duration: 1.2 }}
           className="space-y-8"
         >
           {/* Main Headline */}
-          <motion.h1 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="text-5xl md:text-7xl lg:text-8xl font-black leading-tight"
+          <h1 
+            className="text-5xl md:text-7xl lg:text-8xl font-black leading-tight animate-slide-up"
+            style={{ animationDelay: '0.2s' }}
           >
             <span className="gradient-text">The World's</span>
             <br />
             <span className="text-dark-900 dark:text-white">Most Secure</span>
             <br />
             <span className="gradient-text">Email.</span>
-          </motion.h1>
+          </h1>
 
           {/* Subheadline */}
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="text-xl md:text-2xl lg:text-3xl text-gray-600 dark:text-gray-300 max-w-5xl mx-auto font-light"
+          <p
+            className="text-xl md:text-2xl lg:text-3xl text-gray-600 dark:text-gray-300 max-w-5xl mx-auto font-light animate-slide-up"
+            style={{ animationDelay: '0.4s' }}
           >
             <span className="font-semibold text-secure-400">The Most Secure Email in the World</span> — powered by{' '}
             <span className="font-semibold text-primary-400">AES-256-GCM</span>,{' '}
@@ -45,39 +41,35 @@ export default function Hero() {
             <span className="font-semibold text-primary-400">Zero-knowledge.</span>{' '}
             <span className="font-semibold text-secure-400">Zero visibility.</span>{' '}
             <span className="font-semibold text-primary-400">Absolute privacy.</span>
-          </motion.p>
+          </p>
 
           {/* CTA Buttons */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+          <div
+            className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-slide-up"
+            style={{ animationDelay: '0.6s' }}
           >
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <MotionButton
+              whileHover={{ transform: 'scale(1.05)' }}
+              whileTap={{ transform: 'scale(0.95)' }}
               className="btn-primary text-lg px-10 py-4 flex items-center space-x-2"
             >
               <span>Get Early Access</span>
               <ArrowRight className="w-5 h-5" />
-            </motion.button>
+            </MotionButton>
             
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <MotionButton
+              whileHover={{ transform: 'scale(1.05)' }}
+              whileTap={{ transform: 'scale(0.95)' }}
               className="btn-secondary text-lg px-10 py-4"
             >
               Learn More
-            </motion.button>
-          </motion.div>
+            </MotionButton>
+          </div>
 
           {/* Trust Indicators */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.8 }}
-            className="flex flex-wrap justify-center items-center gap-8 pt-8 text-gray-500 dark:text-gray-400"
+          <div
+            className="flex flex-wrap justify-center items-center gap-8 pt-8 text-gray-500 dark:text-gray-400 animate-slide-up"
+            style={{ animationDelay: '0.8s' }}
           >
             <div className="flex items-center space-x-2">
               <Shield className="w-5 h-5 text-secure-400" />
@@ -91,29 +83,24 @@ export default function Hero() {
               <EyeOff className="w-5 h-5 text-secure-400" />
               <span className="text-sm">No Visibility</span>
             </div>
-          </motion.div>
-        </motion.div>
+          </div>
+        </MotionDiv>
       </div>
 
       {/* Scroll Indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1, delay: 1.2 }}
-        className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
+      <div
+        className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-fade-in"
+        style={{ animationDelay: '1.2s' }}
       >
-        <motion.div
-          animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="w-6 h-10 border-2 border-gray-400 rounded-full flex justify-center"
+        <div
+          className="w-6 h-10 border-2 border-gray-400 rounded-full flex justify-center animate-float"
         >
-          <motion.div
-            animate={{ y: [0, 12, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="w-1 h-3 bg-gray-400 rounded-full mt-2"
+          <div
+            className="w-1 h-3 bg-gray-400 rounded-full mt-2 animate-float"
+            style={{ animationDelay: '0.5s' }}
           />
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     </section>
   )
 }

@@ -1,6 +1,7 @@
 // DO NOT EDIT EXISTING CODE - This is a new test setup file for Phase 2
 
 import '@testing-library/jest-dom'
+import { vi } from 'vitest'
 
 // Mock window.matchMedia for theme detection
 Object.defineProperty(window, 'matchMedia', {
