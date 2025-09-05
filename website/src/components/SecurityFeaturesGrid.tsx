@@ -40,7 +40,7 @@ export default function SecurityFeaturesGrid() {
       animation: "glow"
     },
     {
-      icon: Fingerprint,
+      icon: Shield,
       title: "Biometric Access",
       description: "Secure access using your fingerprint or face ID. Next-gen authentication.",
       color: "text-blue-500",
@@ -75,14 +75,14 @@ export default function SecurityFeaturesGrid() {
       animation: "lock-shut"
     },
     {
-      icon: Trash2,
+      icon: AlertTriangle,
       title: "Quantum Erasure",
       description: "Physically impossible data recovery using quantum mechanics principles.",
       color: "text-indigo-500",
       animation: "glow"
     },
     {
-      icon: MapPin,
+      icon: Globe,
       title: "Stealth Mode",
       description: "Invisible email delivery with no digital footprint or traceability.",
       color: "text-blue-500",
@@ -96,7 +96,7 @@ export default function SecurityFeaturesGrid() {
       animation: "fade-in"
     },
     {
-      icon: Timer,
+      icon: Clock,
       title: "Temporal Encryption",
       description: "Time-based encryption keys that change every millisecond for ultimate security.",
       color: "text-blue-500",

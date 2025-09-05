@@ -39,6 +39,20 @@ global.ResizeObserver = vi.fn().mockImplementation(() => ({
 global.requestAnimationFrame = vi.fn(cb => setTimeout(cb, 0))
 global.cancelAnimationFrame = vi.fn()
 
+// Mock hash-wasm/argon2id for test environment
+vi.mock('hash-wasm/argon2id', () => ({
+  default: vi.fn().mockImplementation(async ({ password, salt, hashLength }) => {
+    // Simulate Argon2id hash generation using Web Crypto API
+    const encoder = new TextEncoder()
+    const data = encoder.encode(password + salt.toString())
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+    const hashArray = new Uint8Array(hashBuffer)
+    
+    // Return hash of specified length
+    return hashArray.slice(0, hashLength)
+  })
+}))
+
 // Mock console methods to reduce noise in tests
 const originalConsole = { ...console }
 beforeEach(() => {

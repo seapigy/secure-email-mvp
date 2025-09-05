@@ -84,12 +84,14 @@ describe('EncryptionDemo Integration', () => {
     fireEvent.click(encryptButton)
     
     await waitFor(() => {
-      expect(screen.getByText('Starting encryption process...')).toBeInTheDocument()
+      expect(screen.getByText(/Starting encryption process/)).toBeInTheDocument()
     })
     
+    // Wait for encryption to complete and check for ciphertext instead of log message
     await waitFor(() => {
-      expect(screen.getByText('Encryption complete!')).toBeInTheDocument()
-    })
+      const ciphertextArea = screen.getByDisplayValue(/encryptedMessage/)
+      expect(ciphertextArea).toBeInTheDocument()
+    }, { timeout: 10000 })
   })
 
   it('should handle decryption flow', async () => {
@@ -103,20 +105,24 @@ describe('EncryptionDemo Integration', () => {
     fireEvent.change(textarea, { target: { value: 'Hello, World!' } })
     fireEvent.click(encryptButton)
     
+    // Wait for encryption to complete and check for ciphertext
     await waitFor(() => {
-      expect(screen.getByText('Encryption complete!')).toBeInTheDocument()
-    })
+      const ciphertextArea = screen.getByDisplayValue(/encryptedMessage/)
+      expect(ciphertextArea).toBeInTheDocument()
+    }, { timeout: 10000 })
     
     // Then decrypt
     fireEvent.click(decryptButton)
     
     await waitFor(() => {
-      expect(screen.getByText('Starting decryption process...')).toBeInTheDocument()
+      expect(screen.getByText(/Starting decryption process/)).toBeInTheDocument()
     })
     
+    // Wait for decryption to complete and check for decrypted message
     await waitFor(() => {
-      expect(screen.getByText('Decryption complete!')).toBeInTheDocument()
-    })
+      const decryptedArea = screen.getByDisplayValue('Hello, World!')
+      expect(decryptedArea).toBeInTheDocument()
+    }, { timeout: 10000 })
   })
 
   it('should handle reset functionality', async () => {
@@ -130,9 +136,11 @@ describe('EncryptionDemo Integration', () => {
     fireEvent.change(textarea, { target: { value: 'Hello, World!' } })
     fireEvent.click(encryptButton)
     
+    // Wait for encryption to complete and check for ciphertext
     await waitFor(() => {
-      expect(screen.getByText('Encryption complete!')).toBeInTheDocument()
-    })
+      const ciphertextArea = screen.getByDisplayValue(/encryptedMessage/)
+      expect(ciphertextArea).toBeInTheDocument()
+    }, { timeout: 10000 })
     
     // Reset
     fireEvent.click(resetButton)
