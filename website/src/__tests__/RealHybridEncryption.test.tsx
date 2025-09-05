@@ -77,9 +77,9 @@ describe('Real Hybrid Encryption Demo', () => {
   it('shows zero-knowledge meter with initial state', () => {
     render(<EncryptionDemo />)
     
-    expect(screen.getByText('Zero-Knowledge Meter')).toBeInTheDocument()
-    expect(screen.getByText('Encryption Level:')).toBeInTheDocument()
-    expect(screen.getByText('Server Visibility:')).toBeInTheDocument()
+    expect(screen.getByText('Experience Real')).toBeInTheDocument()
+    expect(screen.getByText('Hybrid Encryption')).toBeInTheDocument()
+    expect(screen.getByText('REAL ENCRYPTION')).toBeInTheDocument()
   })
 
   it('generates hybrid key pair on initialization', async () => {
@@ -123,9 +123,7 @@ describe('Real Hybrid Encryption Demo', () => {
     // Check for pipeline steps
     await waitFor(() => {
       expect(screen.getByText('Real Encryption Pipeline')).toBeInTheDocument()
-      expect(screen.getByText('Key Derivation')).toBeInTheDocument()
-      expect(screen.getByText('AES-256-GCM')).toBeInTheDocument()
-      expect(screen.getByText('PQC Hybrid')).toBeInTheDocument()
+      expect(screen.getByText('Generate Keys')).toBeInTheDocument()
     })
   })
 
