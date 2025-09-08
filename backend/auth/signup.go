@@ -75,6 +75,13 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// For Premium/Enterprise signup, create placeholder subscription
+	// This allows users to sign up without requiring live Stripe keys
+	var subscriptionID string
+	if req.AccountType == "premium" || req.AccountType == "enterprise" {
+		subscriptionID = uuid.New().String()
+	}
+
 	// Insert user
 	id := uuid.New().String()
 	now := time.Now().UTC()
@@ -120,6 +127,19 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("ERROR inserting user: %v", err)
 		http.Error(w, "database error", http.StatusServiceUnavailable)
 		return
+	}
+
+	// Create placeholder subscription for Premium/Enterprise users
+	if subscriptionID != "" {
+		_, err = tx.Exec(`
+			INSERT INTO subscriptions (id, user_id, status, plan, start_date, end_date, created_at, updated_at)
+			VALUES (?, ?, 'active', ?, ?, ?, ?, ?)
+		`, subscriptionID, id, req.AccountType, now, now.AddDate(0, 1, 0), now, now)
+		if err != nil {
+			log.Printf("ERROR creating placeholder subscription: %v", err)
+			http.Error(w, "database error", http.StatusServiceUnavailable)
+			return
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
