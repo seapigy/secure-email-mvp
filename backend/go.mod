@@ -5,7 +5,11 @@ go 1.21
 require (
 	github.com/google/uuid v1.6.0
 	github.com/mattn/go-sqlite3 v1.14.19
+	github.com/pquerna/otp v1.5.0
 	golang.org/x/crypto v0.17.0
 )
 
-require golang.org/x/sys v0.15.0 // indirect
+require (
+	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
+	golang.org/x/sys v0.15.0 // indirect
+)

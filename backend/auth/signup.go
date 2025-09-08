@@ -89,11 +89,21 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 		// TODO: use a proper query placeholder depending on driver
 	}
 
+	// Generate verification code
+	verificationCode, err := GenerateRandomToken(6) // 6-character code
+	if err != nil {
+		log.Printf("ERROR generating verification code: %v", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	hashedVerificationCode := HashToken(verificationCode)
+	verificationExpiresAt := now.Add(30 * time.Minute) // 30-minute expiry
+
 	// Try insert (use DB-specific placeholder as necessary)
 	_, err = tx.Exec(
-		`INSERT INTO users (id, username, email, hashed_password, account_type, account_status, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, 'pending_verification', ?, ?)`,
-		id, req.Username, req.Email, hashed, req.AccountType, now, now,
+		`INSERT INTO users (id, username, email, hashed_password, account_type, account_status, verification_code, verification_code_expires_at, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, 'pending_verification', ?, ?, ?, ?)`,
+		id, req.Username, req.Email, hashed, req.AccountType, hashedVerificationCode, verificationExpiresAt, now, now,
 	)
 	if err != nil {
 		// return nice error for duplicate
@@ -120,6 +130,10 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 		AccountType: req.AccountType,
 		CreatedAt:   now.Format(time.RFC3339),
 	}
+
+	// TODO: Send email with verification code
+	// For now, log the code (in production, this would be sent via email service)
+	log.Printf("INFO verification_code_generated user_id=%s code=%s", id, verificationCode)
 
 	// Log event (non-sensitive)
 	log.Printf("INFO user_created id=%s account_type=%s", id, req.AccountType)

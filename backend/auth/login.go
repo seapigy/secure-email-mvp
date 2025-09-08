@@ -32,8 +32,9 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// Lookup user
 	var id string
 	var storedHash string
-	var totpConfigured bool
-	err := DB.QueryRow("SELECT id, hashed_password, totp_configured FROM users WHERE email = ? LIMIT 1", req.Email).Scan(&id, &storedHash, &totpConfigured)
+	var mfaEnabled bool
+	var emailVerified bool
+	err := DB.QueryRow("SELECT id, hashed_password, mfa_enabled, email_verified FROM users WHERE email = ? LIMIT 1", req.Email).Scan(&id, &storedHash, &mfaEnabled, &emailVerified)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "invalid credentials", http.StatusUnauthorized)
@@ -51,8 +52,14 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If TOTP is configured, require the second step (not handled here; orchestrate frontend to call /api/auth/totp/verify)
-	if totpConfigured {
+	// Check if email is verified
+	if !emailVerified {
+		http.Error(w, "email_not_verified", http.StatusForbidden)
+		return
+	}
+
+	// If MFA is enabled, require the second step (not handled here; orchestrate frontend to call /api/auth/validate-mfa)
+	if mfaEnabled {
 		// indicate 2FA required
 		http.Error(w, "mfa_required", http.StatusForbidden)
 		return

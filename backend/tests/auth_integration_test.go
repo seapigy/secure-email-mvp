@@ -17,7 +17,7 @@ import (
 )
 
 // Test database setup
-var testDB *sql.DB
+// var testDB *sql.DB // Reserved for future tests
 
 func setupTestDB() (*sql.DB, error) {
 	// Use in-memory SQLite for tests
@@ -89,7 +89,7 @@ func mockVerifyPassword(password, hash string) (bool, error) {
 	return hash == expected, nil
 }
 
-func mockGenerateRandomToken(n int) (string, error) {
+func mockGenerateRandomToken(_ int) (string, error) {
 	return "test_token_12345", nil
 }
 
