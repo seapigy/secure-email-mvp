@@ -23,17 +23,25 @@ describe('FAQ Component', () => {
   it('renders all FAQ questions', () => {
     render(<FAQ />)
     
+    // PQC-related questions
     expect(screen.getByText('What is Post-Quantum Cryptography (PQC)?')).toBeInTheDocument()
     expect(screen.getByText('Why does SecureMail use PQC encryption?')).toBeInTheDocument()
     expect(screen.getByText('How does PQC work with AES-256-GCM?')).toBeInTheDocument()
     expect(screen.getByText('Is PQC encryption slower than regular encryption?')).toBeInTheDocument()
     expect(screen.getByText('When will quantum computers break current encryption?')).toBeInTheDocument()
+    
+    // Security features questions
+    expect(screen.getByText('How easy is it to add security features to each email?')).toBeInTheDocument()
+    expect(screen.getByText('Can I customize security settings for different types of emails?')).toBeInTheDocument()
+    expect(screen.getByText('Do I need to configure security features every time I send an email?')).toBeInTheDocument()
+    expect(screen.getByText('How do recipients know if an email has special security features?')).toBeInTheDocument()
+    expect(screen.getByText('Can I change security settings after sending an email?')).toBeInTheDocument()
   })
 
   it('shows chevron down icons initially', () => {
     render(<FAQ />)
     const chevronIcons = screen.getAllByRole('button')
-    expect(chevronIcons).toHaveLength(5) // 5 FAQ items
+    expect(chevronIcons).toHaveLength(10) // 10 FAQ items
   })
 
   it('expands FAQ item when clicked', () => {
@@ -65,7 +73,7 @@ describe('FAQ Component', () => {
     expect(screen.queryByText(/Post-Quantum Cryptography \(PQC\) refers to cryptographic algorithms/)).not.toBeInTheDocument()
   })
 
-  it('renders FAQ answers with PQC content', () => {
+  it('renders FAQ answers with PQC and security content', () => {
     render(<FAQ />)
     
     // Expand all FAQ items to check answers
@@ -77,6 +85,13 @@ describe('FAQ Component', () => {
     expect(screen.getByText(/hybrid approach combining both AES-256-GCM and PQC/)).toBeInTheDocument()
     expect(screen.getByText(/PQC algorithms can be slightly slower/)).toBeInTheDocument()
     expect(screen.getByText(/quantum computers capable of breaking current encryption/)).toBeInTheDocument()
+    
+    // Check for security features content in answers
+    expect(screen.getByText(/simple security panel with toggle switches/)).toBeInTheDocument()
+    expect(screen.getByText(/create security presets for different scenarios/)).toBeInTheDocument()
+    expect(screen.getByText(/set default security preferences/)).toBeInTheDocument()
+    expect(screen.getByText(/clear, user-friendly notifications/)).toBeInTheDocument()
+    expect(screen.getByText(/extend or reduce self-destruct timers/)).toBeInTheDocument()
   })
 
   it('renders the bottom CTA section', () => {
