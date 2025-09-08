@@ -1,0 +1,41 @@
+{
+  "environments": {
+    "development": {
+      "apiUrl": "http://localhost:8080",
+      "debug": true,
+      "stripeEnabled": false,
+      "placeholderPayments": true,
+      "analyticsEnabled": true
+    },
+    "staging": {
+      "apiUrl": "https://api-staging.securesystem.email",
+      "debug": true,
+      "stripeEnabled": false,
+      "placeholderPayments": true,
+      "analyticsEnabled": true
+    },
+    "production": {
+      "apiUrl": "https://api.securesystem.email",
+      "debug": false,
+      "stripeEnabled": true,
+      "placeholderPayments": false,
+      "analyticsEnabled": true
+    }
+  },
+  "web": {
+    "baseUrl": "https://app.securesystem.email",
+    "corsEnabled": true,
+    "securityHeaders": true,
+    "sslRequired": true
+  },
+  "mobile": {
+    "ios": {
+      "bundleId": "com.securesystem.securemail",
+      "appStoreConnect": true
+    },
+    "android": {
+      "packageName": "com.securesystem.securemail",
+      "playStore": true
+    }
+  }
+}
