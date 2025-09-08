@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, feature/auth/core-signup ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 jobs:
   test:
@@ -21,6 +21,7 @@ jobs:
         cache-dependency-path: |
           website/package-lock.json
           frontend/package-lock.json
+          securemail-app/package-lock.json
     
     - name: Install website dependencies
       run: |
@@ -41,6 +42,16 @@ jobs:
       run: |
         cd frontend
         npm test
+    
+    - name: Install securemail-app dependencies
+      run: |
+        cd securemail-app
+        npm ci
+    
+    - name: Run securemail-app tests
+      run: |
+        cd securemail-app
+        npm run test:qa
     
     - name: Set up Go
       uses: actions/setup-go@v4
@@ -69,6 +80,11 @@ jobs:
         docker build -t securemail-backend ./backend
         docker build -t securemail-frontend ./frontend
         docker build -t securemail-website ./website
+    
+    - name: Build securemail-app web version
+      run: |
+        cd securemail-app
+        npm run build:web
     
     - name: Push to registry
       if: github.ref == 'refs/heads/main'
