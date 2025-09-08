@@ -66,6 +66,87 @@ func setupPhase2TestDB(t *testing.T) *sql.DB {
 		`ALTER TABLE users ADD COLUMN mfa_enabled BOOLEAN DEFAULT FALSE`,
 		`ALTER TABLE users ADD COLUMN backup_codes_hashed JSON NULL`,
 		`CREATE INDEX IF NOT EXISTS idx_users_mfa_enabled ON users(mfa_enabled)`,
+		// Phase 3 tables for compatibility
+		`CREATE TABLE IF NOT EXISTS subscriptions (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL,
+			stripe_customer_id TEXT NULL,
+			stripe_subscription_id TEXT NULL,
+			status TEXT NOT NULL,
+			plan TEXT NOT NULL,
+			start_date TIMESTAMP NOT NULL,
+			end_date TIMESTAMP NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS organizations (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			admin_user_id TEXT NOT NULL,
+			domain TEXT NULL,
+			max_users INTEGER DEFAULT 100,
+			settings_json TEXT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS organization_members (
+			id TEXT PRIMARY KEY,
+			organization_id TEXT NOT NULL,
+			user_id TEXT NOT NULL,
+			role TEXT NOT NULL,
+			status TEXT NOT NULL DEFAULT 'active',
+			invited_by TEXT NULL,
+			joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS mailbox_folders (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL,
+			name TEXT NOT NULL,
+			folder_type TEXT NOT NULL DEFAULT 'custom',
+			parent_folder_id TEXT NULL,
+			sort_order INTEGER DEFAULT 0,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS email_messages (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL,
+			folder_id TEXT NOT NULL,
+			message_id TEXT NOT NULL,
+			thread_id TEXT NULL,
+			from_address TEXT NOT NULL,
+			to_addresses TEXT NOT NULL,
+			cc_addresses TEXT NULL,
+			bcc_addresses TEXT NULL,
+			subject TEXT NOT NULL,
+			body_encrypted BLOB NOT NULL,
+			body_type TEXT NOT NULL DEFAULT 'text/plain',
+			attachments_encrypted BLOB NULL,
+			headers_encrypted BLOB NULL,
+			size_bytes INTEGER NOT NULL DEFAULT 0,
+			is_read BOOLEAN DEFAULT FALSE,
+			is_important BOOLEAN DEFAULT FALSE,
+			is_starred BOOLEAN DEFAULT FALSE,
+			received_at TIMESTAMP NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+			FOREIGN KEY (folder_id) REFERENCES mailbox_folders(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS analytics_events (
+			id TEXT PRIMARY KEY,
+			event_type TEXT NOT NULL,
+			user_hash TEXT NOT NULL,
+			metadata TEXT NULL,
+			timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
 	}
 
 	for _, migration := range migrations {

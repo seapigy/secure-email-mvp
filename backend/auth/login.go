@@ -112,6 +112,12 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("INFO login_success user_id=%s", id)
+	
+	// Log analytics event
+	LogAnalyticsEvent(id, EventUserLogin, map[string]interface{}{
+		"account_type": accountType,
+		"success":      true,
+	})
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }

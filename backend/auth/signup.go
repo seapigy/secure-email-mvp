@@ -148,6 +148,12 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Create default inbox and welcome message
+	if err := CreateDefaultInbox(id); err != nil {
+		log.Printf("ERROR creating default inbox: %v", err)
+		// Don't fail signup if inbox creation fails, just log it
+	}
+
 	// Minimal safe response
 	resp := safeUserResp{
 		ID:          id,
@@ -163,6 +169,12 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Log event (non-sensitive)
 	log.Printf("INFO user_created id=%s account_type=%s", id, req.AccountType)
+	
+	// Log analytics event
+	LogAnalyticsEvent(id, EventUserSignup, map[string]interface{}{
+		"account_type": req.AccountType,
+		"success":      true,
+	})
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
