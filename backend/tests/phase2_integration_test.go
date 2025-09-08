@@ -38,8 +38,10 @@ func setupPhase2TestDB(t *testing.T) *sql.DB {
 			public_sign_key TEXT NULL,
 			encrypted_profile_blob BLOB NULL,
 			account_type TEXT NOT NULL DEFAULT 'free',
+			account_type_new TEXT DEFAULT 'free',
 			account_status TEXT NOT NULL DEFAULT 'pending_verification',
 			domain TEXT NULL,
+			organization_id TEXT NULL,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,

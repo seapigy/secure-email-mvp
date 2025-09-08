@@ -6,6 +6,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/mattn/go-sqlite3 v1.14.19
 	github.com/pquerna/otp v1.5.0
+	github.com/stripe/stripe-go/v74 v74.30.0
 	golang.org/x/crypto v0.17.0
 )
 

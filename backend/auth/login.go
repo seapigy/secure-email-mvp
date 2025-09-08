@@ -19,8 +19,9 @@ type loginRequest struct {
 }
 
 type loginResponse struct {
-	Token     string `json:"token"`
-	ExpiresAt string `json:"expires_at"`
+	Token       string `json:"token"`
+	ExpiresAt   string `json:"expires_at"`
+	AccountType string `json:"account_type"`
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +35,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var storedHash string
 	var mfaEnabled bool
 	var emailVerified bool
-	err := DB.QueryRow("SELECT id, hashed_password, mfa_enabled, email_verified FROM users WHERE email = ? LIMIT 1", req.Email).Scan(&id, &storedHash, &mfaEnabled, &emailVerified)
+	var accountType string
+	err := DB.QueryRow("SELECT id, hashed_password, mfa_enabled, email_verified, account_type_new FROM users WHERE email = ? LIMIT 1", req.Email).Scan(&id, &storedHash, &mfaEnabled, &emailVerified, &accountType)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "invalid credentials", http.StatusUnauthorized)
@@ -87,8 +89,9 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Return raw token to client (store it client-side securely)
 	resp := loginResponse{
-		Token:     rawToken,
-		ExpiresAt: expiresAt.Format(time.RFC3339),
+		Token:       rawToken,
+		ExpiresAt:   expiresAt.Format(time.RFC3339),
+		AccountType: accountType,
 	}
 
 	log.Printf("INFO login_success user_id=%s", id)

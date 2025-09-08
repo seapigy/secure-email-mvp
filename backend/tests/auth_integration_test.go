@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/google/uuid"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // Test database setup
@@ -41,8 +41,10 @@ func setupTestDB() (*sql.DB, error) {
 		public_sign_key TEXT NULL,
 		encrypted_profile_blob BLOB NULL,
 		account_type TEXT NOT NULL DEFAULT 'free',
+		account_type_new TEXT DEFAULT 'free',
 		account_status TEXT NOT NULL DEFAULT 'pending_verification',
 		domain TEXT NULL,
+		organization_id TEXT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);

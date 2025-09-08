@@ -64,9 +64,15 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Default account type
+	// Default account type and validate
 	if req.AccountType == "" {
 		req.AccountType = "free"
+	}
+	
+	// Validate account type
+	if req.AccountType != "free" && req.AccountType != "premium" && req.AccountType != "enterprise" {
+		http.Error(w, "invalid account type", http.StatusBadRequest)
+		return
 	}
 
 	// Insert user
@@ -101,9 +107,9 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Try insert (use DB-specific placeholder as necessary)
 	_, err = tx.Exec(
-		`INSERT INTO users (id, username, email, hashed_password, account_type, account_status, verification_code, verification_code_expires_at, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, 'pending_verification', ?, ?, ?, ?)`,
-		id, req.Username, req.Email, hashed, req.AccountType, hashedVerificationCode, verificationExpiresAt, now, now,
+		`INSERT INTO users (id, username, email, hashed_password, account_type, account_type_new, account_status, verification_code, verification_code_expires_at, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, 'pending_verification', ?, ?, ?, ?)`,
+		id, req.Username, req.Email, hashed, req.AccountType, req.AccountType, hashedVerificationCode, verificationExpiresAt, now, now,
 	)
 	if err != nil {
 		// return nice error for duplicate
