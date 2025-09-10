@@ -16,62 +16,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// Test database setup
-// var testDB *sql.DB // Reserved for future tests
-
-func setupTestDB() (*sql.DB, error) {
-	// Use in-memory SQLite for tests
-	db, err := sql.Open("sqlite3", ":memory:")
-	if err != nil {
-		return nil, err
-	}
-
-	// Run migrations
-	migrationSQL := `
-	-- Users table (core)
-	CREATE TABLE IF NOT EXISTS users (
-		id TEXT PRIMARY KEY,
-		username TEXT NOT NULL,
-		email TEXT NOT NULL,
-		hashed_password TEXT NOT NULL,
-		totp_secret_encrypted BLOB,
-		totp_configured BOOLEAN DEFAULT FALSE,
-		recovery_codes_hashed JSON,
-		public_pqc_key TEXT NULL,
-		public_sign_key TEXT NULL,
-		encrypted_profile_blob BLOB NULL,
-		account_type TEXT NOT NULL DEFAULT 'free',
-		account_type_new TEXT DEFAULT 'free',
-		account_status TEXT NOT NULL DEFAULT 'pending_verification',
-		domain TEXT NULL,
-		organization_id TEXT NULL,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);
-
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_domain ON users(username, domain);
-
-	-- Sessions table
-	CREATE TABLE IF NOT EXISTS sessions (
-		id TEXT PRIMARY KEY,
-		user_id TEXT NOT NULL,
-		token_hash TEXT NOT NULL,
-		device_info TEXT NULL,
-		ip_address TEXT NULL,
-		expires_at TIMESTAMP NOT NULL,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);
-	CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
-	`
-
-	_, err = db.Exec(migrationSQL)
-	if err != nil {
-		return nil, err
-	}
-
-	return db, nil
-}
+// Test database setup - using shared setupTestDB function from test_setup.go
 
 func cleanupTestDB(db *sql.DB) {
 	if db != nil {
@@ -92,6 +37,7 @@ func mockVerifyPassword(password, hash string) (bool, error) {
 }
 
 func mockGenerateRandomToken(_ int) (string, error) {
+	
 	return "test_token_12345", nil
 }
 
@@ -101,10 +47,7 @@ func mockHashToken(token string) string {
 
 // Test signup success
 func TestSignupSuccess(t *testing.T) {
-	db, err := setupTestDB()
-	if err != nil {
-		t.Fatalf("Failed to setup test DB: %v", err)
-	}
+	db := setupTestDB(t)
 	defer cleanupTestDB(db)
 
 	// Set up test environment
@@ -205,16 +148,13 @@ func TestSignupSuccess(t *testing.T) {
 
 // Test duplicate signup
 func TestSignupDuplicate(t *testing.T) {
-	db, err := setupTestDB()
-	if err != nil {
-		t.Fatalf("Failed to setup test DB: %v", err)
-	}
+	db := setupTestDB(t)
 	defer cleanupTestDB(db)
 
 	// Insert existing user
 	id := uuid.New().String()
 	now := time.Now().UTC()
-	_, err = db.Exec(
+	_, err := db.Exec(
 		`INSERT INTO users (id, username, email, hashed_password, account_type, account_status, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, 'pending_verification', ?, ?)`,
 		id, "testuser", "test@example.com", "hashed_password", "free", now, now,
@@ -271,17 +211,14 @@ func TestSignupDuplicate(t *testing.T) {
 
 // Test login success
 func TestLoginSuccess(t *testing.T) {
-	db, err := setupTestDB()
-	if err != nil {
-		t.Fatalf("Failed to setup test DB: %v", err)
-	}
+	db := setupTestDB(t)
 	defer cleanupTestDB(db)
 
 	// Insert test user
 	id := uuid.New().String()
 	now := time.Now().UTC()
 	hashedPassword, _ := mockHashPassword("testpassword123")
-	_, err = db.Exec(
+	_, err := db.Exec(
 		`INSERT INTO users (id, username, email, hashed_password, account_type, account_status, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, 'pending_verification', ?, ?)`,
 		id, "testuser", "test@example.com", hashedPassword, "free", now, now,
@@ -375,10 +312,7 @@ func TestLoginSuccess(t *testing.T) {
 
 // Test login with invalid credentials
 func TestLoginInvalidCredentials(t *testing.T) {
-	db, err := setupTestDB()
-	if err != nil {
-		t.Fatalf("Failed to setup test DB: %v", err)
-	}
+	db := setupTestDB(t)
 	defer cleanupTestDB(db)
 
 	// Create test server
