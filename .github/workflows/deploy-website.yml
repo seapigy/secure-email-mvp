@@ -2,7 +2,7 @@ name: Deploy Website
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feature/auth/core-signup ]
     paths: [ 'website/**' ]
   workflow_dispatch:
 
@@ -38,7 +38,7 @@ jobs:
     
     - name: Deploy to Netlify
       uses: nwtgck/actions-netlify@v2.0
-      if: github.ref == 'refs/heads/main'
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/auth/core-signup'
       with:
         publish-dir: './website/dist'
         production-branch: main
