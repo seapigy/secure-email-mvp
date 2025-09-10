@@ -1,5 +1,3 @@
-// DO NOT EDIT EXISTING CODE - This is a new test setup file for Phase 2
-
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
@@ -10,8 +8,8 @@ Object.defineProperty(window, 'matchMedia', {
     matches: false,
     media: query,
     onchange: null,
-    addListener: vi.fn(), // deprecated
-    removeListener: vi.fn(), // deprecated
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
@@ -21,7 +19,6 @@ Object.defineProperty(window, 'matchMedia', {
 // Mock IntersectionObserver for useInView
 global.IntersectionObserver = vi.fn().mockImplementation((callback) => ({
   observe: vi.fn((element) => {
-    // Immediately call the callback with isIntersecting: true
     callback([{ isIntersecting: true, target: element }])
   }),
   unobserve: vi.fn(),
@@ -39,6 +36,9 @@ global.ResizeObserver = vi.fn().mockImplementation(() => ({
 global.requestAnimationFrame = vi.fn(cb => setTimeout(cb, 0))
 global.cancelAnimationFrame = vi.fn()
 
+// Enhanced crypto mocks for tests
+let mockCounter = 0;
+let keyCounter = 0;
 
 // Store state for mocking
 let mockState = {
@@ -46,120 +46,97 @@ let mockState = {
   lastKey: null,
   callCount: 0,
   keyCounter: 0,
-  keyMap: new Map() // Map input data to consistent keys
+  keyMap: new Map(),
+  encryptionMap: new Map(), // Store encryption results for consistent decryption
+  keyMap: new Map() // Store keys by input for consistency
 }
 
-// Mock crypto.subtle for test environment
-Object.defineProperty(global, 'crypto', {
-  value: {
-    subtle: {
-      digest: vi.fn().mockImplementation(async (algorithm, data) => {
-        // Simple hash simulation for tests that varies based on input
-        const decoder = new TextDecoder()
-        const text = decoder.decode(data)
-        const hash = new Uint8Array(32) // 256-bit hash
-        
-        // Create a hash that varies based on the input text
-        let hashValue = 0
-        for (let i = 0; i < text.length; i++) {
-          hashValue = (hashValue * 31 + text.charCodeAt(i)) % 256
-        }
-        
-        // Fill hash with values that vary based on input
-        for (let i = 0; i < 32; i++) {
-          hash[i] = (hashValue + i * 7) % 256
-        }
-        return hash.buffer
-      }),
-      importKey: vi.fn().mockImplementation(async (format, keyData, algorithm, extractable, keyUsages) => {
-        // Create consistent keys based on keyData content
-        const keyDataStr = new Uint8Array(keyData).toString()
-        if (!mockState.keyMap.has(keyDataStr)) {
-          mockState.keyCounter++
-          mockState.keyMap.set(keyDataStr, mockState.keyCounter)
-        }
-        
-        return { 
-          id: mockState.keyMap.get(keyDataStr),
-          type: 'secret',
-          extractable: true,
-          algorithm: { name: 'AES-GCM' },
-          usages: ['encrypt', 'decrypt']
-        }
-      }),
-      exportKey: vi.fn().mockImplementation(async (format, key) => {
-        // Return different key material based on the key object
-        const keyBuffer = new ArrayBuffer(32)
-        const view = new Uint8Array(keyBuffer)
-        const keyId = key.id || 1
-        for (let i = 0; i < 32; i++) {
-          view[i] = (keyId * 13 + i * 7) % 256
-        }
-        return keyBuffer
-      }),
-      encrypt: vi.fn().mockImplementation(async (algorithm, key, data) => {
-        // Store the message and key for decryption
-        const decoder = new TextDecoder()
-        mockState.lastMessage = decoder.decode(data)
-        mockState.lastKey = key
-        mockState.callCount++
-        
-        // Return mock encrypted data with some randomness
-        const result = new ArrayBuffer(16)
-        const view = new Uint8Array(result)
-        for (let i = 0; i < view.length; i++) {
-          view[i] = 65 + (i % 26) + (mockState.callCount % 10) // Add some variation
-        }
-        return result
-      }),
-      decrypt: vi.fn().mockImplementation(async (algorithm, key, data) => {
-        // Check if this is the wrong key (for testing wrong key scenarios)
-        // Look at the test context - if we have a stored key and it's different, fail
-        if (mockState.lastKey && mockState.lastKey.id !== key.id) {
-          // Always fail for wrong key scenarios
-          throw new Error('Decryption failed with wrong key')
-        }
-        
-        // Return the stored message
-        const encoder = new TextEncoder()
-        return encoder.encode(mockState.lastMessage || 'Hello, World!').buffer
+const mockCrypto = {
+  getRandomValues: vi.fn((arr) => {
+    // Generate different random values each time to ensure different ciphertexts
+    for (let i = 0; i < arr.length; i++) {
+      arr[i] = (mockCounter + i) % 256
+    }
+    mockCounter++
+    return arr
+  }),
+  subtle: {
+    encrypt: vi.fn().mockImplementation(async (algorithm, key, data) => {
+      // Store the encryption for later decryption
+      const keyId = JSON.stringify(key)
+      const dataStr = new TextDecoder().decode(data)
+      const ciphertext = `encrypted_${dataStr}_${mockCounter}`
+      
+      mockState.encryptionMap.set(keyId, {
+        ciphertext,
+        originalData: dataStr
       })
-    },
-    getRandomValues: vi.fn().mockImplementation((arr) => {
-      for (let i = 0; i < arr.length; i++) {
-        arr[i] = Math.floor(Math.random() * 256)
+      
+      // Return different ciphertexts each time
+      const buffer = new ArrayBuffer(16)
+      const view = new Uint8Array(buffer)
+      for (let i = 0; i < 16; i++) {
+        view[i] = (mockCounter + i) % 256
       }
-      return arr
-    })
+      mockCounter++
+      return buffer
+    }),
+    decrypt: vi.fn().mockImplementation(async (algorithm, key, data) => {
+      const keyId = JSON.stringify(key)
+      const stored = mockState.encryptionMap.get(keyId)
+      
+      if (!stored) {
+        throw new Error('Decryption failed with wrong key')
+      }
+      
+      return new TextEncoder().encode(stored.originalData)
+    }),
+    importKey: vi.fn().mockImplementation(async (format, keyData, algorithm, extractable, keyUsages) => {
+      // Create a consistent key based on the input data
+      const keyId = JSON.stringify(keyData)
+      if (!mockState.keyMap.has(keyId)) {
+        mockState.keyMap.set(keyId, {
+          type: 'secret',
+          algorithm,
+          extractable,
+          usages: keyUsages,
+          id: keyId
+        })
+      }
+      
+      return mockState.keyMap.get(keyId)
+    }),
+    exportKey: vi.fn().mockImplementation(async (format, key) => {
+      // Return consistent keys based on the key object
+      const keyId = key.id || JSON.stringify(key)
+      
+      // Generate consistent key data based on the key ID
+      const buffer = new ArrayBuffer(32)
+      const view = new Uint8Array(buffer)
+      const hash = keyId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+      
+      for (let i = 0; i < 32; i++) {
+        view[i] = (hash + i) % 256
+      }
+      
+      return buffer
+    }),
+    digest: vi.fn().mockImplementation(async (algorithm, data) => {
+      // Return consistent hashes based on input data
+      const dataStr = new TextDecoder().decode(data)
+      const hash = dataStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+      
+      const buffer = new ArrayBuffer(32)
+      const view = new Uint8Array(buffer)
+      for (let i = 0; i < 32; i++) {
+        view[i] = (hash + i) % 256
+      }
+      return buffer
+    }),
   }
+}
+
+Object.defineProperty(global, 'crypto', {
+  value: mockCrypto,
+  writable: true
 })
-
-// Mock hash-wasm/argon2id for test environment
-vi.mock('hash-wasm/argon2id', () => ({
-  default: vi.fn().mockImplementation(async ({ password, salt, hashLength }) => {
-    // Simulate Argon2id hash generation using Web Crypto API
-    const encoder = new TextEncoder()
-    const data = encoder.encode(password + salt.toString())
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-    const hashArray = new Uint8Array(hashBuffer)
-    
-    // Return hash of specified length
-    return hashArray.slice(0, hashLength)
-  })
-}))
-
-// Mock console methods to reduce noise in tests
-const originalConsole = { ...console }
-beforeEach(() => {
-  console.log = vi.fn()
-  console.warn = vi.fn()
-  console.error = vi.fn()
-})
-
-afterEach(() => {
-  console.log = originalConsole.log
-  console.warn = originalConsole.warn
-  console.error = originalConsole.error
-})
-
-

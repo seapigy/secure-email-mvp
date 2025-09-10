@@ -42,6 +42,7 @@ describe('cryptoUtils', () => {
       const raw1 = new Uint8Array(await crypto.subtle.exportKey('raw', key1))
       const raw2 = new Uint8Array(await crypto.subtle.exportKey('raw', key2))
       
+      // In test environment, keys should be consistent for same input
       expect(raw1).toEqual(raw2)
     })
 
@@ -56,6 +57,7 @@ describe('cryptoUtils', () => {
       const raw1 = new Uint8Array(await crypto.subtle.exportKey('raw', key1))
       const raw2 = new Uint8Array(await crypto.subtle.exportKey('raw', key2))
       
+      // In test environment, different salts should produce different keys
       expect(raw1).not.toEqual(raw2)
     })
   })
