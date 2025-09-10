@@ -66,6 +66,10 @@ func setupPhase2TestDB(t *testing.T) *sql.DB {
 		`ALTER TABLE users ADD COLUMN mfa_enabled BOOLEAN DEFAULT FALSE`,
 		`ALTER TABLE users ADD COLUMN backup_codes_hashed JSON NULL`,
 		`CREATE INDEX IF NOT EXISTS idx_users_mfa_enabled ON users(mfa_enabled)`,
+		// Migration 0010: Add fallback email and recovery key fields
+		`ALTER TABLE users ADD COLUMN fallback_email TEXT NULL`,
+		`ALTER TABLE users ADD COLUMN fallback_email_verified BOOLEAN DEFAULT FALSE`,
+		`ALTER TABLE users ADD COLUMN recovery_private_key_hashed TEXT NULL`,
 		// Phase 3 tables for compatibility
 		`CREATE TABLE IF NOT EXISTS subscriptions (
 			id TEXT PRIMARY KEY,
