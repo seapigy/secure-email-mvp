@@ -19,10 +19,10 @@ type loginRequest struct {
 }
 
 type loginResponse struct {
-	Token           string `json:"token"`
-	ExpiresAt       string `json:"expires_at"`
-	AccountType     string `json:"account_type"`
-	OrganizationID  string `json:"organization_id,omitempty"`
+	Token            string `json:"token"`
+	ExpiresAt        string `json:"expires_at"`
+	AccountType      string `json:"account_type"`
+	OrganizationID   string `json:"organization_id,omitempty"`
 	OrganizationRole string `json:"organization_role,omitempty"`
 }
 
@@ -102,7 +102,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt:   expiresAt.Format(time.RFC3339),
 		AccountType: accountType,
 	}
-	
+
 	// Add organization information if user is part of an organization
 	if organizationID.Valid {
 		resp.OrganizationID = organizationID.String
@@ -112,7 +112,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("INFO login_success user_id=%s", id)
-	
+
 	// Log analytics event
 	LogAnalyticsEvent(id, EventUserLogin, map[string]interface{}{
 		"account_type": accountType,

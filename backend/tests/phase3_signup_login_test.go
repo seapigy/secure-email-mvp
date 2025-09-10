@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	"securemail-backend/auth"
-)
 
+	_ "github.com/mattn/go-sqlite3"
+)
 
 // Test enhanced signup flow with account type selection
 func TestEnhancedSignupFlow(t *testing.T) {
@@ -21,11 +21,11 @@ func TestEnhancedSignupFlow(t *testing.T) {
 
 	t.Run("Free Account Signup", func(t *testing.T) {
 		reqBody := map[string]string{
-			"username":      "testuser",
-			"email":         "test@example.com",
-			"password":      "TestPassword123!",
+			"username":       "testuser",
+			"email":          "test@example.com",
+			"password":       "TestPassword123!",
 			"fallback_email": "backup@example.com",
-			"account_type":  "free",
+			"account_type":   "free",
 		}
 		jsonBody, _ := json.Marshal(reqBody)
 		req := httptest.NewRequest("POST", "/api/auth/signup", bytes.NewBuffer(jsonBody))
@@ -61,11 +61,11 @@ func TestEnhancedSignupFlow(t *testing.T) {
 
 	t.Run("Premium Account Signup", func(t *testing.T) {
 		reqBody := map[string]string{
-			"username":      "premiumuser",
-			"email":         "premium@example.com",
-			"password":      "TestPassword123!",
+			"username":       "premiumuser",
+			"email":          "premium@example.com",
+			"password":       "TestPassword123!",
 			"fallback_email": "premiumbackup@example.com",
-			"account_type":  "premium",
+			"account_type":   "premium",
 		}
 		jsonBody, _ := json.Marshal(reqBody)
 		req := httptest.NewRequest("POST", "/api/auth/signup", bytes.NewBuffer(jsonBody))
@@ -101,11 +101,11 @@ func TestEnhancedSignupFlow(t *testing.T) {
 
 	t.Run("Enterprise Account Signup", func(t *testing.T) {
 		reqBody := map[string]string{
-			"username":      "enterpriseuser",
-			"email":         "enterprise@example.com",
-			"password":      "TestPassword123!",
+			"username":       "enterpriseuser",
+			"email":          "enterprise@example.com",
+			"password":       "TestPassword123!",
 			"fallback_email": "enterprisebackup@example.com",
-			"account_type":  "enterprise",
+			"account_type":   "enterprise",
 		}
 		jsonBody, _ := json.Marshal(reqBody)
 		req := httptest.NewRequest("POST", "/api/auth/signup", bytes.NewBuffer(jsonBody))
@@ -141,9 +141,9 @@ func TestEnhancedSignupFlow(t *testing.T) {
 
 	t.Run("Invalid Account Type", func(t *testing.T) {
 		reqBody := map[string]string{
-			"username":    "invaliduser",
-			"email":       "invalid@example.com",
-			"password":    "testpassword123",
+			"username":     "invaliduser",
+			"email":        "invalid@example.com",
+			"password":     "testpassword123",
 			"account_type": "invalid",
 		}
 		jsonBody, _ := json.Marshal(reqBody)

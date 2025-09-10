@@ -18,8 +18,8 @@ type createOrganizationRequest struct {
 }
 
 type createOrganizationResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
+	Success        bool   `json:"success"`
+	Message        string `json:"message"`
 	OrganizationID string `json:"organization_id"`
 }
 
@@ -45,7 +45,7 @@ type removeUserFromOrgResponse struct {
 }
 
 type listOrgUsersResponse struct {
-	Success bool   `json:"success"`
+	Success bool      `json:"success"`
 	Users   []OrgUser `json:"users"`
 }
 
@@ -147,8 +147,8 @@ func CreateOrganizationHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("INFO organization_created user_id=%s org_id=%s", userID, orgID)
 
 	resp := createOrganizationResponse{
-		Success: true,
-		Message: "Organization created successfully",
+		Success:        true,
+		Message:        "Organization created successfully",
 		OrganizationID: orgID,
 	}
 

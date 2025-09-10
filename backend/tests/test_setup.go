@@ -4,8 +4,9 @@ import (
 	"database/sql"
 	"testing"
 
-	_ "github.com/mattn/go-sqlite3"
 	"securemail-backend/auth"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // setupTestDB creates a test database with all required migrations

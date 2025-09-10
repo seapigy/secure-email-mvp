@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	"securemail-backend/auth"
-)
 
+	_ "github.com/mattn/go-sqlite3"
+)
 
 // Test subscription upgrade flow
 func TestSubscriptionUpgradeFlow(t *testing.T) {

@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	"securemail-backend/auth"
-)
 
+	_ "github.com/mattn/go-sqlite3"
+)
 
 // Test complete Phase 3 signup/login/inbox flow
 func TestCompletePhase3Flow(t *testing.T) {
@@ -22,11 +22,11 @@ func TestCompletePhase3Flow(t *testing.T) {
 	t.Run("Complete Free User Flow", func(t *testing.T) {
 		// 1. Signup
 		reqBody := map[string]string{
-			"username":      "freeuser",
-			"email":         "free@example.com",
-			"password":      "TestPassword123!",
+			"username":       "freeuser",
+			"email":          "free@example.com",
+			"password":       "TestPassword123!",
 			"fallback_email": "freebackup@example.com",
-			"account_type":  "free",
+			"account_type":   "free",
 		}
 		jsonBody, _ := json.Marshal(reqBody)
 		req := httptest.NewRequest("POST", "/api/auth/signup", bytes.NewBuffer(jsonBody))
@@ -80,11 +80,11 @@ func TestCompletePhase3Flow(t *testing.T) {
 	t.Run("Complete Premium User Flow", func(t *testing.T) {
 		// 1. Signup
 		reqBody := map[string]string{
-			"username":      "premiumuser",
-			"email":         "premium@example.com",
-			"password":      "TestPassword123!",
+			"username":       "premiumuser",
+			"email":          "premium@example.com",
+			"password":       "TestPassword123!",
 			"fallback_email": "premiumbackup@example.com",
-			"account_type":  "premium",
+			"account_type":   "premium",
 		}
 		jsonBody, _ := json.Marshal(reqBody)
 		req := httptest.NewRequest("POST", "/api/auth/signup", bytes.NewBuffer(jsonBody))
@@ -169,11 +169,11 @@ func TestCompletePhase3Flow(t *testing.T) {
 	t.Run("Complete Enterprise User Flow", func(t *testing.T) {
 		// 1. Signup
 		reqBody := map[string]string{
-			"username":      "enterpriseuser",
-			"email":         "enterprise@example.com",
-			"password":      "TestPassword123!",
+			"username":       "enterpriseuser",
+			"email":          "enterprise@example.com",
+			"password":       "TestPassword123!",
 			"fallback_email": "enterprisebackup@example.com",
-			"account_type":  "enterprise",
+			"account_type":   "enterprise",
 		}
 		jsonBody, _ := json.Marshal(reqBody)
 		req := httptest.NewRequest("POST", "/api/auth/signup", bytes.NewBuffer(jsonBody))
@@ -370,7 +370,7 @@ func TestTrialWarningSystem(t *testing.T) {
 
 	// Create premium user with expiring trial
 	userID := createTestUserWithInbox(t, db, "trialuser", "trial@example.com", "premium", true)
-	
+
 	// Create subscription with trial expiring in 3 days
 	_, err := db.Exec(`
 		INSERT INTO subscriptions (id, user_id, status, plan, start_date, end_date, created_at, updated_at)
@@ -421,8 +421,8 @@ func TestTrialWarningSystem(t *testing.T) {
 
 		// Parse response
 		var response struct {
-			HasWarning bool                    `json:"has_warning"`
-			Warning    *auth.TrialWarning      `json:"warning,omitempty"`
+			HasWarning bool               `json:"has_warning"`
+			Warning    *auth.TrialWarning `json:"warning,omitempty"`
 		}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		if err != nil {
@@ -483,7 +483,7 @@ func TestAnalyticsSystem(t *testing.T) {
 func createTestUserWithInbox(t *testing.T, db *sql.DB, username, email, accountType string, emailVerified bool) string {
 	hashedPassword, _ := auth.HashPassword("testpassword123")
 	userID := username + "-id"
-	
+
 	_, err := db.Exec(`
 		INSERT INTO users (id, username, email, hashed_password, account_type, account_type_new, email_verified, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
