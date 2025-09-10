@@ -129,7 +129,7 @@ func TestCompletePhase3Flow(t *testing.T) {
 		}
 
 		// 2. Mark email as verified for testing
-		_, err = db.Exec("UPDATE users SET email_verified = TRUE WHERE email = ?", "premium@example.com")
+		_, err = db.Exec("UPDATE users SET email_verified = TRUE, fallback_email_verified = TRUE WHERE email = ?", "premium@example.com")
 		if err != nil {
 			t.Fatalf("Failed to verify email: %v", err)
 		}
@@ -203,7 +203,13 @@ func TestCompletePhase3Flow(t *testing.T) {
 			t.Errorf("Expected 1 subscription for enterprise user, got %d", subscriptionCount)
 		}
 
-		// 2. Create organization
+		// 2. Mark email as verified for testing
+		_, err = db.Exec("UPDATE users SET email_verified = TRUE, fallback_email_verified = TRUE WHERE email = ?", "enterprise@example.com")
+		if err != nil {
+			t.Fatalf("Failed to verify email: %v", err)
+		}
+
+		// 3. Create organization
 		orgReqBody := map[string]string{
 			"name": "Test Enterprise Org",
 		}
