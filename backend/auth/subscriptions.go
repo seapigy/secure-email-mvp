@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,14 +16,13 @@ import (
 	"github.com/stripe/stripe-go/v74/customer"
 )
 
-
 type upgradeAccountRequest struct {
 	Plan string `json:"plan"` // premium or enterprise
 }
 
 type upgradeAccountResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
+	Success      bool   `json:"success"`
+	Message      string `json:"message"`
 	ClientSecret string `json:"client_secret,omitempty"` // For Stripe payment intent
 }
 
@@ -90,51 +90,61 @@ func UpgradeAccountHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Initialize Stripe (in production, use real API key)
-	stripe.Key = "sk_test_..." // TODO: Move to environment variable
-
+	stripeAPIKey := os.Getenv("STRIPE_SECRET_KEY")
 	var customerID string
-	if stripeCustomerID.Valid {
-		// Use existing customer
-		decryptedCustomerID, err := decryptSubscriptionData(stripeCustomerID.String)
+	var encryptedCustomerID string
+	
+	if stripeAPIKey == "" {
+		// For testing/development, skip Stripe integration
+		log.Printf("INFO: Skipping Stripe integration - no API key provided")
+		customerID = "test_customer_" + userID // Use test customer ID
+		encryptedCustomerID = customerID // No encryption needed for test
+	} else {
+		stripe.Key = stripeAPIKey
+		
+		if stripeCustomerID.Valid {
+			// Use existing customer
+			decryptedCustomerID, err := decryptSubscriptionData(stripeCustomerID.String)
+			if err != nil {
+				log.Printf("ERROR decrypting customer ID: %v", err)
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				return
+			}
+			customerID = decryptedCustomerID
+		} else {
+			// Create new Stripe customer
+			userEmail, err := getUserEmail(userID)
+			if err != nil {
+				log.Printf("ERROR getting user email: %v", err)
+				http.Error(w, "database error", http.StatusServiceUnavailable)
+				return
+			}
+
+			params := &stripe.CustomerParams{
+				Email: stripe.String(userEmail),
+			}
+			customer, err := customer.New(params)
+			if err != nil {
+				log.Printf("ERROR creating Stripe customer: %v", err)
+				http.Error(w, "payment service error", http.StatusServiceUnavailable)
+				return
+			}
+			customerID = customer.ID
+		}
+
+		// Encrypt customer ID for storage
+		encryptedCustomerID, err = encryptSubscriptionData(customerID)
 		if err != nil {
-			log.Printf("ERROR decrypting customer ID: %v", err)
+			log.Printf("ERROR encrypting customer ID: %v", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		customerID = decryptedCustomerID
-	} else {
-		// Create new Stripe customer
-		userEmail, err := getUserEmail(userID)
-		if err != nil {
-			log.Printf("ERROR getting user email: %v", err)
-			http.Error(w, "database error", http.StatusServiceUnavailable)
-			return
-		}
-
-		params := &stripe.CustomerParams{
-			Email: stripe.String(userEmail),
-		}
-		customer, err := customer.New(params)
-		if err != nil {
-			log.Printf("ERROR creating Stripe customer: %v", err)
-			http.Error(w, "payment service error", http.StatusServiceUnavailable)
-			return
-		}
-		customerID = customer.ID
-	}
-
-	// Encrypt customer ID for storage
-	encryptedCustomerID, err := encryptSubscriptionData(customerID)
-	if err != nil {
-		log.Printf("ERROR encrypting customer ID: %v", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
 	}
 
 	// Create or update subscription in database
 	subscriptionID := uuid.New().String()
 	now := time.Now().UTC()
-	
+
 	// Determine subscription end date based on plan
 	var endDate time.Time
 	switch req.Plan {
