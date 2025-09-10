@@ -1,0 +1,25 @@
+Verify Your Email Address
+========================
+
+Hello {{.Name}},
+
+Thank you for signing up for Secure Email! To complete your registration and start using the world's most secure email service, please verify your email address by clicking the link below:
+
+{{.VerificationLink}}
+
+IMPORTANT: This verification link will expire in {{.Expiry}}. Please verify your email address as soon as possible.
+
+Once verified, you'll have access to:
+- End-to-end encrypted email communication
+- Quantum-resistant cryptography  
+- Zero-knowledge architecture
+- Advanced privacy protection
+
+If the link doesn't work, copy and paste it into your browser's address bar.
+
+If you didn't create an account with Secure Email, please ignore this email. Your email address will not be used for any purpose.
+
+---
+Secure Email System
+For support, contact us at support@securesystem.email
+© 2024 Secure Email. All rights reserved.
