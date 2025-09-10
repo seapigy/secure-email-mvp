@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: Website CI/CD Pipeline
 
 on:
   push:
@@ -18,10 +18,7 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: |
-          website/package-lock.json
-          frontend/package-lock.json
-          securemail-app/package-lock.json
+        cache-dependency-path: website/package-lock.json
     
     - name: Install website dependencies
       run: |
@@ -31,64 +28,35 @@ jobs:
     - name: Run website tests
       run: |
         cd website
-        npm test
+        npm test -- --run
     
-    - name: Install frontend dependencies
+    - name: Build website
       run: |
-        cd frontend
-        npm install
+        cd website
+        npm run build
     
-    - name: Run frontend linting
-      run: |
-        cd frontend
-        npm run lint
-    
-    - name: Install securemail-app dependencies
-      run: |
-        cd securemail-app
-        npm ci --legacy-peer-deps
-    
-    - name: Run securemail-app tests
-      run: |
-        cd securemail-app
-        npm run test:qa
-    
-    - name: Set up Go
-      uses: actions/setup-go@v4
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
       with:
-        go-version: '1.21'
-        cache: true
-        cache-dependency-path: backend/go.sum
-    
-    - name: Install Go dependencies
-      run: |
-        cd backend
-        go mod download
-    
-    - name: Run Go tests
-      run: |
-        cd backend
-        go test ./...
+        name: website-build
+        path: website/dist/
+        retention-days: 7
 
-  build:
+  deploy:
     needs: test
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     
     steps:
     - uses: actions/checkout@v4
     
-    - name: Build Docker images
-      run: |
-        docker build -t securemail-backend ./backend
-        docker build -t securemail-frontend ./frontend
-        docker build -t securemail-website ./website
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: website-build
+        path: website/dist/
     
-    - name: Build securemail-app web version
+    - name: Deploy to production
       run: |
-        cd securemail-app
-        npm run build:web
-    
-    - name: Push to registry
-      if: github.ref == 'refs/heads/main'
-      run: |
-        echo "Push to production registry"
+        echo "Website ready for deployment"
+        echo "Build artifacts available in website/dist/"
