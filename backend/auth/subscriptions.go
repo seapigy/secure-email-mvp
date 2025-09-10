@@ -70,7 +70,7 @@ func UpgradeAccountHandler(w http.ResponseWriter, r *http.Request) {
 	var currentPlan string
 	var stripeCustomerID sql.NullString
 	err := DB.QueryRow(`
-		SELECT u.account_type_new, s.stripe_customer_id 
+		SELECT u.account_type, s.stripe_customer_id 
 		FROM users u 
 		LEFT JOIN subscriptions s ON u.id = s.user_id AND s.status = 'active'
 		WHERE u.id = ?
@@ -93,15 +93,15 @@ func UpgradeAccountHandler(w http.ResponseWriter, r *http.Request) {
 	stripeAPIKey := os.Getenv("STRIPE_SECRET_KEY")
 	var customerID string
 	var encryptedCustomerID string
-	
+
 	if stripeAPIKey == "" {
 		// For testing/development, skip Stripe integration
 		log.Printf("INFO: Skipping Stripe integration - no API key provided")
 		customerID = "test_customer_" + userID // Use test customer ID
-		encryptedCustomerID = customerID // No encryption needed for test
+		encryptedCustomerID = customerID       // No encryption needed for test
 	} else {
 		stripe.Key = stripeAPIKey
-		
+
 		if stripeCustomerID.Valid {
 			// Use existing customer
 			decryptedCustomerID, err := decryptSubscriptionData(stripeCustomerID.String)
@@ -178,7 +178,7 @@ func UpgradeAccountHandler(w http.ResponseWriter, r *http.Request) {
 	// Update user account type
 	_, err = DB.Exec(`
 		UPDATE users 
-		SET account_type_new = ?, updated_at = ?
+		SET account_type = ?, updated_at = ?
 		WHERE id = ?
 	`, req.Plan, now, userID)
 
@@ -225,7 +225,7 @@ func DowngradeAccountHandler(w http.ResponseWriter, r *http.Request) {
 	var currentPlan string
 	var subscriptionID string
 	err := DB.QueryRow(`
-		SELECT u.account_type_new, s.id
+		SELECT u.account_type, s.id
 		FROM users u 
 		LEFT JOIN subscriptions s ON u.id = s.user_id AND s.status = 'active'
 		WHERE u.id = ?
@@ -262,7 +262,7 @@ func DowngradeAccountHandler(w http.ResponseWriter, r *http.Request) {
 	// Update user account type
 	_, err = DB.Exec(`
 		UPDATE users 
-		SET account_type_new = ?, updated_at = ?
+		SET account_type = ?, updated_at = ?
 		WHERE id = ?
 	`, req.Plan, time.Now().UTC(), userID)
 

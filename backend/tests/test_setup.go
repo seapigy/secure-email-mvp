@@ -63,7 +63,7 @@ func setupTestDB(t *testing.T) *sql.DB {
 		// Phase 3 tables
 		`CREATE TABLE IF NOT EXISTS subscriptions (
 			id TEXT PRIMARY KEY,
-			user_id TEXT NOT NULL,
+			user_id TEXT NOT NULL UNIQUE,
 			stripe_customer_id TEXT NULL,
 			stripe_subscription_id TEXT NULL,
 			status TEXT NOT NULL,
@@ -88,7 +88,14 @@ func setupTestDB(t *testing.T) *sql.DB {
 			domain_name TEXT NOT NULL UNIQUE,
 			user_id TEXT NOT NULL,
 			verified BOOLEAN DEFAULT FALSE,
+			verification_code TEXT NULL,
+			verification_code_expires_at TIMESTAMP NULL,
+			verification_method TEXT NULL,
+			dns_record_value TEXT NULL,
+			verification_attempts INTEGER DEFAULT 0,
+			last_verification_attempt TIMESTAMP NULL,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 		)`,
 		`CREATE TABLE IF NOT EXISTS organizations (

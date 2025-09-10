@@ -80,7 +80,7 @@ func TestEnhancedSignupFlow(t *testing.T) {
 
 		// Verify user was created with premium account
 		var accountType string
-		err := db.QueryRow("SELECT account_type_new FROM users WHERE email = ?", "premium@example.com").Scan(&accountType)
+		err := db.QueryRow("SELECT account_type FROM users WHERE email = ?", "premium@example.com").Scan(&accountType)
 		if err != nil {
 			t.Fatalf("Failed to check account type: %v", err)
 		}
@@ -120,7 +120,7 @@ func TestEnhancedSignupFlow(t *testing.T) {
 
 		// Verify user was created with enterprise account
 		var accountType string
-		err := db.QueryRow("SELECT account_type_new FROM users WHERE email = ?", "enterprise@example.com").Scan(&accountType)
+		err := db.QueryRow("SELECT account_type FROM users WHERE email = ?", "enterprise@example.com").Scan(&accountType)
 		if err != nil {
 			t.Fatalf("Failed to check account type: %v", err)
 		}

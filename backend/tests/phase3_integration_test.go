@@ -76,7 +76,7 @@ func TestSubscriptionUpgradeFlow(t *testing.T) {
 
 		// Verify user account type was updated
 		var accountType string
-		err = db.QueryRow("SELECT account_type_new FROM users WHERE id = ?", userID).Scan(&accountType)
+		err = db.QueryRow("SELECT account_type FROM users WHERE id = ?", userID).Scan(&accountType)
 		if err != nil {
 			t.Fatalf("Failed to check account type: %v", err)
 		}
@@ -120,7 +120,7 @@ func TestSubscriptionUpgradeFlow(t *testing.T) {
 
 		// Verify user account type was updated
 		var accountType string
-		err = db.QueryRow("SELECT account_type_new FROM users WHERE id = ?", userID).Scan(&accountType)
+		err = db.QueryRow("SELECT account_type FROM users WHERE id = ?", userID).Scan(&accountType)
 		if err != nil {
 			t.Fatalf("Failed to check account type: %v", err)
 		}
@@ -499,7 +499,7 @@ func TestAccountDowngradeFlow(t *testing.T) {
 
 		// Verify user account type was updated
 		var accountType string
-		err = db.QueryRow("SELECT account_type_new FROM users WHERE id = ?", userID).Scan(&accountType)
+		err = db.QueryRow("SELECT account_type FROM users WHERE id = ?", userID).Scan(&accountType)
 		if err != nil {
 			t.Fatalf("Failed to check account type: %v", err)
 		}
