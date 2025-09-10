@@ -1,0 +1,19 @@
+# Oracle Cloud Infrastructure CLI Configuration Template
+# This file should be placed at ~/.oci/config on your local machine
+# Replace the placeholder values with your actual OCI credentials
+
+[DEFAULT]
+user=ocid1.user.oc1..aaaaaaaa...your-user-ocid-here
+fingerprint=aa:bb:cc:dd:ee:ff:gg:hh:ii:jj:kk:ll:mm:nn:oo:pp
+key_file=~/.oci/oci_api_key.pem
+tenancy=ocid1.tenancy.oc1..aaaaaaaa...your-tenancy-ocid-here
+region=us-ashburn-1
+pass_phrase=your-key-passphrase-if-any
+
+# Additional profiles can be added here
+# [PROFILE_NAME]
+# user=ocid1.user.oc1..aaaaaaaa...another-user-ocid
+# fingerprint=aa:bb:cc:dd:ee:ff:gg:hh:ii:jj:kk:ll:mm:nn:oo:pp
+# key_file=~/.oci/another_api_key.pem
+# tenancy=ocid1.tenancy.oc1..aaaaaaaa...another-tenancy-ocid
+# region=us-phoenix-1
