@@ -1,0 +1,56 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_DSN=mysql://secureuser:securepass@tcp(db:3306)/securesystem?parseTime=true
+      - SMTP_HOST=smtp.example.com
+      - SMTP_PORT=587
+      - SMTP_USER=your-smtp-username
+      - SMTP_PASS=your-smtp-password
+      - EMAIL_FROM=no-reply@securesystem.email
+      - FRONTEND_URL=http://localhost:3000
+      - VERIFICATION_TOKEN_EXP_HOURS=24
+      - RECOVERY_TOKEN_EXP_DAYS=7
+      - ARGON2_MEMORY_KB=131072
+      - ARGON2_ITERATIONS=4
+      - ARGON2_PARALLELISM=4
+      - ARGON2_SALT_LEN=16
+      - ARGON2_KEY_LEN=32
+      - PORT=8080
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - secure-network
+
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=securesystem
+      - MYSQL_USER=secureuser
+      - MYSQL_PASSWORD=securepass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./migrations:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "secureuser", "-psecurepass"]
+      timeout: 20s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - secure-network
+
+volumes:
+  mysql_data:
+
+networks:
+  secure-network:
+    driver: bridge
+
