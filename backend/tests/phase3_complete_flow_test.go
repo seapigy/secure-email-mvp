@@ -21,10 +21,11 @@ func TestCompletePhase3Flow(t *testing.T) {
 	t.Run("Complete Free User Flow", func(t *testing.T) {
 		// 1. Signup
 		reqBody := map[string]string{
-			"username":    "freeuser",
-			"email":       "free@example.com",
-			"password":    "testpassword123",
-			"account_type": "free",
+			"username":      "freeuser",
+			"email":         "free@example.com",
+			"password":      "TestPassword123!",
+			"fallback_email": "freebackup@example.com",
+			"account_type":  "free",
 		}
 		jsonBody, _ := json.Marshal(reqBody)
 		req := httptest.NewRequest("POST", "/api/auth/signup", bytes.NewBuffer(jsonBody))
@@ -78,10 +79,11 @@ func TestCompletePhase3Flow(t *testing.T) {
 	t.Run("Complete Premium User Flow", func(t *testing.T) {
 		// 1. Signup
 		reqBody := map[string]string{
-			"username":    "premiumuser",
-			"email":       "premium@example.com",
-			"password":    "testpassword123",
-			"account_type": "premium",
+			"username":      "premiumuser",
+			"email":         "premium@example.com",
+			"password":      "TestPassword123!",
+			"fallback_email": "premiumbackup@example.com",
+			"account_type":  "premium",
 		}
 		jsonBody, _ := json.Marshal(reqBody)
 		req := httptest.NewRequest("POST", "/api/auth/signup", bytes.NewBuffer(jsonBody))
@@ -166,10 +168,11 @@ func TestCompletePhase3Flow(t *testing.T) {
 	t.Run("Complete Enterprise User Flow", func(t *testing.T) {
 		// 1. Signup
 		reqBody := map[string]string{
-			"username":    "enterpriseuser",
-			"email":       "enterprise@example.com",
-			"password":    "testpassword123",
-			"account_type": "enterprise",
+			"username":      "enterpriseuser",
+			"email":         "enterprise@example.com",
+			"password":      "TestPassword123!",
+			"fallback_email": "enterprisebackup@example.com",
+			"account_type":  "enterprise",
 		}
 		jsonBody, _ := json.Marshal(reqBody)
 		req := httptest.NewRequest("POST", "/api/auth/signup", bytes.NewBuffer(jsonBody))

@@ -167,9 +167,11 @@ func TestEmailVerificationFlow(t *testing.T) {
 	// Test 1: Signup generates verification code
 	t.Run("SignupGeneratesVerificationCode", func(t *testing.T) {
 		reqBody := map[string]string{
-			"username": "testuser",
-			"email":    "test@example.com",
-			"password": "testpassword123",
+			"username":       "testuser",
+			"email":          "test@example.com",
+			"password":       "TestPassword123!",
+			"fallback_email": "backup@example.com",
+			"account_type":   "free",
 		}
 		jsonBody, _ := json.Marshal(reqBody)
 
