@@ -36,14 +36,14 @@ export default function QuantumResistant() {
       icon: CheckCircle
     },
     {
-      year: "2024",
+      year: "2025",
       title: "Today - SecureMail Leads",
       description: "Current encryption (AES-256) is secure against classical computers, but SecureMail already implements PQC hybrid encryption for future-proof security",
       status: "secure",
       icon: CheckCircle
     },
     {
-      year: "2025-2030",
+      year: "2026-2030",
       title: "Quantum Threat Emerges",
       description: "Quantum computers with 1000+ qubits begin breaking current encryption standards. Organizations without PQC face data exposure",
       status: "warning",

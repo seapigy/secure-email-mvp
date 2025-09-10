@@ -29,24 +29,24 @@ export default function FAQ() {
       answer: "While exact timelines are uncertain, experts predict that quantum computers capable of breaking current encryption could emerge between 2025-2030. SecureMail's PQC implementation ensures you're protected today, so you don't need to worry about future quantum threats."
     },
     {
-      question: "How easy is it to add security features to each email?",
-      answer: "Extremely easy! When composing an email, you'll see a simple security panel with toggle switches for each feature. Just click to enable password protection, set self-destruct timers, add geo-restrictions, or configure view limits. Each feature can be applied individually or combined for maximum security. The interface is designed to be intuitive - no technical knowledge required."
+      question: "What security features are currently available?",
+      answer: "SecureMail currently provides military-grade authentication with Argon2id password hashing, TOTP two-factor authentication, and quantum-resistant encryption. Our zero-knowledge architecture ensures we cannot access your data. Advanced email security features like self-destruct timers and geo-restrictions are in development and will be available in future updates."
     },
     {
-      question: "Can I customize security settings for different types of emails?",
-      answer: "Absolutely! You can create security presets for different scenarios. For example, set up a 'High Security' preset with password protection, geo-restrictions, and self-destruct timers for sensitive business emails. Or create a 'Quick Secure' preset with just basic encryption for everyday use. You can also apply different settings to each individual email as needed."
+      question: "How does SecureMail's authentication work?",
+      answer: "SecureMail uses industry-leading security standards. Passwords are hashed with Argon2id (resistant to both classical and quantum attacks), and we support TOTP-based two-factor authentication. All user data is encrypted with AES-256-GCM, and we're implementing Post-Quantum Cryptography for future-proof security."
     },
     {
-      question: "Do I need to configure security features every time I send an email?",
-      answer: "No! You can set default security preferences in your account settings, and they'll be applied automatically to all outgoing emails. You can then override these defaults on a per-email basis when you need different security levels. This gives you both convenience and flexibility."
+      question: "What account types are available?",
+      answer: "SecureMail offers multiple account tiers: Free accounts for personal use, Premium accounts with enhanced features, and Enterprise accounts for organizations requiring advanced security and compliance features. Each tier includes our core quantum-resistant encryption and zero-knowledge architecture."
     },
     {
-      question: "How do recipients know if an email has special security features?",
-      answer: "Recipients receive clear, user-friendly notifications about any security features enabled on the email. For example, if password protection is enabled, they'll see a simple prompt to enter the password. If geo-restrictions are active, they'll be informed if they're in an allowed location. The interface guides them through each security step without confusion."
+      question: "How does email verification work?",
+      answer: "When you sign up, SecureMail sends a verification email to confirm your address. This ensures only legitimate users can access the platform and helps maintain the security of our network. The verification process is quick and secure, using our encrypted communication channels."
     },
     {
-      question: "Can I change security settings after sending an email?",
-      answer: "Yes, for certain features! You can extend or reduce self-destruct timers, add or remove view limits, and modify geo-restrictions even after sending. However, once an email is opened or a self-destruct timer expires, those actions cannot be reversed. This gives you ongoing control while maintaining security integrity."
+      question: "Is my data really secure with zero-knowledge architecture?",
+      answer: "Yes! Our zero-knowledge architecture means we literally cannot see your emails, even if we wanted to. All data is encrypted client-side before transmission, and we use quantum-resistant encryption algorithms. This isn't just marketing - it's a technical reality that ensures your privacy is protected at the highest level."
     }
   ]
 
