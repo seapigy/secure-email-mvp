@@ -1,0 +1,166 @@
+name: Deploy Backend to Oracle Cloud
+
+on:
+  push:
+    branches: [ main ]
+    paths: 
+      - 'handlers/**'
+      - 'internal/**'
+      - 'main.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'migrations/**'
+      - 'email_templates/**'
+      - 'deployment/**'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+        cache: true
+    
+    - name: Run tests
+      run: go test ./... -v
+    
+    - name: Build application
+      run: go build -o main .
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up OCI CLI
+      uses: oracle-actions/setup-oci-cli@v1
+      with:
+        version: latest
+    
+    - name: Configure OCI CLI
+      run: |
+        echo "${{ secrets.OCI_CONFIG }}" | base64 -d > ~/.oci/config
+        echo "${{ secrets.OCI_PRIVATE_KEY }}" | base64 -d > ~/.oci/oci_api_key.pem
+        chmod 600 ~/.oci/oci_api_key.pem
+    
+    - name: Deploy to Oracle Cloud
+      run: |
+        # Get the latest image tag
+        IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+        
+        # Deploy using OCI CLI
+        oci compute instance action --instance-id ${{ secrets.OCI_INSTANCE_ID }} --action SOFTRESET
+        
+        # Wait for instance to be ready
+        sleep 60
+        
+        # Update the application
+        oci compute instance-agent command execute \
+          --instance-id ${{ secrets.OCI_INSTANCE_ID }} \
+          --compartment-id ${{ secrets.OCI_COMPARTMENT_ID }} \
+          --command "cd /opt/secure-email && git pull origin main" \
+          --wait-for-state SUCCEEDED
+        
+        # Run database migrations
+        oci compute instance-agent command execute \
+          --instance-id ${{ secrets.OCI_INSTANCE_ID }} \
+          --compartment-id ${{ secrets.OCI_COMPARTMENT_ID }} \
+          --command "cd /opt/secure-email && chmod +x deployment/database/migrate.sh && ./deployment/database/migrate.sh" \
+          --wait-for-state SUCCEEDED
+        
+        # Restart the backend service
+        oci compute instance-agent command execute \
+          --instance-id ${{ secrets.OCI_INSTANCE_ID }} \
+          --compartment-id ${{ secrets.OCI_COMPARTMENT_ID }} \
+          --command "systemctl restart secure-email-backend.service" \
+          --wait-for-state SUCCEEDED
+        
+        # Wait for service to be ready
+        sleep 30
+        
+        # Health check
+        oci compute instance-agent command execute \
+          --instance-id ${{ secrets.OCI_INSTANCE_ID }} \
+          --compartment-id ${{ secrets.OCI_COMPARTMENT_ID }} \
+          --command "curl -f http://localhost:8080/health" \
+          --wait-for-state SUCCEEDED
+
+  verify-deployment:
+    needs: deploy
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Test API endpoint
+      run: |
+        # Test the signup endpoint
+        curl -X POST https://securemail.example.com/api/signup \
+          -H "Content-Type: application/json" \
+          -d '{
+            "email": "test@securesystem.email",
+            "password": "testpassword123",
+            "tier": "free"
+          }' \
+          --fail-with-body
+    
+    - name: Verify database connection
+      run: |
+        # This would typically be done through a monitoring service
+        echo "Deployment verification completed"

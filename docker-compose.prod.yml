@@ -1,0 +1,58 @@
+services:
+  app:
+    image: ghcr.io/seapigy/secure-email-mvp:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_DSN=${DB_DSN}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - EMAIL_FROM=${EMAIL_FROM}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - VERIFICATION_TOKEN_EXP_HOURS=${VERIFICATION_TOKEN_EXP_HOURS:-24}
+      - RECOVERY_TOKEN_EXP_DAYS=${RECOVERY_TOKEN_EXP_DAYS:-7}
+      - ARGON2_MEMORY_KB=${ARGON2_MEMORY_KB:-131072}
+      - ARGON2_ITERATIONS=${ARGON2_ITERATIONS:-4}
+      - ARGON2_PARALLELISM=${ARGON2_PARALLELISM:-4}
+      - ARGON2_SALT_LEN=${ARGON2_SALT_LEN:-16}
+      - ARGON2_KEY_LEN=${ARGON2_KEY_LEN:-32}
+      - PORT=8080
+      - HOST=0.0.0.0
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      - ENV=production
+      - DEBUG=false
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - secure-network
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deployment/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deployment/nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    networks:
+      - secure-network
+
+networks:
+  secure-network:
+    driver: bridge
