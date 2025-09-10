@@ -1,6 +1,6 @@
 // Authentication Context for SecureMail Frontend
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { AuthState, User, LoginRequest, SignupRequest } from '../types';
+import { AuthState, User, LoginRequest, SignupRequest, SignupResponse } from '../types';
 import { apiService } from '../services/api';
 import { storageService } from '../services/storage';
 
@@ -76,7 +76,7 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
 // Auth context type
 interface AuthContextType {
   state: AuthState;
-  signup: (data: SignupRequest) => Promise<void>;
+  signup: (data: SignupRequest) => Promise<SignupResponse>;
   login: (data: LoginRequest) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
@@ -140,6 +140,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // Note: We don't store session yet since email verification is required
       dispatch({ type: 'AUTH_SUCCESS', payload: { user, token: '' } });
+      
+      // Return the response with recovery key for navigation
+      return response;
       
     } catch (error: any) {
       console.error('Signup error:', error);

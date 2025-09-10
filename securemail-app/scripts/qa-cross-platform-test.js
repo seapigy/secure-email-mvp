@@ -17,6 +17,7 @@ if (fs.existsSync(apiConfigPath)) {
         { name: 'Signup endpoint', test: apiConfig.includes('/api/auth/signup') },
         { name: 'Login endpoint', test: apiConfig.includes('/api/auth/login') },
         { name: 'Email verification', test: apiConfig.includes('/api/auth/verify-email') },
+        { name: 'Account recovery', test: apiConfig.includes('/api/account/recover') },
         { name: 'MFA setup', test: apiConfig.includes('/api/auth/setup-mfa') },
         { name: 'Inbox folders', test: apiConfig.includes('/api/inbox/folders') },
         { name: 'Inbox messages', test: apiConfig.includes('/api/inbox/messages') },
@@ -62,34 +63,32 @@ if (fs.existsSync(authContextPath)) {
     console.log('❌ Auth context not found');
 }
 
-// Test 3: Account Type Selection Tests
-console.log('\n📋 Test 3: Account Type Selection Validation');
-const signupScreenPath = path.join(__dirname, '..', 'src', 'screens', 'SignupScreen.tsx');
-if (fs.existsSync(signupScreenPath)) {
-    const signupScreen = fs.readFileSync(signupScreenPath, 'utf8');
-    
-    const accountTypeChecks = [
-        { name: 'Free account option', test: signupScreen.includes('ACCOUNT_TYPES.FREE') },
-        { name: 'Premium account option', test: signupScreen.includes('ACCOUNT_TYPES.PREMIUM') },
-        { name: 'Enterprise account option', test: signupScreen.includes('ACCOUNT_TYPES.ENTERPRISE') },
-        { name: 'Account type validation', test: signupScreen.includes('accountType') },
-        { name: 'Form validation', test: signupScreen.includes('validateForm') },
-        { name: 'API integration', test: signupScreen.includes('signup(formData)') }
-    ];
-    
-    accountTypeChecks.forEach(check => {
-        if (check.test) {
-            console.log(`✅ ${check.name} - Implemented`);
-        } else {
-            console.log(`❌ ${check.name} - Missing`);
-        }
-    });
-} else {
-    console.log('❌ Signup screen not found');
-}
+// Test 3: Email Verification & Recovery System Tests
+console.log('\n📋 Test 3: Email Verification & Recovery System Validation');
+const emailVerificationPath = path.join(__dirname, '..', 'src', 'screens', 'EmailVerificationScreen.tsx');
+const recoveryKeyPath = path.join(__dirname, '..', 'src', 'screens', 'RecoveryKeyScreen.tsx');
+const accountRecoveryPath = path.join(__dirname, '..', 'src', 'screens', 'AccountRecoveryScreen.tsx');
+
+const emailVerificationChecks = [
+    { name: 'Email verification screen', test: fs.existsSync(emailVerificationPath) },
+    { name: 'Recovery key screen', test: fs.existsSync(recoveryKeyPath) },
+    { name: 'Account recovery screen', test: fs.existsSync(accountRecoveryPath) },
+    { name: 'Verification code input', test: fs.existsSync(emailVerificationPath) && fs.readFileSync(emailVerificationPath, 'utf8').includes('verificationCode') },
+    { name: 'Recovery key display', test: fs.existsSync(recoveryKeyPath) && fs.readFileSync(recoveryKeyPath, 'utf8').includes('recoveryKey') },
+    { name: 'Account recovery form', test: fs.existsSync(accountRecoveryPath) && fs.readFileSync(accountRecoveryPath, 'utf8').includes('fallback_email') }
+];
+
+emailVerificationChecks.forEach(check => {
+    if (check.test) {
+        console.log(`✅ ${check.name} - Implemented`);
+    } else {
+        console.log(`❌ ${check.name} - Missing`);
+    }
+});
 
 // Test 4: Trial Warning System Tests
 console.log('\n📋 Test 4: Trial Warning System Validation');
+const signupScreenPath = path.join(__dirname, '..', 'src', 'screens', 'WebsiteSignupScreen.tsx');
 const dashboardScreenPath = path.join(__dirname, '..', 'src', 'screens', 'DashboardScreen.tsx');
 if (fs.existsSync(dashboardScreenPath)) {
     const dashboardScreen = fs.readFileSync(dashboardScreenPath, 'utf8');
@@ -185,8 +184,11 @@ securityChecks.forEach(check => {
 // Test 8: UI/UX Consistency Tests
 console.log('\n📋 Test 8: UI/UX Consistency Validation');
 const screenFiles = [
-    'SignupScreen.tsx',
-    'LoginScreen.tsx',
+    'WebsiteSignupScreen.tsx',
+    'WebsiteLoginScreen.tsx',
+    'EmailVerificationScreen.tsx',
+    'RecoveryKeyScreen.tsx',
+    'AccountRecoveryScreen.tsx',
     'DashboardScreen.tsx',
     'InboxScreen.tsx',
     'SettingsScreen.tsx'
@@ -224,22 +226,27 @@ console.log('\n🎯 Testing Checklist:');
 console.log('====================');
 console.log('📱 Web Testing:');
 console.log('  - Open http://localhost:19006');
-console.log('  - Test signup with Free/Premium/Enterprise');
+console.log('  - Test signup with username and external email');
+console.log('  - Test email verification flow');
+console.log('  - Test recovery key display and copy/share');
+console.log('  - Test account recovery with fallback email + key');
 console.log('  - Test login and session persistence');
-console.log('  - Verify trial warnings display');
-console.log('  - Check inbox folder creation');
 console.log('');
 console.log('📱 iOS Testing:');
 console.log('  - Run: npm run ios');
 console.log('  - Test on iOS Simulator');
+console.log('  - Test email verification on mobile');
+console.log('  - Test recovery key copy/share on iOS');
 console.log('  - Verify secure token storage');
-console.log('  - Test touch interactions');
+console.log('  - Test touch interactions and keyboard');
 console.log('');
 console.log('📱 Android Testing:');
 console.log('  - Run: npm run android');
 console.log('  - Test on Android Emulator');
+console.log('  - Test email verification on mobile');
+console.log('  - Test recovery key copy/share on Android');
 console.log('  - Verify secure token storage');
-console.log('  - Test touch interactions');
+console.log('  - Test touch interactions and keyboard');
 console.log('');
 console.log('🔗 Backend API: http://localhost:8080 (test mode)');
 console.log('🚀 Ready for cross-platform testing!');

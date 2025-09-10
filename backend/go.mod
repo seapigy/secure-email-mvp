@@ -4,7 +4,8 @@ go 1.21
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/mattn/go-sqlite3 v1.14.19
+	github.com/gorilla/mux v1.8.1
+	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/pquerna/otp v1.5.0
 	github.com/stripe/stripe-go/v74 v74.30.0
 	golang.org/x/crypto v0.17.0

@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"golang.org/x/crypto/argon2"
@@ -40,6 +41,35 @@ func HashPassword(password string) (string, error) {
 	encoded := fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
 		argon2.Version, argonMemory, argonTime, argonThreads, b64Salt, b64Hash)
 	return encoded, nil
+}
+
+// ValidatePasswordStrength checks if password meets security requirements
+func ValidatePasswordStrength(password string) error {
+	if len(password) < 8 {
+		return errors.New("password must be at least 8 characters long")
+	}
+
+	hasLower, _ := regexp.MatchString(`[a-z]`, password)
+	if !hasLower {
+		return errors.New("password must contain at least one lowercase letter")
+	}
+
+	hasUpper, _ := regexp.MatchString(`[A-Z]`, password)
+	if !hasUpper {
+		return errors.New("password must contain at least one uppercase letter")
+	}
+
+	hasNumber, _ := regexp.MatchString(`[0-9]`, password)
+	if !hasNumber {
+		return errors.New("password must contain at least one number")
+	}
+
+	hasSpecial, _ := regexp.MatchString(`[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]`, password)
+	if !hasSpecial {
+		return errors.New("password must contain at least one special character")
+	}
+
+	return nil
 }
 
 // VerifyPassword compares plaintext password with encoded hash.

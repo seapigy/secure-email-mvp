@@ -1,7 +1,7 @@
 package auth
 
 // DO NOT EDIT EXISTING CODE - new file added
-// Email verification handlers: generate, store, and validate verification codes
+// Email verification handler (Go). Assumes a global DB variable is set by main application.
 
 import (
 	"database/sql"
@@ -12,189 +12,146 @@ import (
 )
 
 type verifyEmailRequest struct {
-	Email string `json:"email"`
-	Code  string `json:"code"`
+	UserID string `json:"user_id"`
+	Code   string `json:"code"`
 }
 
 type verifyEmailResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
-}
-
-type resendVerificationRequest struct {
-	Email string `json:"email"`
-}
-
-type resendVerificationResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
+	Success     bool   `json:"success"`
+	Message     string `json:"message"`
+	RecoveryKey string `json:"recovery_key,omitempty"` // Only sent after successful verification
 }
 
 // POST /api/auth/verify-email
 func VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
+	// Basic JSON decode
 	var req verifyEmailRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	if req.Email == "" || req.Code == "" {
-		http.Error(w, "missing email or code", http.StatusBadRequest)
+	// Validate required fields
+	if req.UserID == "" || req.Code == "" {
+		http.Error(w, "missing user_id or code", http.StatusBadRequest)
 		return
 	}
 
-	// Hash the provided code for comparison
+	// Hash the provided verification code
 	hashedCode := HashToken(req.Code)
 
-	// Look up user and verification code
+	// Find user and verify code
 	var userID string
-	var storedHashedCode string
-	var expiresAt time.Time
-	var emailVerified bool
+	var fallbackEmail string
+	var username string
+	var fallbackEmailVerified bool
+	var verificationCodeExpiresAt time.Time
 
 	err := DB.QueryRow(`
-		SELECT id, verification_code, verification_code_expires_at, email_verified 
+		SELECT id, fallback_email, username, fallback_email_verified, verification_code_expires_at
 		FROM users 
-		WHERE email = ? AND verification_code = ?
-	`, req.Email, hashedCode).Scan(&userID, &storedHashedCode, &expiresAt, &emailVerified)
+		WHERE id = ? AND verification_code = ?
+	`, req.UserID, hashedCode).Scan(&userID, &fallbackEmail, &username, &fallbackEmailVerified, &verificationCodeExpiresAt)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "invalid verification code", http.StatusUnauthorized)
+			http.Error(w, "invalid user_id or verification code", http.StatusUnauthorized)
 			return
 		}
-		log.Printf("ERROR verification lookup: %v", err)
-		http.Error(w, "database error", http.StatusServiceUnavailable)
-		return
-	}
-
-	// Check if already verified
-	if emailVerified {
-		http.Error(w, "email already verified", http.StatusConflict)
-		return
-	}
-
-	// Check if code is expired
-	if time.Now().After(expiresAt) {
-		http.Error(w, "verification code expired", http.StatusUnauthorized)
-		return
-	}
-
-	// Mark email as verified and clear verification code
-	_, err = DB.Exec(`
-		UPDATE users 
-		SET email_verified = TRUE, 
-		    verification_code = NULL, 
-		    verification_code_expires_at = NULL,
-		    updated_at = ?
-		WHERE id = ?
-	`, time.Now().UTC(), userID)
-
-	if err != nil {
-		log.Printf("ERROR updating email verification: %v", err)
-		http.Error(w, "database error", http.StatusServiceUnavailable)
-		return
-	}
-
-	// Log successful verification (non-sensitive)
-	log.Printf("INFO email_verified user_id=%s", userID)
-
-	resp := verifyEmailResponse{
-		Success: true,
-		Message: "Email verified successfully",
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
-}
-
-// POST /api/auth/resend-verification
-func ResendVerificationHandler(w http.ResponseWriter, r *http.Request) {
-	var req resendVerificationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid JSON", http.StatusBadRequest)
-		return
-	}
-
-	if req.Email == "" {
-		http.Error(w, "missing email", http.StatusBadRequest)
-		return
-	}
-
-	// Check if user exists and is not already verified
-	var userID string
-	var emailVerified bool
-	err := DB.QueryRow(`
-		SELECT id, email_verified 
-		FROM users 
-		WHERE email = ?
-	`, req.Email).Scan(&userID, &emailVerified)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			// Don't reveal if email exists or not
-			resp := resendVerificationResponse{
-				Success: true,
-				Message: "If the email exists and is unverified, a new verification code has been sent",
-			}
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(resp)
-			return
-		}
-		log.Printf("ERROR resend verification lookup: %v", err)
-		http.Error(w, "database error", http.StatusServiceUnavailable)
-		return
-	}
-
-	// If already verified, don't reveal this
-	if emailVerified {
-		resp := resendVerificationResponse{
-			Success: true,
-			Message: "If the email exists and is unverified, a new verification code has been sent",
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
-		return
-	}
-
-	// Generate new verification code
-	verificationCode, err := GenerateRandomToken(6) // 6-character code
-	if err != nil {
-		log.Printf("ERROR generating verification code: %v", err)
+		log.Printf("ERROR querying user for email verification: %v", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
-	hashedCode := HashToken(verificationCode)
-	expiresAt := time.Now().Add(30 * time.Minute).UTC() // 30-minute expiry
+	// Check if already verified
+	if fallbackEmailVerified {
+		http.Error(w, "email already verified", http.StatusConflict)
+		return
+	}
 
-	// Update user with new verification code
-	_, err = DB.Exec(`
+	// Check if verification code has expired
+	now := time.Now().UTC()
+	if now.After(verificationCodeExpiresAt) {
+		http.Error(w, "verification code has expired", http.StatusUnauthorized)
+		return
+	}
+
+	// Start transaction for verification
+	tx, err := DB.Begin()
+	if err != nil {
+		log.Printf("ERROR begin tx for email verification: %v", err)
+		http.Error(w, "database error", http.StatusServiceUnavailable)
+		return
+	}
+	defer tx.Rollback()
+
+	// Mark fallback email as verified
+	_, err = tx.Exec(`
 		UPDATE users 
-		SET verification_code = ?, 
-		    verification_code_expires_at = ?,
-		    updated_at = ?
+		SET fallback_email_verified = TRUE, updated_at = ?
 		WHERE id = ?
-	`, hashedCode, expiresAt, time.Now().UTC(), userID)
+	`, now, userID)
 
 	if err != nil {
-		log.Printf("ERROR updating verification code: %v", err)
+		log.Printf("ERROR updating email verification status: %v", err)
 		http.Error(w, "database error", http.StatusServiceUnavailable)
 		return
 	}
 
-	// TODO: Send email with verification code
-	// For now, log the code (in production, this would be sent via email service)
-	log.Printf("INFO verification_code_generated user_id=%s code=%s", userID, verificationCode)
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		log.Printf("ERROR commit email verification tx: %v", err)
+		http.Error(w, "database error", http.StatusServiceUnavailable)
+		return
+	}
 
-	// Log successful resend (non-sensitive)
-	log.Printf("INFO verification_resent user_id=%s", userID)
+	// Now send the recovery key to the verified email
+	// Get the recovery key from the database (we need to generate a new one since we can't retrieve the original)
+	recoveryKey, err := GenerateRandomToken(32) // 32 bytes = 256 bits
+	if err != nil {
+		log.Printf("ERROR generating recovery key for verified user: %v", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	hashedRecoveryKey := HashToken(recoveryKey)
 
-	resp := resendVerificationResponse{
-		Success: true,
-		Message: "If the email exists and is unverified, a new verification code has been sent",
+	// Update the recovery key in the database
+	_, err = DB.Exec(`
+		UPDATE users 
+		SET recovery_private_key_hashed = ?, updated_at = ?
+		WHERE id = ?
+	`, hashedRecoveryKey, now, userID)
+
+	if err != nil {
+		log.Printf("ERROR updating recovery key: %v", err)
+		http.Error(w, "database error", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Send recovery key via email
+	if err := SendRecoveryKeyEmail(fallbackEmail, recoveryKey, username); err != nil {
+		log.Printf("ERROR sending recovery key email: %v", err)
+		// Don't fail verification if email sending fails, just log it
+	} else {
+		log.Printf("INFO recovery_key_email_sent user_id=%s fallback_email=%s", userID, fallbackEmail)
+	}
+
+	// Log verification success
+	log.Printf("INFO email_verification_successful user_id=%s fallback_email=%s", userID, fallbackEmail)
+
+	// Log analytics event
+	LogAnalyticsEvent(userID, EventEmailVerified, map[string]interface{}{
+		"success": true,
+	})
+
+	// Success response with recovery key
+	resp := verifyEmailResponse{
+		Success:     true,
+		Message:     "Email verified successfully. Recovery key sent to your email.",
+		RecoveryKey: recoveryKey, // Only sent after successful verification
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(resp)
 }

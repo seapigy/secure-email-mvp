@@ -103,6 +103,69 @@ func generateBackupCodes() []string {
 	return codes
 }
 
+// SetupMFAForUser sets up MFA for a user during signup (internal function)
+func SetupMFAForUser(userID, username string) (*setupMFAResponse, error) {
+	// Generate TOTP secret
+	secret, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      "SecureEmail",
+		AccountName: username,
+		Period:      30,
+		Digits:      otp.DigitsSix,
+		Algorithm:   otp.AlgorithmSHA1,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("generating TOTP secret: %v", err)
+	}
+
+	// Encrypt the secret
+	encryptedSecret, err := encryptTOTPSecret(secret.Secret())
+	if err != nil {
+		return nil, fmt.Errorf("encrypting TOTP secret: %v", err)
+	}
+
+	// Generate backup codes
+	backupCodes := generateBackupCodes()
+
+	// Store encrypted secret and backup codes in database
+	tx, err := DB.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("beginning transaction: %v", err)
+	}
+	defer tx.Rollback()
+
+	// Update user with MFA enabled
+	_, err = tx.Exec(`
+		UPDATE users 
+		SET mfa_enabled = true, mfa_secret = ?
+		WHERE id = ?
+	`, encryptedSecret, userID)
+	if err != nil {
+		return nil, fmt.Errorf("updating user MFA: %v", err)
+	}
+
+	// Store backup codes
+	for _, code := range backupCodes {
+		hashedCode := HashToken(code)
+		_, err = tx.Exec(`
+			INSERT INTO recovery_codes (user_id, code_hash, used, created_at)
+			VALUES (?, ?, false, ?)
+		`, userID, hashedCode, time.Now().UTC())
+		if err != nil {
+			return nil, fmt.Errorf("storing backup code: %v", err)
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, fmt.Errorf("committing transaction: %v", err)
+	}
+
+	return &setupMFAResponse{
+		Secret:      secret.Secret(),
+		QRCodeURL:   secret.URL(),
+		BackupCodes: backupCodes,
+	}, nil
+}
+
 // POST /api/auth/setup-mfa
 func SetupMFAHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract user ID from session context (set by TokenAuthMiddleware)

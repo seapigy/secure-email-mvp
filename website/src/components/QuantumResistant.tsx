@@ -114,23 +114,34 @@ export default function QuantumResistant() {
           className="mb-16"
         >
           <div className="relative">
-            {/* Timeline Line */}
-            <div className="absolute left-1/2 transform -translate-x-1/2 w-1 h-full bg-gradient-to-b from-green-500 via-yellow-500 to-red-500 rounded-full"></div>
+            {/* Timeline Line - Hidden on mobile, visible on desktop */}
+            <div className="hidden md:block absolute left-1/2 transform -translate-x-1/2 w-1 h-full bg-gradient-to-b from-green-500 via-yellow-500 to-red-500 rounded-full"></div>
             
             {/* Timeline Items */}
-            <div className="space-y-12">
+            <div className="space-y-8 md:space-y-12">
               {timelineItems.map((item, index) => (
                 <MotionDiv
                   key={item.year}
                   initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
                   animate={isInView ? { opacity: 1, x: 0 } : {}}
                   transition={{ duration: 0.6, delay: 0.4 + index * 0.2 }}
-                  className={`flex items-center ${index % 2 === 0 ? 'flex-row' : 'flex-row-reverse'}`}
+                  className={`flex items-center ${
+                    // Mobile: always vertical layout
+                    'flex-col md:flex-row' + 
+                    // Desktop: alternating layout
+                    (index % 2 === 0 ? ' md:flex-row' : ' md:flex-row-reverse')
+                  }`}
                 >
-                  <div className={`w-1/2 ${index % 2 === 0 ? 'pr-8 text-right' : 'pl-8 text-left'}`}>
-                    <div className="bg-white dark:bg-dark-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+                  {/* Mobile: Full width, Desktop: Half width */}
+                  <div className={`w-full md:w-1/2 ${
+                    // Mobile: always left-aligned with padding
+                    'pl-4 md:pl-0' +
+                    // Desktop: alternating alignment
+                    (index % 2 === 0 ? ' md:pr-8 md:text-right' : ' md:pl-8 md:text-left')
+                  }`}>
+                    <div className="bg-white dark:bg-dark-800 rounded-2xl p-4 md:p-6 shadow-lg border border-gray-200 dark:border-gray-700">
                       <div className="flex items-center space-x-3 mb-3">
-                        <item.icon className={`w-6 h-6 ${
+                        <item.icon className={`w-5 h-5 md:w-6 md:h-6 ${
                           item.status === 'secure' ? 'text-green-500' :
                           item.status === 'warning' ? 'text-yellow-500' :
                           item.status === 'critical' ? 'text-red-500' :
@@ -140,15 +151,15 @@ export default function QuantumResistant() {
                           item.status === 'standardization' ? 'text-indigo-500' :
                           'text-gray-500'
                         }`} />
-                        <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{item.year}</span>
+                        <span className="text-xl md:text-2xl font-bold text-indigo-600 dark:text-indigo-400">{item.year}</span>
                       </div>
-                      <h3 className="text-xl font-semibold text-dark-900 dark:text-white mb-2">{item.title}</h3>
-                      <p className="text-gray-600 dark:text-gray-300">{item.description}</p>
+                      <h3 className="text-lg md:text-xl font-semibold text-dark-900 dark:text-white mb-2">{item.title}</h3>
+                      <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 leading-relaxed">{item.description}</p>
                     </div>
                   </div>
                   
-                  {/* Timeline Dot */}
-                  <div className={`w-4 h-4 rounded-full border-4 border-white dark:border-dark-800 ${
+                  {/* Timeline Dot - Positioned differently for mobile vs desktop */}
+                  <div className={`w-3 h-3 md:w-4 md:h-4 rounded-full border-2 md:border-4 border-white dark:border-dark-800 ${
                     item.status === 'secure' ? 'bg-green-500' :
                     item.status === 'warning' ? 'bg-yellow-500' :
                     item.status === 'critical' ? 'bg-red-500' :
@@ -157,9 +168,13 @@ export default function QuantumResistant() {
                     item.status === 'breakthrough' ? 'bg-orange-500' :
                     item.status === 'standardization' ? 'bg-indigo-500' :
                     'bg-gray-500'
+                  } ${
+                    // Mobile: positioned to the left of content
+                    'absolute left-0 top-6 md:relative md:top-0'
                   }`}></div>
                   
-                  <div className="w-1/2"></div>
+                  {/* Desktop spacer - hidden on mobile */}
+                  <div className="hidden md:block w-1/2"></div>
                 </MotionDiv>
               ))}
             </div>

@@ -13,6 +13,7 @@ export const API_CONFIG = {
     RESEND_VERIFICATION: '/api/auth/resend-verification',
     SETUP_MFA: '/api/auth/setup-mfa',
     VALIDATE_MFA: '/api/auth/validate-mfa',
+    RECOVER_ACCOUNT: '/api/account/recover',
     INBOX_FOLDERS: '/api/inbox/folders',
     INBOX_MESSAGES: '/api/inbox/messages',
     TRIAL_WARNING: '/api/trial/warning',

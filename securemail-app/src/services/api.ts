@@ -5,6 +5,10 @@ import {
   LoginResponse, 
   SignupRequest, 
   SignupResponse, 
+  VerifyEmailRequest,
+  VerifyEmailResponse,
+  RecoveryRequest,
+  RecoveryResponse,
   TrialWarning, 
   InboxFolder, 
   EmailMessage,
@@ -96,12 +100,20 @@ class ApiService {
     });
   }
 
-  async verifyEmail(code: string): Promise<{ success: boolean }> {
-    return this.makeRequest<{ success: boolean }>(API_CONFIG.ENDPOINTS.VERIFY_EMAIL, {
+  async verifyEmail(data: VerifyEmailRequest): Promise<VerifyEmailResponse> {
+    return this.makeRequest<VerifyEmailResponse>(API_CONFIG.ENDPOINTS.VERIFY_EMAIL, {
       method: 'POST',
-      body: JSON.stringify({ code }),
+      body: JSON.stringify(data),
     });
   }
+
+  async recoverAccount(data: RecoveryRequest): Promise<RecoveryResponse> {
+    return this.makeRequest<RecoveryResponse>(API_CONFIG.ENDPOINTS.RECOVER_ACCOUNT, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
 
   async resendVerification(): Promise<{ success: boolean }> {
     return this.makeRequest<{ success: boolean }>(API_CONFIG.ENDPOINTS.RESEND_VERIFICATION, {

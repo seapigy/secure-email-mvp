@@ -18,6 +18,10 @@ type contextKey string
 const userIDKey contextKey = "userID"
 
 // Set DB in main application before handlers used
+func SetDB(database *sql.DB) {
+	DB = database
+}
+
 var DB *sql.DB
 
 // ContextWithUserID adds user ID to context

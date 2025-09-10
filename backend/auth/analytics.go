@@ -27,10 +27,10 @@ type AnalyticsEvent struct {
 func LogAnalyticsEvent(userID, eventType string, metadata map[string]interface{}) {
 	// Create anonymized user hash
 	userHash := hashUserID(userID)
-	
+
 	// Ensure metadata contains no personal information
 	safeMetadata := sanitizeMetadata(metadata)
-	
+
 	metadataJSON, err := json.Marshal(safeMetadata)
 	if err != nil {
 		log.Printf("ERROR marshaling analytics metadata: %v", err)
@@ -57,7 +57,7 @@ func hashUserID(userID string) string {
 // sanitizeMetadata removes any potentially personal information from metadata
 func sanitizeMetadata(metadata map[string]interface{}) map[string]interface{} {
 	safe := make(map[string]interface{})
-	
+
 	// Allowed metadata fields (no personal data)
 	allowedFields := map[string]bool{
 		"account_type":     true,
@@ -86,15 +86,6 @@ func generateEventID() string {
 	return uuid.New().String()
 }
 
-// randomString generates a random string of specified length
-func randomString(length int) string {
-	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
-	}
-	return string(b)
-}
 
 // AnalyticsHandler returns anonymized analytics data (admin only)
 func AnalyticsHandler(w http.ResponseWriter, r *http.Request) {
@@ -158,10 +149,10 @@ func AnalyticsHandler(w http.ResponseWriter, r *http.Request) {
 func calculateAnalyticsSummary(events []AnalyticsEvent) map[string]interface{} {
 	eventCounts := make(map[string]int)
 	accountTypes := make(map[string]int)
-	
+
 	for _, event := range events {
 		eventCounts[event.EventType]++
-		
+
 		// Extract account type from metadata if available
 		if accountType, ok := event.Metadata["account_type"].(string); ok {
 			accountTypes[accountType]++
@@ -169,27 +160,29 @@ func calculateAnalyticsSummary(events []AnalyticsEvent) map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"total_events":    len(events),
-		"event_types":     eventCounts,
-		"account_types":   accountTypes,
-		"date_range":      "last_30_days",
+		"total_events":  len(events),
+		"event_types":   eventCounts,
+		"account_types": accountTypes,
+		"date_range":    "last_30_days",
 	}
 }
 
 // Common analytics event types
 const (
-	EventUserSignup        = "user_signup"
-	EventUserLogin         = "user_login"
-	EventEmailSent         = "email_sent"
-	EventEmailReceived     = "email_received"
-	EventFolderCreated     = "folder_created"
-	EventTrialWarning      = "trial_warning"
-	EventAccountUpgrade    = "account_upgrade"
-	EventAccountDowngrade  = "account_downgrade"
-	EventDomainAdded       = "domain_added"
-	EventDomainVerified    = "domain_verified"
-	EventOrgCreated        = "organization_created"
-	EventOrgUserAdded      = "organization_user_added"
-	EventMfaSetup          = "mfa_setup"
-	EventMfaUsed           = "mfa_used"
+	EventUserSignup       = "user_signup"
+	EventUserLogin        = "user_login"
+	EventEmailSent        = "email_sent"
+	EventEmailReceived    = "email_received"
+	EventFolderCreated    = "folder_created"
+	EventTrialWarning     = "trial_warning"
+	EventAccountUpgrade   = "account_upgrade"
+	EventAccountDowngrade = "account_downgrade"
+	EventDomainAdded      = "domain_added"
+	EventAccountRecovery  = "account_recovery"
+	EventEmailVerified    = "email_verified"
+	EventDomainVerified   = "domain_verified"
+	EventOrgCreated       = "organization_created"
+	EventOrgUserAdded     = "organization_user_added"
+	EventMfaSetup         = "mfa_setup"
+	EventMfaUsed          = "mfa_used"
 )

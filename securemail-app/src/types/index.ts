@@ -29,6 +29,8 @@ export interface SignupRequest {
   email: string;
   password: string;
   accountType: AccountType;
+  fallback_email: string;
+  setupMFA?: boolean;
 }
 
 export interface SignupResponse {
@@ -37,6 +39,37 @@ export interface SignupResponse {
   email: string;
   accountType: AccountType;
   createdAt: string;
+  mfa?: {
+    secret: string;
+    qr_code_url: string;
+    backup_codes: string[];
+  };
+  // recovery_key: string; // Will be sent after email verification
+}
+
+export interface VerifyEmailRequest {
+  user_id: string;
+  code: string;
+}
+
+export interface VerifyEmailResponse {
+  success: boolean;
+  message: string;
+  recovery_key: string;
+}
+
+export interface RecoveryRequest {
+  fallback_email: string;
+  recovery_key: string;
+  action: 'reset_password' | 'reset_email';
+  new_password?: string;
+  new_email?: string;
+}
+
+export interface RecoveryResponse {
+  success: boolean;
+  message: string;
+  user_id?: string;
 }
 
 export interface TrialWarning {
@@ -110,9 +143,13 @@ export type RootStackParamList = {
 };
 
 export type AuthStackParamList = {
-  Signup: undefined;
+  Signup: { selectedPlan?: AccountType };
   Login: undefined;
   ForgotPassword: undefined;
+  PlanSelection: undefined;
+  EmailVerification: { userId: string; username: string; email: string };
+  RecoveryKey: { recoveryKey: string; username: string; email: string };
+  AccountRecovery: undefined;
 };
 
 export type MainTabParamList = {

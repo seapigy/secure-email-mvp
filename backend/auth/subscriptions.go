@@ -15,8 +15,6 @@ import (
 	"github.com/stripe/stripe-go/v74/customer"
 )
 
-// Subscription encryption key (in production, this should come from environment)
-var subscriptionEncryptionKey = []byte("your-32-byte-subscription-key-here") // 32 bytes for AES-256
 
 type upgradeAccountRequest struct {
 	Plan string `json:"plan"` // premium or enterprise
@@ -139,10 +137,14 @@ func UpgradeAccountHandler(w http.ResponseWriter, r *http.Request) {
 	
 	// Determine subscription end date based on plan
 	var endDate time.Time
-	if req.Plan == "premium" {
+	switch req.Plan {
+	case "premium":
 		endDate = now.AddDate(0, 1, 0) // 1 month
-	} else if req.Plan == "enterprise" {
+	case "enterprise":
 		endDate = now.AddDate(1, 0, 0) // 1 year
+	default:
+		http.Error(w, "invalid plan", http.StatusBadRequest)
+		return
 	}
 
 	_, err = DB.Exec(`
