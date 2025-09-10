@@ -69,18 +69,19 @@ func TestEmailVerificationFlow(t *testing.T) {
 		// First create a user with a known verification code
 		hashedCode := auth.HashToken("123456")
 		expiresAt := time.Now().Add(30 * time.Minute)
+		userID := "test-id"
 
 		_, err := db.Exec(`
-			INSERT INTO users (id, username, email, hashed_password, verification_code, verification_code_expires_at, email_verified)
-			VALUES ('test-id', 'testuser2', 'test2@example.com', 'hashedpass', ?, ?, FALSE)
-		`, hashedCode, expiresAt)
+			INSERT INTO users (id, username, email, hashed_password, verification_code, verification_code_expires_at, fallback_email_verified, fallback_email)
+			VALUES (?, 'testuser2', 'test2@example.com', 'hashedpass', ?, ?, FALSE, 'test2@example.com')
+		`, userID, hashedCode, expiresAt)
 		if err != nil {
 			t.Fatalf("Failed to insert test user: %v", err)
 		}
 
 		reqBody := map[string]string{
-			"email": "test2@example.com",
-			"code":  "123456",
+			"user_id": userID,
+			"code":    "123456",
 		}
 		jsonBody, _ := json.Marshal(reqBody)
 
@@ -95,19 +96,19 @@ func TestEmailVerificationFlow(t *testing.T) {
 		}
 
 		// Check that email is now verified
-		var emailVerified bool
+		var fallbackEmailVerified bool
 		var verificationCode sql.NullString
 		err = db.QueryRow(`
-			SELECT email_verified, verification_code 
+			SELECT fallback_email_verified, verification_code 
 			FROM users 
-			WHERE email = 'test2@example.com'
-		`).Scan(&emailVerified, &verificationCode)
+			WHERE id = ?
+		`, userID).Scan(&fallbackEmailVerified, &verificationCode)
 
 		if err != nil {
 			t.Fatalf("Failed to query email verification status: %v", err)
 		}
 
-		if !emailVerified {
+		if !fallbackEmailVerified {
 			t.Error("Email should be verified")
 		}
 
@@ -119,8 +120,8 @@ func TestEmailVerificationFlow(t *testing.T) {
 	// Test 3: Email verification with invalid code
 	t.Run("EmailVerificationWithInvalidCode", func(t *testing.T) {
 		reqBody := map[string]string{
-			"email": "test2@example.com",
-			"code":  "invalid",
+			"user_id": "test-id",
+			"code":    "invalid",
 		}
 		jsonBody, _ := json.Marshal(reqBody)
 

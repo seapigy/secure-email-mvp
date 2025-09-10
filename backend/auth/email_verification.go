@@ -85,10 +85,10 @@ func VerifyEmailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	// Mark fallback email as verified
+	// Mark fallback email as verified and clear verification code
 	_, err = tx.Exec(`
 		UPDATE users 
-		SET fallback_email_verified = TRUE, updated_at = ?
+		SET fallback_email_verified = TRUE, verification_code = NULL, updated_at = ?
 		WHERE id = ?
 	`, now, userID)
 
