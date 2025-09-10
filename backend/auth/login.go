@@ -41,7 +41,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var organizationID sql.NullString
 	var organizationRole sql.NullString
 	err := DB.QueryRow(`
-		SELECT u.id, u.hashed_password, u.mfa_enabled, u.email_verified, u.account_type_new, om.organization_id, om.role
+		SELECT u.id, u.hashed_password, u.mfa_enabled, u.email_verified, u.account_type, om.organization_id, om.role
 		FROM users u
 		LEFT JOIN organization_members om ON u.id = om.user_id AND om.status = 'active'
 		WHERE u.email = ? LIMIT 1

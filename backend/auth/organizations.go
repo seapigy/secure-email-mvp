@@ -79,7 +79,7 @@ func CreateOrganizationHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Check if user has enterprise account
 	var accountType string
-	err := DB.QueryRow("SELECT account_type_new FROM users WHERE id = ?", userID).Scan(&accountType)
+	err := DB.QueryRow("SELECT account_type FROM users WHERE id = ?", userID).Scan(&accountType)
 	if err != nil {
 		log.Printf("ERROR getting user account type: %v", err)
 		http.Error(w, "database error", http.StatusServiceUnavailable)

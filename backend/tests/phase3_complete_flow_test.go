@@ -137,7 +137,7 @@ func TestCompletePhase3Flow(t *testing.T) {
 		// 3. Login
 		loginReqBody := map[string]string{
 			"email":    "premium@example.com",
-			"password": "testpassword123",
+			"password": "TestPassword123!",
 		}
 		loginJsonBody, _ := json.Marshal(loginReqBody)
 		loginReq := httptest.NewRequest("POST", "/api/auth/login", bytes.NewBuffer(loginJsonBody))
@@ -209,14 +209,39 @@ func TestCompletePhase3Flow(t *testing.T) {
 			t.Fatalf("Failed to verify email: %v", err)
 		}
 
-		// 3. Create organization
+		// 3. Login to get authentication token
+		loginReqBody := map[string]string{
+			"email":    "enterprise@example.com",
+			"password": "TestPassword123!",
+		}
+		loginJsonBody, _ := json.Marshal(loginReqBody)
+		loginReq := httptest.NewRequest("POST", "/api/auth/login", bytes.NewBuffer(loginJsonBody))
+		loginReq.Header.Set("Content-Type", "application/json")
+
+		loginW := httptest.NewRecorder()
+		auth.LoginHandler(loginW, loginReq)
+
+		if loginW.Code != http.StatusOK {
+			t.Errorf("Expected login status 200, got %d", loginW.Code)
+		}
+
+		// Parse login response to get token
+		var loginResponse struct {
+			Token string `json:"token"`
+		}
+		err = json.Unmarshal(loginW.Body.Bytes(), &loginResponse)
+		if err != nil {
+			t.Fatalf("Failed to parse login response: %v", err)
+		}
+
+		// 4. Create organization
 		orgReqBody := map[string]string{
 			"name": "Test Enterprise Org",
 		}
 		orgJsonBody, _ := json.Marshal(orgReqBody)
 		orgReq := httptest.NewRequest("POST", "/api/org/create", bytes.NewBuffer(orgJsonBody))
 		orgReq.Header.Set("Content-Type", "application/json")
-		orgReq.Header.Set("Authorization", "Bearer test-token")
+		orgReq.Header.Set("Authorization", "Bearer "+loginResponse.Token)
 
 		// Add user context
 		ctx := auth.ContextWithUserID(orgReq.Context(), userID)
