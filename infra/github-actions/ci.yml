@@ -77,9 +77,8 @@ jobs:
     
     - name: Build Docker images
       run: |
+        # Build only the backend Docker image (frontend/website don't have Dockerfiles)
         docker build -t securemail-backend ./backend
-        docker build -t securemail-frontend ./frontend
-        docker build -t securemail-website ./website
     
     - name: Build securemail-app web version
       run: |
