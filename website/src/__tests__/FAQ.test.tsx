@@ -30,12 +30,12 @@ describe('FAQ Component', () => {
     expect(screen.getByText('Is PQC encryption slower than regular encryption?')).toBeInTheDocument()
     expect(screen.getByText('When will quantum computers break current encryption?')).toBeInTheDocument()
     
-    // Security features questions
-    expect(screen.getByText('How easy is it to add security features to each email?')).toBeInTheDocument()
-    expect(screen.getByText('Can I customize security settings for different types of emails?')).toBeInTheDocument()
-    expect(screen.getByText('Do I need to configure security features every time I send an email?')).toBeInTheDocument()
-    expect(screen.getByText('How do recipients know if an email has special security features?')).toBeInTheDocument()
-    expect(screen.getByText('Can I change security settings after sending an email?')).toBeInTheDocument()
+    // Current implementation questions
+    expect(screen.getByText('What security features are currently available?')).toBeInTheDocument()
+    expect(screen.getByText('How does SecureMail\'s authentication work?')).toBeInTheDocument()
+    expect(screen.getByText('What account types are available?')).toBeInTheDocument()
+    expect(screen.getByText('How does email verification work?')).toBeInTheDocument()
+    expect(screen.getByText('Is my data really secure with zero-knowledge architecture?')).toBeInTheDocument()
   })
 
   it('shows chevron down icons initially', () => {
@@ -86,12 +86,12 @@ describe('FAQ Component', () => {
     expect(screen.getByText(/PQC algorithms can be slightly slower/)).toBeInTheDocument()
     expect(screen.getByText(/quantum computers capable of breaking current encryption/)).toBeInTheDocument()
     
-    // Check for security features content in answers
-    expect(screen.getByText(/simple security panel with toggle switches/)).toBeInTheDocument()
-    expect(screen.getByText(/create security presets for different scenarios/)).toBeInTheDocument()
-    expect(screen.getByText(/set default security preferences/)).toBeInTheDocument()
-    expect(screen.getByText(/clear, user-friendly notifications/)).toBeInTheDocument()
-    expect(screen.getByText(/extend or reduce self-destruct timers/)).toBeInTheDocument()
+    // Check for current implementation content in answers
+    expect(screen.getByText(/military-grade authentication with Argon2id/)).toBeInTheDocument()
+    expect(screen.getByText(/TOTP-based two-factor authentication/)).toBeInTheDocument()
+    expect(screen.getByText(/Free accounts for personal use/)).toBeInTheDocument()
+    expect(screen.getByText(/verification email to confirm your address/)).toBeInTheDocument()
+    expect(screen.getByText(/we literally cannot see your emails/)).toBeInTheDocument()
   })
 
   it('renders the bottom CTA section', () => {

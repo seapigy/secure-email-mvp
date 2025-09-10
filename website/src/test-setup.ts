@@ -116,12 +116,8 @@ Object.defineProperty(global, 'crypto', {
         // Check if this is the wrong key (for testing wrong key scenarios)
         // Look at the test context - if we have a stored key and it's different, fail
         if (mockState.lastKey && mockState.lastKey.id !== key.id) {
-          // Only fail for the specific wrong key test case
-          const decoder = new TextDecoder()
-          const dataStr = decoder.decode(data)
-          if (dataStr.includes('Hello, World!') || mockState.lastMessage.includes('Hello, World!')) {
-            throw new Error('Decryption failed with wrong key')
-          }
+          // Always fail for wrong key scenarios
+          throw new Error('Decryption failed with wrong key')
         }
         
         // Return the stored message

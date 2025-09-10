@@ -41,10 +41,18 @@ export async function deriveAESKey(message: string, salt?: Uint8Array): Promise<
     let hash: Uint8Array;
     
     if (isTestEnvironment) {
-      // In test environment, use Web Crypto API for consistent results
+      // In test environment, use a more secure key derivation to ensure different inputs produce different keys
       const encoder = new TextEncoder();
-      const data = encoder.encode(message + argonSalt.toString());
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const messageData = encoder.encode(message);
+      const saltData = encoder.encode(argonSalt.toString());
+      
+      // Combine message and salt with proper separation
+      const combinedData = new Uint8Array(messageData.length + saltData.length + 1);
+      combinedData.set(messageData, 0);
+      combinedData.set([0], messageData.length); // Separator
+      combinedData.set(saltData, messageData.length + 1);
+      
+      const hashBuffer = await crypto.subtle.digest('SHA-256', combinedData);
       hash = new Uint8Array(hashBuffer);
       log('deriveAESKey: test environment hash generated', hash);
     } else {

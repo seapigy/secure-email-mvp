@@ -30,8 +30,8 @@ describe('QuantumResistant Component', () => {
     expect(screen.getByText('2000s')).toBeInTheDocument()
     expect(screen.getByText('2010s')).toBeInTheDocument()
     expect(screen.getByText('2020-2024')).toBeInTheDocument()
-    expect(screen.getByText('2024')).toBeInTheDocument()
-    expect(screen.getByText('2025-2030')).toBeInTheDocument()
+    expect(screen.getByText('2025')).toBeInTheDocument()
+    expect(screen.getByText('2026-2030')).toBeInTheDocument()
     expect(screen.getByText('2030+')).toBeInTheDocument()
   })
 
