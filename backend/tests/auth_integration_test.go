@@ -37,7 +37,7 @@ func mockVerifyPassword(password, hash string) (bool, error) {
 }
 
 func mockGenerateRandomToken(_ int) (string, error) {
-	
+
 	return "test_token_12345", nil
 }
 
