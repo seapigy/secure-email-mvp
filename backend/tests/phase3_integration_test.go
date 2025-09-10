@@ -444,10 +444,11 @@ func TestAccountDowngradeFlow(t *testing.T) {
 
 	// Create a subscription
 	subscriptionID := "test-subscription-id"
+	now := time.Now()
 	_, err = db.Exec(`
-		INSERT INTO subscriptions (id, user_id, status, plan, created_at, updated_at)
-		VALUES (?, ?, 'active', 'premium', ?, ?)
-	`, subscriptionID, userID, time.Now(), time.Now())
+		INSERT INTO subscriptions (id, user_id, status, plan, start_date, end_date, created_at, updated_at)
+		VALUES (?, ?, 'active', 'premium', ?, ?, ?, ?)
+	`, subscriptionID, userID, now, now.AddDate(1, 0, 0), now, now)
 	if err != nil {
 		t.Fatalf("Failed to create test subscription: %v", err)
 	}

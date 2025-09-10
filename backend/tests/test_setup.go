@@ -82,6 +82,105 @@ func setupTestDB(t *testing.T) *sql.DB {
 			metadata TEXT NULL,
 			timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,
+		// Additional tables for complete functionality
+		`CREATE TABLE IF NOT EXISTS domains (
+			id TEXT PRIMARY KEY,
+			domain_name TEXT NOT NULL UNIQUE,
+			user_id TEXT NOT NULL,
+			verified BOOLEAN DEFAULT FALSE,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS organizations (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			admin_user_id TEXT NOT NULL,
+			domain TEXT NULL,
+			max_users INTEGER DEFAULT 100,
+			settings_json TEXT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS organization_members (
+			id TEXT PRIMARY KEY,
+			organization_id TEXT NOT NULL,
+			user_id TEXT NOT NULL,
+			role TEXT NOT NULL,
+			status TEXT NOT NULL DEFAULT 'active',
+			invited_by TEXT NULL,
+			joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS mailbox_folders (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL,
+			name TEXT NOT NULL,
+			folder_type TEXT NOT NULL DEFAULT 'custom',
+			parent_folder_id TEXT NULL,
+			sort_order INTEGER DEFAULT 0,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS email_messages (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL,
+			folder_id TEXT NOT NULL,
+			message_id TEXT NOT NULL,
+			thread_id TEXT NULL,
+			from_address TEXT NOT NULL,
+			to_addresses TEXT NOT NULL,
+			cc_addresses TEXT NULL,
+			bcc_addresses TEXT NULL,
+			subject TEXT NOT NULL,
+			body_encrypted BLOB NOT NULL,
+			body_type TEXT NOT NULL DEFAULT 'text/plain',
+			attachments_encrypted BLOB NULL,
+			headers_encrypted BLOB NULL,
+			size_bytes INTEGER NOT NULL DEFAULT 0,
+			is_read BOOLEAN DEFAULT FALSE,
+			is_important BOOLEAN DEFAULT FALSE,
+			is_starred BOOLEAN DEFAULT FALSE,
+			received_at TIMESTAMP NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+			FOREIGN KEY (folder_id) REFERENCES mailbox_folders(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS email_labels (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL,
+			name TEXT NOT NULL,
+			color TEXT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS message_labels (
+			message_id TEXT NOT NULL,
+			label_id TEXT NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (message_id, label_id),
+			FOREIGN KEY (message_id) REFERENCES email_messages(id) ON DELETE CASCADE,
+			FOREIGN KEY (label_id) REFERENCES email_labels(id) ON DELETE CASCADE
+		)`,
+		`CREATE TABLE IF NOT EXISTS email_drafts (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL,
+			to_addresses TEXT NULL,
+			cc_addresses TEXT NULL,
+			bcc_addresses TEXT NULL,
+			subject TEXT NULL,
+			body_text TEXT NULL,
+			body_html TEXT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+		)`,
 	}
 
 	for _, migration := range migrations {
