@@ -2,9 +2,9 @@
 
 **Do not edit files in this folder without explicit approval.**
 
-## Current Status: TEMPORARILY UNFROZEN 🔓
+## Current Status: FROZEN ❄️
 
-This website directory is temporarily unfrozen for authorized updates. Changes are being made with explicit permission.
+This website directory is protected against unauthorized changes. All modifications require explicit approval from authorized personnel.
 
 ## How to Request a Change
 
