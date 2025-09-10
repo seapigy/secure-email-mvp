@@ -46,7 +46,7 @@ jobs:
     - name: Install securemail-app dependencies
       run: |
         cd securemail-app
-        npm ci
+        npm ci --legacy-peer-deps
     
     - name: Run securemail-app tests
       run: |
