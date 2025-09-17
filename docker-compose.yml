@@ -4,7 +4,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - DB_DSN=mysql://secureuser:securepass@tcp(db:3306)/securesystem?parseTime=true
+      - DB_DSN=mysql://securemail:securepassword@tcp(db:3306)/securemail?parseTime=true
       - SMTP_HOST=smtp.example.com
       - SMTP_PORT=587
       - SMTP_USER=your-smtp-username
@@ -27,12 +27,12 @@ services:
       - secure-network
 
   db:
-    image: mysql:8.0
+    image: mysql/mysql-server:8.0
     environment:
       - MYSQL_ROOT_PASSWORD=rootpassword
-      - MYSQL_DATABASE=securesystem
-      - MYSQL_USER=secureuser
-      - MYSQL_PASSWORD=securepass
+      - MYSQL_DATABASE=securemail
+      - MYSQL_USER=securemail
+      - MYSQL_PASSWORD=securepassword
     ports:
       - "3306:3306"
     volumes:
@@ -40,9 +40,11 @@ services:
       - ./migrations:/docker-entrypoint-initdb.d
     command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "secureuser", "-psecurepass"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "securemail", "-psecurepassword"]
       timeout: 20s
       retries: 10
+      interval: 10s
+      start_period: 30s
     restart: unless-stopped
     networks:
       - secure-network

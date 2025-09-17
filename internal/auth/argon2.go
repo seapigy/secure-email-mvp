@@ -24,9 +24,9 @@ type Argon2Config struct {
 // DefaultArgon2Config returns the default Argon2id configuration
 func DefaultArgon2Config() *Argon2Config {
 	return &Argon2Config{
-		Memory:      getEnvUint32("ARGON2_MEMORY_KB", 131072) * 1024, // Convert KB to bytes
-		Iterations:  getEnvUint32("ARGON2_ITERATIONS", 4),
-		Parallelism: uint8(getEnvUint32("ARGON2_PARALLELISM", 4)),
+		Memory:      getEnvUint32("ARGON2_MEMORY_KB", 1024) * 1024, // Convert KB to bytes - 1MB default for free tier
+		Iterations:  getEnvUint32("ARGON2_ITERATIONS", 1),
+		Parallelism: uint8(getEnvUint32("ARGON2_PARALLELISM", 1)),
 		SaltLength:  getEnvUint32("ARGON2_SALT_LEN", 16),
 		KeyLength:   getEnvUint32("ARGON2_KEY_LEN", 32),
 	}

@@ -30,41 +30,51 @@ type SignupRequest struct {
 
 // SignupResponse represents the signup response payload
 type SignupResponse struct {
-	Status               string `json:"status"`
-	Message              string `json:"message"`
-	RecoveryToken        string `json:"recovery_token"`
-	RecoveryTokenQRData  string `json:"recovery_token_qr_data_uri,omitempty"`
+	Status              string `json:"status"`
+	Message             string `json:"message"`
+	RecoveryToken       string `json:"recovery_token"`
+	RecoveryTokenQRData string `json:"recovery_token_qr_data_uri,omitempty"`
 }
 
 // SignupHandler handles user signup requests
 func SignupHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("📩 Received request at /api/signup")
+
 	// Set content type
 	w.Header().Set("Content-Type", "application/json")
 
 	// Parse request
+	log.Println("📩 Raw request body received")
 	var req SignupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("❌ JSON decoding failed: %v\n", err)
 		http.Error(w, `{"error": "Invalid JSON payload"}`, http.StatusBadRequest)
 		return
 	}
+	log.Println("✅ JSON decoding successful")
 
 	// Validate inputs
+	log.Println("🔍 [Signup] Validating signup request")
 	if err := validateSignupRequest(req); err != nil {
+		log.Printf("❌ [Signup] Validation error: %v", err)
 		http.Error(w, fmt.Sprintf(`{"error": "%s"}`, err.Error()), http.StatusBadRequest)
 		return
 	}
+	log.Println("✅ [Signup] Validation passed")
 
 	// Create context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	// Get database connection
+	log.Println("📡 Attempting DB connection...")
 	db, err := getDBConnection()
 	if err != nil {
-		log.Printf("Database connection error: %v", err)
+		log.Printf("❌ DB connection failed: %v\n", err)
 		http.Error(w, `{"error": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
+	log.Println("✅ DB connection established")
 	defer db.Close()
 
 	// Hash password
@@ -76,20 +86,23 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate verification token
+	log.Println("🛡 Generating verification token...")
 	verificationToken, err := tokens.GenerateSecureToken()
 	if err != nil {
-		log.Printf("Verification token generation error: %v", err)
+		log.Printf("❌ Verification token generation failed: %v\n", err)
 		http.Error(w, `{"error": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
+	log.Printf("✅ Verification token generated: %s\n", verificationToken)
 
 	// Hash verification token
 	verificationTokenHash, err := tokens.HashToken(verificationToken)
 	if err != nil {
-		log.Printf("Verification token hashing error: %v", err)
+		log.Printf("❌ Verification token hashing failed: %v\n", err)
 		http.Error(w, `{"error": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
+	log.Printf("🔒 Verification token hashed (SHA-256): %s\n", verificationTokenHash)
 
 	// Generate recovery token
 	recoveryToken, err := tokens.GenerateSecureToken()
@@ -112,12 +125,14 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 	recoveryExp := time.Now().Add(time.Duration(getEnvInt("RECOVERY_TOKEN_EXP_DAYS", 7)) * 24 * time.Hour)
 
 	// Insert user into database
+	log.Println("📝 Preparing to execute INSERT statement...")
 	userID, err := insertUser(ctx, db, req, passwordHash, verificationTokenHash, verificationExp, recoveryTokenHash, recoveryExp)
 	if err != nil {
-		log.Printf("User insertion error: %v", err)
+		log.Printf("❌ DB INSERT failed: %v\n", err)
 		http.Error(w, `{"error": "Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
+	log.Println("✅ User successfully inserted into DB")
 
 	// Create verification link
 	frontendURL := os.Getenv("FRONTEND_URL")
@@ -148,6 +163,7 @@ func SignupHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Response encoding error: %v", err)
 	}
+	log.Println("🎉 Signup handler completed successfully")
 }
 
 // validateSignupRequest validates the signup request
@@ -216,11 +232,16 @@ func insertUser(ctx context.Context, db *sql.DB, req SignupRequest, passwordHash
 
 // getDBConnection returns a database connection
 func getDBConnection() (*sql.DB, error) {
+	log.Printf("📡 getDBConnection called")
 	dsn := os.Getenv("DB_DSN")
+	log.Printf("📡 DB_DSN environment variable: '%s'", dsn)
+
 	if dsn == "" {
-		return nil, fmt.Errorf("DB_DSN environment variable not set")
+		log.Printf("❌ DB_DSN environment variable is empty!")
+		return nil, fmt.Errorf("DB_DSN environment variable is not set")
 	}
 
+	log.Printf("📡 Using DSN: %s", dsn)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)

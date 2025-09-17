@@ -11,6 +11,8 @@ import (
 )
 
 func main() {
+	log.Println("✅ DB initialization path: using getDBConnection")
+	
 	// Create router
 	r := mux.NewRouter()
 
@@ -30,5 +32,5 @@ func main() {
 	}
 
 	log.Printf("Server starting on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, r))
+	log.Fatal(http.ListenAndServe("0.0.0.0:"+port, r))
 }
